@@ -3201,7 +3201,11 @@ void nfa_ee_route_add_one_ecb_by_route_order(tNFA_EE_ECB* p_cb,int rout_type ,in
                * ISO DEP Protocol*/
               if(nfa_ee_proto_mask_list[xx] == NFA_PROTOCOL_MASK_ISO_DEP || nfa_ee_proto_mask_list[xx] == NFC_PROTOCOL_MASK_ISO7816)
               {
+#if (NXP_NFCC_ROUTING_BLOCK_BIT == true)
                 *pp++ = NFC_ROUTE_TAG_PROTO | route_blacklist_mask;
+#else
+                *pp++ = NFC_ROUTE_TAG_PROTO;
+#endif
                 power_cfg |= NCI_ROUTE_PWR_STATE_SCREEN_ON_LOCK();
               }
               else
@@ -3272,7 +3276,11 @@ void nfa_ee_route_add_one_ecb_by_route_order(tNFA_EE_ECB* p_cb,int rout_type ,in
                             "nfa_ee_route_add_one_ecb_by_route_ordersuraj2 %x",p_cb->aid_info[xx] & NCI_ROUTE_QUAL_SHORT_SELECT);
                       route_qual |= NCI_ROUTE_QUAL_SHORT_SELECT;
                     }
+#if (NXP_NFCC_ROUTING_BLOCK_BIT == true)
                     *pp++ = NFC_ROUTE_TAG_AID | route_blacklist_mask | route_qual;
+#else
+                    *pp++ = NFC_ROUTE_TAG_AID | route_qual;
+#endif
                     *pp++ = len + 2;
                     *pp++ = p_cb->aid_rt_loc[xx];
                     *pp++ = p_cb->aid_pwr_cfg[xx];

@@ -800,7 +800,9 @@ uint8_t nci_snd_nfcee_power_link_control (uint8_t nfcee_id, uint8_t pl_config)
     pp                  = (uint8_t *) (p + 1) + p->offset;
 
     NCI_MSG_BLD_HDR0 (pp, NCI_MT_CMD, NCI_GID_EE_MANAGE);
+#if (NXP_EXTNS == TRUE) && (NXP_WIRED_MODE_STANDBY == true)
     NCI_MSG_BLD_HDR1 (pp, NCI_MSG_NFCEE_POWER_LINK_CTRL);
+#endif
     UINT8_TO_STREAM (pp, NCI_CORE_PARAM_SIZE_NFCEE_PL_CTRL);
     UINT8_TO_STREAM (pp, nfcee_id);
     UINT8_TO_STREAM (pp, pl_config);

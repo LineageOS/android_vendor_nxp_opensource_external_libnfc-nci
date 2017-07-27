@@ -392,7 +392,6 @@ void nci_proc_ee_management_rsp(NFC_HDR* p_msg) {
       }
 #endif
       break;
-#endif
     case NCI_MSG_NFCEE_POWER_LINK_CTRL:
         p_evt                   = (tNFC_RESPONSE *) &pl_control;
         pl_control.status        = *pp;
@@ -400,6 +399,7 @@ void nci_proc_ee_management_rsp(NFC_HDR* p_msg) {
         pl_control.pl_control    = *p_old++;
         event               = NFC_NFCEE_PL_CONTROL_REVT;
         break;
+#endif
     default:
       p_cback = NULL;
       NFC_TRACE_ERROR1("unknown opcode:0x%x", op_code);

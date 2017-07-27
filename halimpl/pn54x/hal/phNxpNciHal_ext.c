@@ -517,6 +517,7 @@ static NFCSTATUS phNxpNciHal_ext_process_nfc_init_rsp(uint8_t* p_ntf, uint16_t* 
           rom_version = p_ntf[len - 2];
           NXPLOG_NCIHAL_D ("NxpNci> FW Version: %x.%x.%x", p_ntf[len-2], p_ntf[len-1], p_ntf[len]);
           }else {
+#ifdef AOSP_NFCDEP
 #if (NFC_NXP_CHIP_TYPE == PN548C2)
           if (nfcdep_detected &&
           !(p_ntf[2] == 0x06 && p_ntf[3] == 0xA0 && p_ntf[4] == 0x00 &&
@@ -526,6 +527,7 @@ static NFCSTATUS phNxpNciHal_ext_process_nfc_init_rsp(uint8_t* p_ntf, uint16_t* 
           p_ntf[8] == 0x00)))) {
           nfcdep_detected = 0x00;
         }
+#endif
 #endif
         phNxpNciHal_emergency_recovery();
         status = NFCSTATUS_FAILED;
