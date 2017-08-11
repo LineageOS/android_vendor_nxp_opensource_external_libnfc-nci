@@ -55,7 +55,7 @@ endif
 
 #### Select the CHIP ####
 ifeq ($(strip $(NQ3XX_PRESENT)),true)
-NXP_CHIP_TYPE := $(PN557)
+NXP_CHIP_TYPE := $(PN553)
 else
 NXP_CHIP_TYPE := $(PN548C2)
 endif
