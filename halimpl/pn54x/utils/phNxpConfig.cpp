@@ -69,7 +69,7 @@ const char alternative_config_path[] = "";
 
 #if 1
 const char* transport_config_paths[] = {"/odm/etc/", "/vendor/etc/", "/etc/"};
-const char transit_config_path[] = "/data/nfc/libnfc-nxpTransit.conf";
+const char transit_config_path[] = "/data/vendor/nfc/libnfc-nxpTransit.conf";
 #else
 const char* transport_config_paths[] = {"res/"};
 #endif
@@ -1062,6 +1062,7 @@ bool CNfcConfig::isAllowed(const char* name) {
   if ((token.find("P2P_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("HOST_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("UICC_LISTEN_TECH_MASK") != std::string::npos) ||
+      (token.find("NXP_ESE_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("POLLING_TECH_MASK") != std::string::npos) ||
       (token.find("NXP_RF_CONF_BLK") != std::string::npos) ||
       (token.find("NXP_CN_TRANSIT_BLK_NUM_CHECK_ENABLE") !=

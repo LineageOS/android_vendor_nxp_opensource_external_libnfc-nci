@@ -50,7 +50,7 @@ const int transport_config_path_size =
     (sizeof(transport_config_paths) / sizeof(transport_config_paths[0]));
 
 #if (NXP_EXTNS == TRUE)
-const char transit_config_path[] = "/data/nfc/";
+const char transit_config_path[] = "/data/vendor/nfc/";
 #endif
 
 #define config_name "libnfc-brcm.conf"
@@ -624,6 +624,7 @@ bool CNfcConfig::isAllowed(const char* name) {
   if ((token.find("P2P_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("HOST_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("UICC_LISTEN_TECH_MASK") != std::string::npos) ||
+      (token.find("NXP_ESE_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("POLLING_TECH_MASK") != std::string::npos) ||
       (token.find("NXP_RF_CONF_BLK") != std::string::npos) ||
       (token.find("NXP_CN_TRANSIT_BLK_NUM_CHECK_ENABLE") !=
