@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2015 NXP Semiconductors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +23,6 @@
 #include <phNxpNciHal_utils.h>
 #include <phNxpLog.h>
 #include <phNxpConfig.h>
-#include <cutils/properties.h>
 
 /* Macro */
 #define PHLIBNFC_IOCTL_DNLD_MAX_ATTEMPTS 3
@@ -526,8 +528,6 @@ static void phNxpNciHal_fw_dnld_get_version_cb(void* pContext, NFCSTATUS status,
   uint8_t bExpectedLen = 0;
   uint8_t bNewVer[2];
   uint8_t bCurrVer[2];
-  int rc;
-  char nq_chipid[PROPERTY_VALUE_MAX] = {0};
 
   if ((NFCSTATUS_SUCCESS == wStatus) && (NULL != pInfo)) {
     NXPLOG_FWDNLD_D("phNxpNciHal_fw_dnld_get_version_cb - Request Successful");
@@ -537,12 +537,6 @@ static void phNxpNciHal_fw_dnld_get_version_cb(void* pContext, NFCSTATUS status,
     if ((0 != pRespBuff->wLen) && (NULL != pRespBuff->pBuff)) {
       bHwVer = (pRespBuff->pBuff[0]);
       bHwVer &= 0x0F; /* 0x0F is the mask to extract chip version */
-
-      rc = __system_property_get("sys.nfc.nq.chipid", nq_chipid);
-      if (rc <= 0)
-          ALOGE("get sys.nfc.nq.chipid fail, rc = %d\n", rc);
-      else
-          ALOGD("sys.nfc.nq.chipid = %s\n", nq_chipid);
       if ((PHDNLDNFC_HWVER_MRA2_1 == bHwVer) ||
               (PHDNLDNFC_HWVER_MRA2_2 == bHwVer) ||
                ((nfcFL.chipType == pn551) &&

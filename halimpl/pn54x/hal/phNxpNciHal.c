@@ -30,7 +30,6 @@
 #include <phNxpNciHal_NfcDepSWPrio.h>
 #include <phNxpNciHal_Kovio.h>
 #include <phTmlNfc_i2c.h>
-#include <cutils/properties.h>
 #include "phNxpNciHal_nciParser.h"
 /*********************** Global Variables *************************************/
 #define PN547C2_CLOCK_SETTING
@@ -1693,17 +1692,9 @@ int phNxpNciHal_core_initialized(uint8_t* p_core_init_rsp_params) {
         uint8_t swp_info_buff[2];
         uint8_t swp_intf_status = 0x00;
         uint8_t swp1A_intf_status = 0x00;
-        char nq_chipid[PROPERTY_VALUE_MAX] = {0};
-        int rc = 0;
         NFCSTATUS status = NFCSTATUS_FAILED;
         phNxpNci_EEPROM_info_t swp_intf_info;
-        rc = __system_property_get("sys.nfc.nq.chipid", nq_chipid);
-        if (rc <= 0) {
-            NXPLOG_NCIHAL_E("get sys.nfc.nq.chipid fail, rc = %d\n", rc);
-        }
-        else {
-            NXPLOG_NCIHAL_D("sys.nfc.nq.chipid = %s\n", nq_chipid);
-        }
+
         memset(swp_info_buff, 0, sizeof(swp_info_buff));
         /*Read SWP1 data*/
         memset(&swp_intf_info, 0, sizeof(swp_intf_info));
@@ -1718,8 +1709,7 @@ int phNxpNciHal_core_initialized(uint8_t* p_core_init_rsp_params) {
             NXPLOG_NCIHAL_E("request_EEPROM error occured %d", status);
             NXP_NCI_HAL_CORE_INIT_RECOVER(retry_core_init_cnt, retry_core_init);
         }
-        if ((rc > 0) && (strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX) != 0) &&
-            (strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX) != 0)) {
+        if ((nfcFL.chipType == pn551) || (nfcFL.chipType == pn553) || (nfcFL.chipType == pn557)) {
             /*Read SWP1A data*/
             memset(&swp_intf_info, 0, sizeof(swp_intf_info));
             swp_intf_info.request_mode = GET_EEPROM_DATA;
@@ -2216,7 +2206,7 @@ static NFCSTATUS phNxpNciHal_check_eSE_Session_Identity(void) {
 
   if (status == NFCSTATUS_FAILED) {
     /*Disable SWP1 and 1A interfaces*/
-      if(nfcFL.nfccFL._NFC_NXP_STAT_DUAL_UICC_WO_EXT_SWITCH) {
+      if ((nfcFL.chipType == pn551) || (nfcFL.chipType == pn553) || (nfcFL.chipType == pn557)) {
           status = phNxpNciHal_send_ext_cmd(sizeof(disable_dual_swp_intf),
                   disable_dual_swp_intf);
       }

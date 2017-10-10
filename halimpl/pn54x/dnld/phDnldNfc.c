@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright (C) 2015 NXP Semiconductors
@@ -27,7 +27,6 @@
 #include <phNxpLog.h>
 #include <dlfcn.h>
 #include <phNxpConfig.h>
-#include <cutils/properties.h>
 
 static void*
     pFwLibHandle;    /* Global firmware lib handle used in this file only */
@@ -242,8 +241,6 @@ NFCSTATUS phDnldNfc_GetSessionState(pphDnldNfc_Buff_t pSession,
 NFCSTATUS phDnldNfc_CheckIntegrity(uint8_t bChipVer, pphDnldNfc_Buff_t pCRCData,
                                    pphDnldNfc_RspCb_t pNotify, void* pContext) {
   NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-  int rc;
-  char nq_chipid[PROPERTY_VALUE_MAX] = {0};
 
   if ((NULL == pNotify) || (NULL == pContext)) {
     NXPLOG_FWDNLD_E("Invalid Input Parameters!!");
@@ -253,11 +250,6 @@ NFCSTATUS phDnldNfc_CheckIntegrity(uint8_t bChipVer, pphDnldNfc_Buff_t pCRCData,
       NXPLOG_FWDNLD_E("Dnld Cmd Request in Progress..Cannot Continue!!");
       wStatus = PHNFCSTVAL(CID_NFC_DNLD, NFCSTATUS_BUSY);
     } else {
-          rc = __system_property_get("sys.nfc.nq.chipid", nq_chipid);
-          if (rc <= 0)
-              ALOGE("get sys.nfc.nq.chipid fail, rc = %d\n", rc);
-          else
-              ALOGD("sys.nfc.nq.chipid = %s\n", nq_chipid);
       if ((PHDNLDNFC_HWVER_MRA2_1 == bChipVer) ||
            (PHDNLDNFC_HWVER_MRA2_2 == bChipVer) ||
            ((nfcFL.chipType == pn551) &&

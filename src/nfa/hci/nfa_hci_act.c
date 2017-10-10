@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
  *  Copyright (C) 2015 NXP Semiconductors
@@ -2533,6 +2533,7 @@ static tNFA_STATUS nfa_hci_get_num_nfcee_configured() {
   tNFA_STATUS status = NFA_STATUS_OK;
   uint8_t p_data[NFA_MAX_HCI_CMD_LEN];
   uint8_t* p = p_data, *parm_len, *num_param;
+
   memset(p_data, 0, sizeof(p_data));
   NCI_MSG_BLD_HDR0(p, NCI_MT_CMD, NCI_GID_CORE);
   NCI_MSG_BLD_HDR1(p, NCI_MSG_CORE_GET_CONFIG);
@@ -2545,11 +2546,11 @@ static tNFA_STATUS nfa_hci_get_num_nfcee_configured() {
   UINT8_TO_STREAM(p, NXP_NFC_PARAM_ID_SWP2);
   (*num_param)++;
 
-if(nfcFL.nfccFL._NFCC_DYNAMIC_DUAL_UICC) {
-  UINT8_TO_STREAM(p, NXP_NFC_SET_CONFIG_PARAM_EXT);
-  UINT8_TO_STREAM(p, NXP_NFC_PARAM_ID_SWP1A);
-  (*num_param)++;
-}
+  if ((nfcFL.chipType == pn551) || (nfcFL.chipType == pn553) || (nfcFL.chipType == pn557)) {
+      UINT8_TO_STREAM(p, NXP_NFC_SET_CONFIG_PARAM_EXT);
+      UINT8_TO_STREAM(p, NXP_NFC_PARAM_ID_SWP1A);
+      (*num_param)++;
+  }
 
   *parm_len = (p - num_param);
   if (*num_param != 0x00) {
