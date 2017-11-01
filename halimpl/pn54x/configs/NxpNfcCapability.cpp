@@ -1,5 +1,8 @@
 /******************************************************************************
  *
+ *  Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *  Not a Contribution.
+ *
  *  Copyright (C) 2015 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,10 +62,12 @@ tNFC_chipType capability::processChipType(uint8_t* msg, uint16_t msg_len) {
                 break;
 
             case 0x28 :
+            case 0x48 :
                 chipType = pn548C2;
                 break;
 
             case 0x18 :
+            case 0x58 :
                 chipType = pn66T;
                 break;
 

@@ -3927,10 +3927,12 @@ tNFC_chipType configChipType(uint8_t* msg, uint16_t msg_len) {
                 break;
 
             case 0x28 :
+            case 0x48 :
                 chipType = pn548C2;
                 break;
 
             case 0x18 :
+            case 0x58 :
                 chipType = pn66T;
                 break;
 
