@@ -116,6 +116,7 @@ private:
     void    signal();
     static  NfcAdaptation* mpInstance;
     static  ThreadMutex sLock;
+    static ThreadMutex sIoctlLock;
     ThreadCondVar    mCondVar;
     tHAL_NFC_ENTRY   mHalEntryFuncs; // function pointers for HAL entry points
     static nfc_nci_device_t* mHalDeviceContext;
@@ -126,6 +127,7 @@ private:
     static tHAL_NFC_DATA_CBACK* mHalDataCallback;
     static ThreadCondVar mHalOpenCompletedEvent;
     static ThreadCondVar mHalCloseCompletedEvent;
+    static ThreadCondVar mHalIoctlEvent;
 #if(NXP_EXTNS == TRUE)
     pthread_t mThreadId;
     static ThreadCondVar mHalCoreResetCompletedEvent;

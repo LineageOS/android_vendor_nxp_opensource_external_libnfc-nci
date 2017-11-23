@@ -89,6 +89,12 @@
 #define NFCSTATUS_BUFFER_TOO_SMALL (0x0003)
 
 /*
+ * The function indicates given module not initialized
+ */
+#define NFC_STATUS_NOT_INITIALIZED (0x0004)
+
+/*
+
  * Device specifier/handle value is invalid for the operation
  */
 #define NFCSTATUS_INVALID_DEVICE (0x0006)
@@ -299,8 +305,6 @@
 /* No registry node matches the specified input data. */
 #define NFCSTATUS_NODE_NOT_FOUND (0x0017)
 
-#if (NFC_NXP_ESE == TRUE)
-
 #define NFCSTATUS_SMX_SPI_STATE (0x00F0)
 
 /* The current module is free ; one might use it */
@@ -312,11 +316,9 @@
 /* The current module is free ; one might use it */
 #define NFCSTATUS_NFCC_DWNLD_STATE (0x00F4)
 
-#else
 /* The current module is busy ; one might retry later */
 #define NFCSTATUS_SMX_BAD_STATE (0x00F0)
 
-#endif
 
 /* The Abort mechanism has failed for unexpected reason: user can try again*/
 #define NFCSTATUS_ABORT_FAILED (0x00F2)
