@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
  *  Copyright (C) 2011-2012 Broadcom Corporation
@@ -69,7 +69,7 @@ const char alternative_config_path[] = "";
 
 #if 1
 const char* transport_config_paths[] = {"/odm/etc/", "/vendor/etc/", "/etc/"};
-const char transit_config_path[] = "/data/nfc/libnfc-nxpTransit.conf";
+const char transit_config_path[] = "/data/vendor/nfc/libnfc-nxpTransit.conf";
 #else
 const char* transport_config_paths[] = {"res/"};
 #endif
@@ -297,6 +297,7 @@ int CNfcConfig::getconfiguration_id (char * config_file)
     char soc_info[MAX_SOC_INFO_NAME_LEN] = {'\0'};
     char nq_chipid[PROPERTY_VALUE_MAX] = {0};
     char nq_fw_ver[PROPERTY_VALUE_MAX] = {0};
+    bool nq2xx_present = false;
     string strPath;
     int rc = 0;
     int idx = 0;
@@ -316,15 +317,18 @@ int CNfcConfig::getconfiguration_id (char * config_file)
 
     rc = __system_property_get("sys.nfc.nq.chipid", nq_chipid);
     if (rc <= 0)
-        ALOGE("get sys.nfc.nq.chipid fail, rc = %d\n", rc);
+        ALOGE("get sys.nfc.nq.chipid fail, chipid_found = %d\n", rc);
     else
         ALOGD("sys.nfc.nq.chipid = %s\n", nq_chipid);
 
     rc = __system_property_get("sys.nfc.nq.fwver", nq_fw_ver);
     if (rc <= 0)
-        ALOGE("get sys.nfc.nq.fwver fail, rc = %d\n", rc);
+        ALOGE("get sys.nfc.nq.fwver fail, fwver found = %d\n", rc);
     else
         ALOGD("sys.nfc.nq.fwver = %s\n", nq_fw_ver);
+
+    nq2xx_present = (!strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX))
+                 || (!strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX));
 
     // Converting the HW_PLATFORM detail that is read from target to lowercase
     for (int i=0;target_type[i];i++)
@@ -349,7 +353,6 @@ int CNfcConfig::getconfiguration_id (char * config_file)
             config_id = CONFIG_GENERIC;
             break;
         case TARGET_MSM8952:
-        case TARGET_MSM8909:
             config_id = QRD_TYPE_DEFAULT;
             strlcpy(config_file, config_name_qrd, MAX_DATA_CONFIG_PATH_LEN);
             break;
@@ -357,7 +360,8 @@ int CNfcConfig::getconfiguration_id (char * config_file)
         case TARGET_MSM8937:
         case TARGET_MSM8917:
         case TARGET_MSM8940:
-            if ((!strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) || (!strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX))) {
+        case TARGET_MSM8909:
+            if (nq2xx_present) {
                 // NQ210 or NQ220
                 config_id = QRD_TYPE_DEFAULT;
                 strlcpy(config_file, config_name_qrd, MAX_DATA_CONFIG_PATH_LEN);
@@ -385,7 +389,7 @@ int CNfcConfig::getconfiguration_id (char * config_file)
         case TARGET_SDM630:
         case TARGET_MSM8998:
         case TARGET_MSM8997:
-            if ((!strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) || (!strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX))) {
+            if (nq2xx_present) {
                 // NQ210 or NQ220
                 config_id = QRD_TYPE_2;
                 strlcpy(config_file, config_name_qrd2, MAX_DATA_CONFIG_PATH_LEN);
@@ -411,7 +415,8 @@ int CNfcConfig::getconfiguration_id (char * config_file)
         case TARGET_MSM8937:
         case TARGET_MSM8917:
         case TARGET_MSM8940:
-            if ((!strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) || (!strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX))) {
+        case TARGET_MSM8909:
+            if (nq2xx_present) {
                 // NQ210 or NQ220
                 config_id = MTP_TYPE_DEFAULT;
                 strlcpy(config_file, config_name_mtp, MAX_DATA_CONFIG_PATH_LEN);
@@ -434,7 +439,7 @@ int CNfcConfig::getconfiguration_id (char * config_file)
         case TARGET_SDM630:
         case TARGET_MSM8998:
         case TARGET_MSM8997:
-            if ((!strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) || (!strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX))) {
+            if (nq2xx_present) {
                 // NQ210 or NQ220
                 config_id = MTP_TYPE_1;
                 strlcpy(config_file, config_name_mtp1, MAX_DATA_CONFIG_PATH_LEN);
@@ -1062,6 +1067,7 @@ bool CNfcConfig::isAllowed(const char* name) {
   if ((token.find("P2P_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("HOST_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("UICC_LISTEN_TECH_MASK") != std::string::npos) ||
+      (token.find("NXP_ESE_LISTEN_TECH_MASK") != std::string::npos) ||
       (token.find("POLLING_TECH_MASK") != std::string::npos) ||
       (token.find("NXP_RF_CONF_BLK") != std::string::npos) ||
       (token.find("NXP_CN_TRANSIT_BLK_NUM_CHECK_ENABLE") !=
