@@ -106,19 +106,19 @@
 // DTA API for MW Version need to change according to release
 #define NXP_EN_PN547C2 0
 #define NXP_EN_PN65T 0
-#define NXP_EN_PN548C2 0
-#define NXP_EN_PN66T 0
-#define NXP_EN_PN551 0
-#define NXP_EN_PN67T 0
-#define NXP_EN_PN553 1
-#define NXP_EN_PN80T 1
+#define NXP_EN_PN548C2 1
+#define NXP_EN_PN66T 1
+#define NXP_EN_PN551 1
+#define NXP_EN_PN67T 1
+#define NXP_EN_PN553 0
+#define NXP_EN_PN80T 0
 #define NXP_EN_PN553_MR1 0
 #define NXP_EN_PN81A     0
 #define NXP_EN_PN553_MR2 0
 #define NXP_EN_PN557     0
 #define NXP_EN_PN81T     0
 #define NXP_ANDROID_VER (8U)        /* NXP android version */
-#define NFC_NXP_MW_VERSION_MAJ (0x01) /* MW Major Version */
+#define NFC_NXP_MW_VERSION_MAJ (0x03) /* MW Major Version */
 #define NFC_NXP_MW_VERSION_MIN (0x00) /* MW Minor Version */
 #endif
 /* 0xE0 ~0xFF are proprietary status codes */
@@ -982,10 +982,6 @@ typedef union {
 #define NFC_RF_PARAM_SOS_REQUIRED 0x00     /* SoS required */
 #define NFC_RF_PARAM_SOS_NOT_REQUIRED 0x01 /* SoS not required */
 
-#if (NXP_EXTNS == TRUE)
-#define NFA_EE_MAX_EE_SUPPORTED_DEFAULT 0x04
-#endif
-
 typedef struct {
   bool include_rf_tech_mode; /* true if including RF Tech and Mode update    */
   tNFC_RF_TECH_N_MODE rf_tech_n_mode; /* RF tech and mode */
@@ -1536,17 +1532,6 @@ extern tNFC_STATUS NFC_TestLoopback(NFC_HDR* p_data);
 *******************************************************************************/
 extern uint8_t NFC_SetTraceLevel(uint8_t new_level);
 
-/*******************************************************************************
-**
-** Function         NFC_GetChipType
-**
-** Description      Gets the chipType
-**
-** Returns          ChipType
-**
-*******************************************************************************/
-tNFC_chipType NFC_GetChipType();
-
 #if (BT_TRACE_VERBOSE == true)
 /*******************************************************************************
 **
@@ -1763,6 +1748,18 @@ tNFC_chipType NFC_GetChipType();
 
 /*******************************************************************************
 **
+** Function         NFC_RelForceDwpOnOffWait
+**
+** Description      This function release wait for DWP On/Off
+**                  of P73. Status would be updated to pdata
+**
+** Returns          0 if api call success, else -1
+**
+*******************************************************************************/
+int32_t NFC_RelForceDwpOnOffWait (void *pdata);
+
+/*******************************************************************************
+**
 ** Function         NFC_Queue_Is_empty
 **
 ** Description      This function to get NFCEE connection ID queue information
@@ -1841,4 +1838,5 @@ extern tNFC_STATUS NFC_SetPowerSubState (uint8_t screen_state);
 **
 *******************************************************************************/
 extern tNFC_STATUS NFC_ISODEPNakPresCheck ();
+
 #endif /* NFC_API_H */

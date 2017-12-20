@@ -766,7 +766,6 @@ bool nfc_ncif_process_event(NFC_HDR* p_msg) {
   if ((nfc_cb.nxpCbflag == true) &&
       (nfc_ncif_proc_proprietary_rsp(mt, gid, oid) == true)) {
     nci_proc_prop_nxp_rsp(p_msg);
-    nfc_cb.nxpCbflag = false;
     return (free);
   }
 #endif
@@ -2336,7 +2335,7 @@ void nfc_ncif_proc_init_rsp(NFC_HDR* p_msg) {
             ((NFC_STATE_CORE_INIT == nfc_cb.nfc_state) &&
                     (MW_RCVRY_FW_DNLD_ALLOWED == false))) ||
             ((!nfcFL.nfccFL._NFCC_MW_RCVRY_BLK_FW_DNLD) &&
-                    (nfcFL.nfccFL._NFCC_MW_RCVRY_BLK_FW_DNLD)))
+                    (NFC_STATE_CORE_INIT == nfc_cb.nfc_state)))
     {
       nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_CHECK_FLASH_REQ, &inpOutData);
       fw_update_inf = *(tNFC_FWUpdate_Info_t*)&inpOutData.out.data.fwUpdateInf;
@@ -2659,21 +2658,16 @@ void nfc_data_event(tNFC_CONN_CB* p_cb) {
               }
           }
         }
-        if((NFC_GetNCIVersion() == NCI_VERSION_2_0)&&(p_cb->act_protocol == NCI_PROTOCOL_15693))
+#if (NXP_EXTNS == TRUE)
+        if(p_cb->act_protocol == NCI_PROTOCOL_15693)
         {
           p_evt->len--;
           p = (uint8_t*)(p_evt + 1);
           data_cevt.status = *(p + p_evt->offset + p_evt->len);
         }
-      }
-#if(NXP_EXTNS == TRUE)
-        if(p_cb->act_protocol == NCI_PROTOCOL_15693)
-        {
-            p_evt->len--;
-            p = (uint8_t *) (p_evt + 1);
-            data_cevt.status = *(p + p_evt->offset + p_evt->len);
-        }
 #endif
+      }
+
       (*p_cb->p_cback)(p_cb->conn_id, NFC_DATA_CEVT, (void*)&data_cevt);
       p_evt = NULL;
     }
