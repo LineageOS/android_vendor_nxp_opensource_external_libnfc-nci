@@ -547,6 +547,7 @@ int phNxpNciHal_MinOpen(nfc_stack_callback_t* p_cback,
         } while (init_retry_cnt < 0x03);
       }
     }
+    pthread_attr_destroy(&attr);
   }
   CONCURRENCY_UNLOCK();
   init_retry_cnt = 0;
@@ -876,12 +877,12 @@ int phNxpNciHal_write(uint16_t data_len, const uint8_t* p_data) {
   }
 
   /* Create local copy of cmd_data */
-  memcpy(nxpncihal_ctrl.p_cmd_data, p_data, data_len);
   nxpncihal_ctrl.cmd_len = data_len;
   if (nxpncihal_ctrl.cmd_len > NCI_MAX_DATA_LEN) {
     NXPLOG_NCIHAL_D("cmd_len exceeds limit NCI_MAX_DATA_LEN");
     goto clean_and_return;
   }
+  memcpy(nxpncihal_ctrl.p_cmd_data, p_data, data_len);
 #ifdef P2P_PRIO_LOGIC_HAL_IMP
   /* Specific logic to block RF disable when P2P priority logic is busy */
   if (p_data[0] == 0x21 && p_data[1] == 0x06 && p_data[2] == 0x01 &&
@@ -1180,7 +1181,23 @@ void phNxpNciHal_check_delete_nfaStorage_DHArea() {
       ALOGE("%s: error deleting file %s", __func__, config_eseinfo_path);
   }
 }
+/*******************************************************************************
+ **
+ ** Function:        phNxpNciHal_lastResetNtfReason()
+ **
+ ** Description:     Returns and clears last reset notification reason.
+ **                      Intended to be called only once during recovery.
+ **
+ ** Returns:         reasonCode
+ **
+ ********************************************************************************/
+uint8_t phNxpNciHal_lastResetNtfReason(void) {
+  uint8_t reasonCode = nxpncihal_ctrl.nci_info.lastResetNtfReason;
 
+  nxpncihal_ctrl.nci_info.lastResetNtfReason = 0;
+
+  return reasonCode;
+}
 /******************************************************************************
  * Function         phNxpNciHal_core_initialized
  *
@@ -1210,6 +1227,8 @@ int phNxpNciHal_core_initialized(uint8_t* p_core_init_rsp_params) {
   static uint8_t cmd_init_nci[] = {0x20, 0x01, 0x00};
   static uint8_t cmd_reset_nci[] = {0x20, 0x00, 0x01, 0x00};
   static uint8_t cmd_init_nci2_0[] = {0x20,0x01,0x02,0x00,0x00};
+  static uint8_t cmd_get_cfg_dbg_info[] = {0x20, 0x03, 0x4, 0xA0, 0x1B, 0xA0, 0x27};
+
   config_success = true;
   long bufflen = 260;
   long retlen = 0;
@@ -1355,7 +1374,8 @@ int phNxpNciHal_core_initialized(uint8_t* p_core_init_rsp_params) {
 #endif
 
 
-  if((nfcFL.chipType != pn547C2) && nfcFL.nfccFL._NFCC_ROUTING_BLOCK_BIT_PROP) {
+  if((nfcFL.chipType != pn547C2) && (nfcFL.chipType != pn557) &&
+      nfcFL.nfccFL._NFCC_ROUTING_BLOCK_BIT_PROP) {
       if (isNxpConfigModified() || (fw_dwnld_flag == 0x01)) {
           uint8_t value;
           retlen = 0;
@@ -1450,6 +1470,11 @@ int phNxpNciHal_core_initialized(uint8_t* p_core_init_rsp_params) {
     }
   }
 #endif
+  if(phNxpNciHal_lastResetNtfReason() == FW_DBG_REASON_AVAILABLE){
+
+    phNxpNciHal_send_ext_cmd(sizeof(cmd_get_cfg_dbg_info), cmd_get_cfg_dbg_info);
+    NXPLOG_NCIHAL_D("NFCC txed reset ntf with reason code 0xA3");
+  }
   setConfigAlways = false;
   isfound = GetNxpNumValue(NAME_NXP_SET_CONFIG_ALWAYS, &num, sizeof(num));
   if (isfound > 0) {
@@ -1907,7 +1932,7 @@ int phNxpNciHal_core_initialized(uint8_t* p_core_init_rsp_params) {
 
   config_access = false;
   if (!((*p_core_init_rsp_params > 0) && (*p_core_init_rsp_params < 4))) {
-      if(nfcFL.nfcNxpEse == true) {
+      if(nfcFL.nfcNxpEse == true && nfcFL.eseFL._ESE_ETSI12_PROP_INIT) {
           status = phNxpNciHal_check_eSE_Session_Identity();
           if (status != NFCSTATUS_SUCCESS) {
               NXPLOG_NCIHAL_E("Session id/ SWP intf reset Failed");
@@ -2955,6 +2980,15 @@ int phNxpNciHal_ioctl(long arg, void* p_data) {
             }
         }
       break;
+    case HAL_NFC_IOCTL_REL_DWP_WAIT:
+        if(nfcFL.nfcNxpEse) {
+            status = phTmlNfc_rel_dwpOnOff_wait(gpphTmlNfc_Context->pDevHandle);
+            NXPLOG_NCIHAL_D("HAL_NFC_IOCTL_REL_DWP_ON_OFF_WAIT retval = %d\n", status);
+            if (NFCSTATUS_SUCCESS == status) {
+                ret = 0;
+            }
+        }
+      break;
 
     case HAL_NFC_IOCTL_SET_BOOT_MODE:
       if (NULL != p_data) {
@@ -3146,8 +3180,9 @@ static void phNxpNciHal_txNfccClockSetCmd(void) {
 
 if(nfcFL.chipType == pn553) {
     static uint8_t set_clock_cmd[] = {0x20, 0x02, 0x05, 0x01, 0xA0, 0x03, 0x01, 0x08};
+    uint8_t setClkCmdLen = sizeof(set_clock_cmd);
     unsigned long  clockSource, frequency;
-    uint32_t pllSetRetryCount = 3, dpllSetRetryCount = 3;
+    uint32_t pllSetRetryCount = 3, dpllSetRetryCount = 3,setClockCmdWriteRetryCnt = 0;
     uint8_t *pCmd4PllSetting;
     uint8_t *pCmd4DpllSetting;
     uint32_t pllCmdLen, dpllCmdLen;
@@ -3251,6 +3286,12 @@ if(nfcFL.chipType == pn553) {
     switch(clockSource)
     {
         case CLK_SRC_PLL:
+            set_clock_cmd[setClkCmdLen -1] = 0x00;
+            while(status != NFCSTATUS_SUCCESS && setClockCmdWriteRetryCnt++ < MAX_RETRY_COUNT)
+            status = phNxpNciHal_send_ext_cmd(setClkCmdLen, set_clock_cmd);
+
+            status = NFCSTATUS_FAILED;
+
             while(status != NFCSTATUS_SUCCESS && pllSetRetryCount -- > 0)
                 status = phNxpNciHal_send_ext_cmd(pllCmdLen, pCmd4PllSetting);
 
@@ -3262,7 +3303,7 @@ if(nfcFL.chipType == pn553) {
             break;
 
         case CLK_SRC_XTAL:
-            status = phNxpNciHal_send_ext_cmd(sizeof(set_clock_cmd), set_clock_cmd);
+            status = phNxpNciHal_send_ext_cmd(setClkCmdLen, set_clock_cmd);
             if (status != NFCSTATUS_SUCCESS)
             {
                 NXPLOG_NCIHAL_E("XTAL clock setting failed !!");

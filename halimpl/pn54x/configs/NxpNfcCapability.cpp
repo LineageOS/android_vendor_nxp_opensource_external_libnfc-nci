@@ -45,11 +45,13 @@ tNFC_chipType capability::processChipType(uint8_t* msg, uint16_t msg_len) {
 
             case 0x40 : //PN553 A0
             case 0x41 : //PN553 B0
+                        //NQ310
                 chipType = pn553;
                 break;
 
             case 0x50 : //PN553 A0 + P73
-            case 0x51 : //PN553 B0 + P73
+            case 0x51 : //PN553 B0 + P73 , NQ440
+                        //NQ330
                 chipType = pn80T;
                 break;
 
@@ -58,16 +60,17 @@ tNFC_chipType capability::processChipType(uint8_t* msg, uint16_t msg_len) {
                 break;
 
             case 0xA8 :
+            case 0x08 :
                 chipType = pn67T;
                 break;
 
             case 0x28 :
-            case 0x48 :
+            case 0x48 : //NQ210
                 chipType = pn548C2;
                 break;
 
             case 0x18 :
-            case 0x58 :
+            case 0x58 : //NQ220
                 chipType = pn66T;
                 break;
 
@@ -80,6 +83,7 @@ tNFC_chipType capability::processChipType(uint8_t* msg, uint16_t msg_len) {
             chipType = pn80T;
         }
     }
+    ALOGD ("%s NxpNci > Product : %s",__func__,product[chipType]);
     return chipType;
 }
 

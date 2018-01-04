@@ -243,18 +243,28 @@ void nfa_hci_ee_info_cback(tNFA_EE_DISC_STS status) {
           NFA_EeGetInfo(&nfa_hci_cb.num_nfcee, nfa_hci_cb.ee_info);
           nfa_hci_enable_one_nfcee();
         }
-        else if(nfa_hci_cb.hci_state == NFA_HCI_STATE_NFCEE_ENABLE)
+        else if((nfa_hci_cb.hci_state == NFA_HCI_STATE_NFCEE_ENABLE) &&
+          (nfa_hci_cb.nfcee_cfg.config_nfcee_state == NFA_HCI_INIT_NFCEE_CONFIG))
         {
             nfa_hci_api_config_nfcee(nfa_hci_cb.current_nfcee);
         }
       break;
     case NFA_EE_RECOVERY:
         /*NFCEE recovery in progress*/
-        if (!((nfa_hci_cb.hci_state == NFA_HCI_STATE_WAIT_NETWK_ENABLE) ||
+        if(nfa_hci_cb.hci_state == NFA_HCI_STATE_EE_RECOVERY) {
+            NFA_TRACE_DEBUG1("nfa_hci_ee_info_cback (): %d nfa_hci_cb.hci_state already in EE Recovery", nfa_hci_cb.hci_state);
+        }
+        else if (!((nfa_hci_cb.hci_state == NFA_HCI_STATE_WAIT_NETWK_ENABLE) ||
             (nfa_hci_cb.hci_state == NFA_HCI_STATE_RESTORE_NETWK_ENABLE))) {
           if (NFA_DM_RFST_DISCOVERY == nfa_dm_cb.disc_cb.disc_state)
             nfa_hci_cb.nfcee_cfg.discovery_stopped = nfa_dm_act_stop_rf_discovery(NULL);
+          tNFA_HCI_EVT_DATA evt_data;
+          evt_data.ee_recovery.status = NFA_HCI_EE_RECOVERY_STARTED;
+          nfa_hciu_send_to_all_apps(NFA_HCI_EE_RECOVERY_EVT, &evt_data);
+          nfa_hci_release_transcieve();
           if(NFC_NfceeDiscover(true) == NFC_STATUS_FAILED){
+              evt_data.ee_recovery.status = NFA_HCI_EE_RECOVERY_COMPLETED;
+              nfa_hciu_send_to_all_apps(NFA_HCI_EE_RECOVERY_EVT, &evt_data);
             if(nfa_hci_cb.nfcee_cfg.discovery_stopped == true) {
               nfa_dm_act_start_rf_discovery(NULL);
               nfa_hci_cb.nfcee_cfg.discovery_stopped = false;
@@ -773,10 +783,12 @@ void nfa_hci_enable_one_nfcee(void) {
           nfa_hci_cb.nfcee_cfg.discovery_stopped = false;
           nfa_dm_act_start_rf_discovery(NULL);
         }
+        tNFA_HCI_EVT_DATA evt_data;
+        evt_data.ee_recovery.status = NFA_HCI_EE_RECOVERY_COMPLETED;
+        nfa_hciu_send_to_all_apps(NFA_HCI_EE_RECOVERY_EVT, &evt_data);
     }
   }
 }
-
 /*******************************************************************************
 **
 ** Function         nfa_hci_startup
@@ -793,8 +805,6 @@ void nfa_hci_startup(void) {
   uint8_t target_handle;
   uint8_t count = 0;
   bool found = false;
-
-  nfa_ee_max_ee_cfg = nfcFL.nfccFL._NFA_EE_MAX_EE_SUPPORTED;
 
   if (HCI_LOOPBACK_DEBUG) {
       /* First step in initialization is to open the admin pipe */
@@ -911,6 +921,8 @@ static void nfa_hci_sys_enable(void) {
 *******************************************************************************/
 static void nfa_hci_sys_disable(void) {
   tNFA_HCI_EVT_DATA evt_data;
+  tNFC_CONN_EVT event;
+  tNFC_CONN cData;
 
   nfa_sys_stop_timer(&nfa_hci_cb.timer);
 
@@ -920,6 +932,16 @@ static void nfa_hci_sys_disable(void) {
       if(NFC_GetNCIVersion() == NCI_VERSION_1_0) {
         nfa_hciu_send_to_all_apps(NFA_HCI_EXIT_EVT, &evt_data);
         NFC_ConnClose(nfa_hci_cb.conn_id);
+      }
+      else
+      {
+        /* HCI module deregister should be triggered to sto the nfa_sys_main timer,
+        so faking a connection close event */
+        NFA_TRACE_ERROR0("Fake NFC_CONN_CLOSE_CEVT triggered");
+        cData.data.status = NFA_STATUS_OK;
+        cData.data.p_data = NULL;
+        event = NFC_CONN_CLOSE_CEVT;
+        nfa_hci_conn_cback(nfa_hci_cb.conn_id, event, &cData);
       }
       return;
     }
