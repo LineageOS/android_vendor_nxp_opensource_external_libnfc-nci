@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright (C) 2012-2016 NXP Semiconductors
@@ -253,6 +253,7 @@ extern tNfc_featureList nfcFL;
             nfcFL.eseFL._LEGACY_APDU_GATE = true;                           \
             nfcFL.eseFL._NFCC_ESE_UICC_CONCURRENT_ACCESS_PROTECTION = true; \
             nfcFL.eseFL._ESE_DWP_SPI_SYNC_ENABLE = true;                    \
+            nfcFL.eseFL._NXP_ESE_VER = JCOP_VER_3_3;                        \
         }                                                                   \
         else if (chipType == pn66T)                                         \
         {                                                                   \
@@ -269,6 +270,7 @@ extern tNfc_featureList nfcFL;
             nfcFL.eseFL._LEGACY_APDU_GATE = true;                           \
             nfcFL.eseFL._NFCC_ESE_UICC_CONCURRENT_ACCESS_PROTECTION = true; \
             nfcFL.eseFL._ESE_DWP_SPI_SYNC_ENABLE = true;                    \
+            nfcFL.eseFL._NXP_ESE_VER = JCOP_VER_3_3;                        \
         }                                                                   \
         else if (chipType == pn65T)                                         \
         {                                                                   \
@@ -348,6 +350,10 @@ extern tNfc_featureList nfcFL;
             \
             \
             nfcFL.platformFL._NFCC_RESET_RSP_LEN = 0x10U;                   \
+            \
+            \
+            nfcFL.nfcMwFL._NCI_INTERFACE_UICC_DIRECT = 0x82;                \
+            nfcFL.nfcMwFL._NCI_INTERFACE_ESE_DIRECT = 0x83;                 \
             \
             \
         }                                                                   \
@@ -458,6 +464,7 @@ extern tNfc_featureList nfcFL;
             \
             nfcFL.eseFL._ESE_FORCE_ENABLE = true;                           \
             nfcFL.eseFL._ESE_ETSI12_PROP_INIT = true;                       \
+            nfcFL.platformFL._NFCC_RESET_RSP_LEN = 0x11U;                   \
             \
             \
             nfcFL.nfcMwFL._NCI_INTERFACE_UICC_DIRECT = 0x82;                \
@@ -496,6 +503,7 @@ extern tNfc_featureList nfcFL;
             \
             nfcFL.nfcMwFL._NCI_INTERFACE_UICC_DIRECT = 0x81;                \
             nfcFL.nfcMwFL._NCI_INTERFACE_ESE_DIRECT = 0x82;                 \
+            nfcFL.platformFL._NFCC_RESET_RSP_LEN = 0x11U;                   \
             \
             \
             SRTCPY_FW("libpn547_fw", "libpn547_fw_platform",                \
