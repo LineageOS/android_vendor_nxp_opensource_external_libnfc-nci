@@ -49,9 +49,9 @@
 #include "ce_int.h"
 #include "llcp_int.h"
 
-#if(NXP_EXTNS == TRUE)
-static phNxpNci_getCfg_info_t* mGetCfg_info_main = NULL;
-extern void nfa_dm_init_cfgs (phNxpNci_getCfg_info_t* mGetCfg_info_main);
+#if (NXP_EXTNS == TRUE)
+extern void nfa_dm_init_cfgs(phNxpNci_getCfg_info_t* mGetCfg_info_main);
+extern nfa_ee_max_ee_cfg;
 #endif
 
 /* NFC mandates support for at least one logical connection;
@@ -682,6 +682,8 @@ static void nfc_main_hal_cback(uint8_t event, tHAL_NFC_STATUS status) {
         } else {
           nfc_main_post_hal_evt(event, status);
         }
+        nfa_ee_max_ee_cfg = nfcFL.nfccFL._NFA_EE_MAX_EE_SUPPORTED;
+        NFC_TRACE_DEBUG1("NFA_EE_MAX_EE_SUPPORTED to use %d", nfa_ee_max_ee_cfg);
       }
       break;
 
@@ -818,6 +820,11 @@ tNFC_STATUS NFC_Enable(tNFC_RESPONSE_CBACK* p_cback) {
 void NFC_Disable(void) {
   NFC_TRACE_API1("NFC_Disable (): nfc_state = %d", nfc_cb.nfc_state);
 
+#if (NXP_EXTNS == TRUE)
+  if(nfcFL.eseFL._ESE_DUAL_MODE_PRIO_SCHEME == nfcFL.eseFL._ESE_WIRED_MODE_RESUME)
+    nfc_stop_timer(&nfc_cb.rf_filed_event_timeout_timer);
+#endif
+
   if ((nfc_cb.nfc_state == NFC_STATE_NONE) ||
       (nfc_cb.nfc_state == NFC_STATE_NFCC_POWER_OFF_SLEEP)) {
     nfc_set_state(NFC_STATE_NONE);
@@ -835,19 +842,6 @@ void NFC_Disable(void) {
     nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_SET_BOOT_MODE, (void*)&inpOutData);
   }
 #endif
-
-  if(nfcFL.nfcNxpEse) {
-      tNFC_STATUS setPidStatus = NFC_STATUS_OK;
-      nfc_nci_IoctlInOutData_t inpOutData;
-      inpOutData.inp.data.nfcServicePid = 0;
-      setPidStatus = nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_SET_NFC_SERVICE_PID,(void*)&inpOutData);
-      if (setPidStatus == NFC_STATUS_OK) {
-          NFC_TRACE_API0("nfc service set pid done");
-      } else {
-          NFC_TRACE_API0("nfc service set pid failed");
-      }
-  }
-
   /* Close transport and clean up */
   nfc_task_shutdown_nfcc();
 
@@ -1803,7 +1797,20 @@ int32_t NFC_RelSvddWait(void* pdata) {
   *(tNFC_STATUS*)pdata = inpOutData.out.data.status;
   return status;
 }
-
+/*******************************************************************************
+**
+** Function         NFC_RelForceDwpOnOffWait
+**
+** Description      This function release wait for DWP On/Off
+**                  of P73. Status would be updated to pdata
+**
+** Returns          0 if api call success, else -1
+**
+*******************************************************************************/
+int32_t NFC_RelForceDwpOnOffWait (void *pdata)
+{
+    return (nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_REL_DWP_WAIT, pdata));
+}
 #endif
 
 #if (NXP_EXTNS == TRUE)
