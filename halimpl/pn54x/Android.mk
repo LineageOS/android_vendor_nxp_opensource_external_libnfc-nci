@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-HAL_SUFFIX := $(TARGET_DEVICE)
-ifeq ($(TARGET_DEVICE),crespo)
-	HAL_SUFFIX := herring
-endif
-
 #Enable NXP Specific
 D_CFLAGS += -DNXP_EXTNS=TRUE
 
@@ -74,17 +68,7 @@ endif
 
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
-ifeq ($(NXP_CHIP_TYPE),$(PN547C2))
-LOCAL_MODULE := nfc_nci_pn547.grouper
-else ifeq ($(NXP_CHIP_TYPE),$(PN548C2))
 LOCAL_MODULE := nfc_nci.nqx.default
-else ifeq ($(NXP_CHIP_TYPE),$(PN551))
-LOCAL_MODULE := nfc_nci.nqx.default
-else ifeq ($(NXP_CHIP_TYPE),$(PN553))
-LOCAL_MODULE := nfc_nci.nqx.default
-else ifeq ($(NXP_CHIP_TYPE),$(PN557))
-LOCAL_MODULE := nfc_nci.nqx.default
-endif
 ifeq (true,$(TARGET_IS_64_BIT))
 LOCAL_MULTILIB := 64
 else
