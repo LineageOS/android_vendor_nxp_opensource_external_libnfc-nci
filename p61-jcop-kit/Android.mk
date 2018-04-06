@@ -10,7 +10,7 @@ endef
 LOCAL_PATH:= $(call my-dir)
 D_CFLAGS += -DNXP_LDR_SVC_VER_2=TRUE
 ######################################
-# Build shared library system/vendor/lib/libp61-jcop-kit.so for stack code.
+# Build shared library vendor/lib/libp61-jcop-kit.so for stack code.
 
 include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
