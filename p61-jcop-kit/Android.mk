@@ -10,7 +10,7 @@ endef
 LOCAL_PATH:= $(call my-dir)
 D_CFLAGS += -DNXP_LDR_SVC_VER_2=TRUE
 ######################################
-# Build shared library system/vendor/lib/libp61-jcop-kit.so for stack code.
+# Build shared vendor library libnqp61-jcop-kit.so for stack code.
 
 include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
@@ -18,6 +18,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_MODULE := libnqp61-jcop-kit
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_OWNER := nxp
+LOCAL_VENDOR_MODULE := true
 LOCAL_SHARED_LIBRARIES := libhardware_legacy libcutils liblog libdl libhardware
 LOCAL_CFLAGS := $(D_CFLAGS)
 LOCAL_C_INCLUDES := \
