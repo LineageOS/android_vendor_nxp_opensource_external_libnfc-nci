@@ -59,7 +59,7 @@ cc_library_shared {
         "gki/ulinux/*.cc",
     ],
     include_dirs: [
-        "vendor/nxp/opensource/external/libnfc-nci/extns/impl/",
+        "vendor/nxp/opensource/commonsys/external/libnfc-nci/extns/impl/",
     ],
     product_variables: {
         debuggable: {
