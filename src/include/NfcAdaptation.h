@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -40,7 +40,6 @@
 #include "nfc_target.h"
 #include "nfc_hal_api.h"
 #include <hardware/nfc.h>
-
 #include <utils/RefBase.h>
 
 namespace android {
@@ -59,16 +58,16 @@ namespace V1_0 {
 struct INqNfc;
 } } } } }
 
-class ThreadMutex
-{
-public:
-    ThreadMutex();
-    virtual ~ThreadMutex();
-    void lock();
-    void unlock();
-    operator pthread_mutex_t* () {return &mMutex;}
-private:
-    pthread_mutex_t mMutex;
+class ThreadMutex {
+ public:
+  ThreadMutex();
+  virtual ~ThreadMutex();
+  void lock();
+  void unlock();
+  operator pthread_mutex_t*() { return &mMutex; }
+
+ private:
+  pthread_mutex_t mMutex;
 };
 
 class ThreadCondVar : public ThreadMutex {
@@ -105,6 +104,7 @@ class NfcAdaptation {
   static NfcAdaptation& GetInstance();
   tHAL_NFC_ENTRY* GetHalEntryFuncs();
   void DownloadFirmware();
+  void Dump(int fd);
 #if (NXP_EXTNS == TRUE)
   void MinInitialize();
   int HalGetFwDwnldFlag(uint8_t* fwDnldRequest);

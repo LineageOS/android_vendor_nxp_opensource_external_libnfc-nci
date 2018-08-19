@@ -3,7 +3,7 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
@@ -335,7 +335,7 @@ tNFA_STATUS nfa_hciu_send_msg(uint8_t pipe_id, uint8_t type,
       NFC_FlushData(nfa_hci_cb.conn_id);
     } else if (nfa_hci_cb.IsLastEvtAbortFailed) {
       /* send EVT_ABORT command */
-      if ((p_buf = (NFC_HDR*)GKI_getpoolbuf(NFC_RW_POOL_ID)) != NULL) {
+      if ((p_buf = (NFC_HDR*)GKI_getpoolbuf(NFC_WIRED_POOL_ID)) != NULL) {
         p_buf->offset = NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE;
         p_data = (uint8_t*)(p_buf + 1) + p_buf->offset;
         *p_data++ = (NFA_HCI_NO_MESSAGE_FRAGMENTATION << 7) |
@@ -349,7 +349,11 @@ tNFA_STATUS nfa_hciu_send_msg(uint8_t pipe_id, uint8_t type,
 #endif
 
   while ((first_pkt == true) || (msg_len != 0)) {
+#if (NXP_EXTNS == TRUE)
+    p_buf = (NFC_HDR*)GKI_getpoolbuf(NFC_WIRED_POOL_ID);
+#else
     p_buf = (NFC_HDR*)GKI_getpoolbuf(NFC_RW_POOL_ID);
+#endif
     if (p_buf != NULL) {
       p_buf->offset = NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE;
 
@@ -416,6 +420,7 @@ tNFA_STATUS nfa_hciu_send_msg(uint8_t pipe_id, uint8_t type,
 #if (NXP_EXTNS == TRUE)
   else if (type == NFA_HCI_EVENT_TYPE) {
     nfa_hci_cb.evt_sent.evt_type = instruction;
+    nfa_hci_cb.cmd_sent = HCI_INVALID_CMD;
   }
 #endif
   return status;
@@ -1159,7 +1164,7 @@ void nfa_hciu_send_to_apps_handling_connectivity_evts(
 tNFA_STATUS nfa_hciu_send_raw_cmd(uint8_t param_len, uint8_t* p_data,
                                   tNFA_VSC_CBACK* p_cback) {
   tNFA_STATUS status = NFA_STATUS_OK;
-  status = NFA_SendNxpNciCommand(param_len, p_data, p_cback);
+  status = NFA_SendRawVsCommand(param_len, p_data, p_cback);
   if (NFA_STATUS_OK == status) {
     nfa_sys_start_timer(&nfa_hci_cb.timer, NFA_HCI_RSP_TIMEOUT_EVT,
                         p_nfa_hci_cfg->hcp_response_timeout);
@@ -1322,7 +1327,7 @@ tNFA_STATUS nfa_hciu_reset_session_id(tNFA_VSC_CBACK* p_cback) {
     pp = p_start;
     UINT8_TO_STREAM(pp, cmd_len);
     p_cmd->len = cmd_len + NCI_DATA_HDR_SIZE;
-    status = NFC_SendNxpNciCommand(p_cmd, p_cback);
+    status = NFC_SendRawVsCommand(p_cmd, p_cback);
   }
   return status;
 }

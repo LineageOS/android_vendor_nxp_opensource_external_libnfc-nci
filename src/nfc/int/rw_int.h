@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -447,7 +447,6 @@ typedef struct {
   bool b_read_hdr;         /* Tag header read from tag */
   bool b_read_data;        /* Tag data block read from tag */
   bool b_hard_lock; /* Hard lock the tag as part of config tag to Read only */
-  uint8_t last_cmd_sent;
   bool check_tag_halt; /* Resent command after NACK rsp to find tag is in HALT
                           State   */
 #if (RW_NDEF_INCLUDED == true)
@@ -806,7 +805,7 @@ extern tNFC_STATUS rw_i93_select(uint8_t* p_uid);
 extern void rw_i93_process_timeout(TIMER_LIST_ENT* p_tle);
 
 void nfa_rw_update_pupi_id(uint8_t* p, uint8_t len);
-extern void rw_t4t_handle_isodep_nak_rsp(uint8_t status,bool is_ntf);
+extern void rw_t4t_handle_isodep_nak_rsp(uint8_t status, bool is_ntf);
 #if (RW_STATS_INCLUDED == true)
 /* Internal fcns for statistics (from rw_main.c) */
 void rw_main_reset_stats(void);

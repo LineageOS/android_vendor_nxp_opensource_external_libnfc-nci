@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -50,12 +50,13 @@
 **  Constants and data types
 *****************************************************************************/
 enum {
-  NFA_RW_PRES_CHK_DEFAULT, /* The default behavior             */
-  NFA_RW_PRES_CHK_I_BLOCK, /* Empty I Block                    */
-  NFA_RW_PRES_CHK_RESET,   /* Deactivate to Sleep; Re-activate */
-  NFA_RW_PRES_CHK_RB_CH0,  /* ReadBinary on Channel 0          */
-  NFA_RW_PRES_CHK_RB_CH3,   /* ReadBinary on Channel 3          */
-  NFA_RW_PRES_CHK_ISO_DEP_NAK /*presence check command ISO-DEP NAK as per NCI2.0*/
+  NFA_RW_PRES_CHK_DEFAULT,    /* The default behavior             */
+  NFA_RW_PRES_CHK_I_BLOCK,    /* Empty I Block                    */
+  NFA_RW_PRES_CHK_RESET,      /* Deactivate to Sleep; Re-activate */
+  NFA_RW_PRES_CHK_RB_CH0,     /* ReadBinary on Channel 0          */
+  NFA_RW_PRES_CHK_RB_CH3,     /* ReadBinary on Channel 3          */
+  NFA_RW_PRES_CHK_ISO_DEP_NAK /* presence check command ISO-DEP
+                                 NAK as per NCI2.0                */
 };
 typedef uint8_t tNFA_RW_PRES_CHK_OPTION;
 

@@ -3,14 +3,14 @@
  *  Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
  *  Copyright (C) 1999-2012 Broadcom Corporation
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at:
+ *  You may obtain a copy of the License at
  *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -30,13 +30,15 @@
 #include <hwbinder/ProcessState.h>
 #include <pthread.h>
 #include "NfcAdaptation.h"
-extern "C"
-{
-    #include "gki.h"
-    #include "nfa_api.h"
-    #include "nfc_int.h"
-    #include "nfc_target.h"
-    #include "vendor_cfg.h"
+#include "debug_nfcsnoop.h"
+#include "nfc_target.h"
+
+extern "C" {
+#include "gki.h"
+#include "nfa_api.h"
+#include "nfc_int.h"
+#include "nfc_target.h"
+#include "vendor_cfg.h"
 }
 #include "config.h"
 #include "android_logmsg.h"
@@ -85,9 +87,7 @@ static uint8_t evt_status;
 
 uint32_t ScrProtocolTraceFlag = SCR_PROTO_TRACE_ALL;  // 0x017F00;
 uint8_t appl_trace_level = 0xff;
-#if (NXP_EXTNS == TRUE)
 uint8_t appl_dta_mode_flag = 0x00;
-#endif
 char bcm_nfc_location[120];
 
 static uint8_t nfa_dm_cfg[sizeof(tNFA_DM_CFG)];
@@ -249,6 +249,7 @@ void NfcAdaptation::Initialize() {
   mHalCallback = NULL;
   memset(&mHalEntryFuncs, 0, sizeof(mHalEntryFuncs));
   InitializeHalDeviceContext();
+  debug_nfcsnoop_init();
   ALOGD("%s: exit", func);
 }
 #if (NXP_EXTNS == TRUE)
@@ -305,6 +306,17 @@ void NfcAdaptation::Finalize() {
   ALOGD("%s: exit", func);
   delete this;
 }
+
+/*******************************************************************************
+**
+** Function:    NfcAdaptation::Dump
+**
+** Description: Native support for dumpsys function.
+**
+** Returns:     None.
+**
+*******************************************************************************/
+void NfcAdaptation::Dump(int fd) { debug_nfcsnoop_dump(fd); }
 
 /*******************************************************************************
 **
@@ -387,6 +399,7 @@ void NfcAdaptation::InitializeHalDeviceContext() {
   ALOGD("%s: enter", func);
   int ret = 0;  // 0 means success
 
+  const hw_module_t* hw_module = NULL;
     mHalEntryFuncs.initialize = HalInitialize;
     mHalEntryFuncs.terminate = HalTerminate;
     mHalEntryFuncs.open = HalOpen;

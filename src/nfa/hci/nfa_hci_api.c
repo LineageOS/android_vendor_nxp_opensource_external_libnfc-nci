@@ -2,7 +2,7 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
@@ -1093,5 +1093,22 @@ tNFA_STATUS NFA_HciConfigureNfceeETSI12() {
   }
 
   return (NFA_STATUS_FAILED);
+}
+/*******************************************************************************
+**
+** Function         NFA_IsPipeStatusNotCorrect
+**
+** Description      Checks and resets pipe status
+**
+** Returns          TRUE/FALSE
+**
+*******************************************************************************/
+bool NFA_IsPipeStatusNotCorrect()
+{
+  NFA_TRACE_API1("NFA_IsPipeStatusNotCorrect (): pipe status not correct: %d", nfa_hci_cb.IsApduPipeStatusNotCorrect);
+  bool status;
+  status = nfa_hci_cb.IsApduPipeStatusNotCorrect;
+  nfa_hci_cb.IsApduPipeStatusNotCorrect = false;
+  return status;
 }
 #endif

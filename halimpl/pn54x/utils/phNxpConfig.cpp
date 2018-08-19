@@ -22,7 +22,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@
 #include <cutils/log.h>
 #include <cutils/properties.h>
 #include <errno.h>
+#include "sparse_crc32.h"
 
 #if GENERIC_TARGET
 const char alternative_config_path[] = "/data/vendor/nfc/";
@@ -91,9 +92,34 @@ const char tr_config_timestamp_path[] =
 const char config_timestamp_path[] =
         "/data/vendor/nfc/libnfc-nxpConfigState.bin";
 const char default_nxp_config_path[] =
-        "/etc/libnfc-nxp.conf";
+        "/vendor/etc/libnfc-nxp.conf";
 const char nxp_rf_config_path[] =
         "/system/vendor/libnfc-nxp_RF.conf";
+
+namespace {
+
+size_t readConfigFile(const char* fileName, uint8_t** p_data) {
+  FILE* fd = fopen(fileName, "rb");
+  if (fd == nullptr) return 0;
+
+  fseek(fd, 0L, SEEK_END);
+  const size_t file_size = ftell(fd);
+  rewind(fd);
+
+  uint8_t* buffer = new uint8_t[file_size];
+  size_t read = fread(buffer, file_size, 1, fd);
+  fclose(fd);
+
+  if (read == 1) {
+    *p_data = buffer;
+    return file_size;
+  }
+
+  return 0;
+}
+
+}  // namespace
+
 
 /**
  *  @brief target platform ID values.
@@ -134,8 +160,15 @@ typedef enum
   TARGET_MSM8917                       = 303, /**< 8917 target */
   TARGET_MSM8940                       = 313, /**< 8940 target */
   TARGET_SDM660                        = 317, /**< SDM660 target */
+  TARGET_SDM670                        = 336, /**< SDM670 target */
+  TARGET_SDM710                        = 360, /**< SDM710 target */
   TARGET_SDM630                        = 318, /**< SDM630 target */
+  TARGET_SDM632                        = 349, /**< SDM632 target */
+  TARGET_SDM439                        = 353, /**< SDM439 target */
+  TARGET_SDM429                        = 354, /**< SDM429 target */
   TARGET_SDM845                        = 321, /**< SDM845 target */
+  TARGET_QCS605                        = 347, /**< QCS605 target */
+  TARGET_SDM450                        = 338, /**< SDM450 target */
   TARGET_DEFAULT                       = TARGET_GENERIC, /**< new targets */
   TARGET_INVALID                       = 0xFF
 } TARGETTYPE;
@@ -167,8 +200,9 @@ class CNfcConfig : public vector<const CNfcParam*> {
   virtual ~CNfcConfig();
   static CNfcConfig& GetInstance();
   friend void readOptionalConfig(const char* optional);
-  int updateTimestamp();
-  int checkTimestamp(const char* fileName, const char* fileTimeStamp);
+  bool isModified();
+  bool isModified(const char* pName);
+  void resetModified();
 
   bool getValue(const char* name, char* pValue, size_t len) const;
   bool getValue(const char* name, unsigned long& rValue) const;
@@ -195,9 +229,14 @@ class CNfcConfig : public vector<const CNfcParam*> {
   unsigned long m_timeStamp;
   unsigned long m_timeStampRF;
   unsigned long m_timeStampTransit;
+  uint32_t config_crc32_;
+  uint32_t config_crc32_rf_;
+  uint32_t config_crc32_tr_;
+
   string mCurrentFile;
 
   unsigned long state;
+
   inline bool Is(unsigned long f) { return (state & f) == f; }
   inline void Set(unsigned long f) { state |= f; }
   inline void Reset(unsigned long f) { state &= ~f; }
@@ -361,10 +400,17 @@ int CNfcConfig::getconfiguration_id (char * config_file)
         case TARGET_MSM8917:
         case TARGET_MSM8940:
         case TARGET_MSM8909:
+        case TARGET_SDM450:
+        case TARGET_SDM632:
+        case TARGET_SDM439:
+        case TARGET_SDM429:
             if (nq2xx_present) {
                 // NQ210 or NQ220
                 config_id = QRD_TYPE_DEFAULT;
                 strlcpy(config_file, config_name_qrd, MAX_DATA_CONFIG_PATH_LEN);
+            } else if (!strncmp(nq_fw_ver, FW_MAJOR_NUM_NQ4xx, FW_MAJOR_NUM_LENGTH)) {
+                config_id = QRD_TYPE_NQ4XX;
+                strlcpy(config_file, config_name_qrd_NQ4XX, MAX_DATA_CONFIG_PATH_LEN);
             } else {
                 config_id = QRD_TYPE_NQ3XX;
                 strlcpy(config_file, config_name_qrd_NQ3XX, MAX_DATA_CONFIG_PATH_LEN);
@@ -376,6 +422,9 @@ int CNfcConfig::getconfiguration_id (char * config_file)
             config_id = QRD_TYPE_1;
             break;
         case TARGET_SDM845:
+        case TARGET_SDM670:
+        case TARGET_SDM710:
+        case TARGET_QCS605:
             if (!strncmp(nq_fw_ver, FW_MAJOR_NUM_NQ4xx, FW_MAJOR_NUM_LENGTH)) {
                 config_id = QRD_TYPE_NQ4XX;
                 strlcpy(config_file, config_name_qrd_NQ4XX, MAX_DATA_CONFIG_PATH_LEN);
@@ -404,8 +453,8 @@ int CNfcConfig::getconfiguration_id (char * config_file)
             break;
         }
     }
-    // if target is MTP platform then config id is assigned here
-    else if (0 == strncmp(target_type, MTP_HW_PLATFORM, MAX_SOC_INFO_NAME_LEN)) {
+    // if target is not QRD platform then default config id is assigned here
+    else {
         switch (idx)
         {
         case TARGET_GENERIC:
@@ -416,16 +465,26 @@ int CNfcConfig::getconfiguration_id (char * config_file)
         case TARGET_MSM8917:
         case TARGET_MSM8940:
         case TARGET_MSM8909:
+        case TARGET_SDM450:
+        case TARGET_SDM632:
+        case TARGET_SDM439:
+        case TARGET_SDM429:
             if (nq2xx_present) {
                 // NQ210 or NQ220
                 config_id = MTP_TYPE_DEFAULT;
                 strlcpy(config_file, config_name_mtp, MAX_DATA_CONFIG_PATH_LEN);
+            } else if(!strncmp(nq_fw_ver, FW_MAJOR_NUM_NQ4xx, FW_MAJOR_NUM_LENGTH)){
+                config_id = MTP_TYPE_NQ4XX;
+                strlcpy(config_file, config_name_mtp_NQ4XX, MAX_DATA_CONFIG_PATH_LEN);
             } else {
                 config_id = MTP_TYPE_NQ3XX;
                 strlcpy(config_file, config_name_mtp_NQ3XX, MAX_DATA_CONFIG_PATH_LEN);
             }
             break;
         case TARGET_SDM845:
+        case TARGET_SDM670:
+        case TARGET_SDM710:
+        case TARGET_QCS605:
             if (!strncmp(nq_fw_ver, FW_MAJOR_NUM_NQ4xx, FW_MAJOR_NUM_LENGTH)) {
                 config_id = MTP_TYPE_NQ4XX;
                 strlcpy(config_file, config_name_mtp_NQ4XX, MAX_DATA_CONFIG_PATH_LEN);
@@ -556,8 +615,17 @@ bool CNfcConfig::readConfig(const char* name, bool bResetContent) {
     END_LINE
   };
 
-  FILE* fd;
-  struct stat buf;
+  uint8_t* p_config = nullptr;
+  size_t config_size = readConfigFile(name, &p_config);
+  if (p_config == nullptr) {
+    ALOGE("%s Cannot open config file %s\n", __func__, name);
+    if (bResetContent) {
+      ALOGE("%s Using default value for all settings\n", __func__);
+      mValidFile = false;
+    }
+    return false;
+  }
+
   string token;
   string strValue;
   unsigned long numValue = 0;
@@ -566,32 +634,17 @@ bool CNfcConfig::readConfig(const char* name, bool bResetContent) {
   int base = 0;
   char c;
   int bflag = 0;
+  state = BEGIN_LINE;
   mCurrentFile = name;
 
-  state = BEGIN_LINE;
-  /* open config file, read it into a buffer */
-  if ((fd = fopen(name, "rb")) == NULL) {
-    ALOGE("%s Cannot open config file %s\n", __func__, name);
-    if (bResetContent) {
-      ALOGE("%s Using default value for all settings\n", __func__);
-      mValidFile = false;
-    }
-    return false;
+  if (strcmp(default_nxp_config_path, name) == 0) {
+    config_crc32_ = sparse_crc32(0, p_config, config_size);
   }
-  ALOGD("%s Opened %s config %s\n", __func__,
-        (bResetContent ? "base" : "optional"), name);
-  stat(name, &buf);
-  if(mDynamConfig)
-        m_timeStamp = (unsigned long)buf.st_mtime;
-    else {
-        if(strcmp(default_nxp_config_path, name) == 0)
-            m_timeStamp = (unsigned long)buf.st_mtime;
-    }
-  if (strcmp(nxp_rf_config_path, name) == 0) {
-    m_timeStampRF = (unsigned long)buf.st_mtime;
+  else if (strcmp(nxp_rf_config_path, name) == 0) {
+    config_crc32_rf_ = sparse_crc32(0, p_config, config_size);
   }
-  if (strcmp(transit_config_path, name) == 0) {
-    m_timeStampTransit = (unsigned long)buf.st_mtime;
+  else if (strcmp(transit_config_path, name) == 0) {
+    config_crc32_tr_ = sparse_crc32(0, p_config, config_size);
   }
   mValidFile = true;
   if (size() > 0) {
@@ -601,16 +654,8 @@ bool CNfcConfig::readConfig(const char* name, bool bResetContent) {
       moveToList();
   }
 
-  for (;;) {
-    if (feof(fd) || fread(&c, 1, 1, fd) != 1) {
-      if (state == BEGIN_LINE) break;
-
-      // got to the EOF but not in BEGIN_LINE state so the file
-      // probably does not end with a newline, so the parser has
-      // not processed current line, simulate a newline in the file
-      c = '\n';
-    }
-
+  for (size_t offset = 0; offset != config_size; ++offset) {
+    c = p_config[offset];
     switch (state & 0xff) {
       case BEGIN_LINE:
         if (c == '#')
@@ -735,7 +780,7 @@ bool CNfcConfig::readConfig(const char* name, bool bResetContent) {
     }
   }
 
-  fclose(fd);
+  delete[] p_config;
 
   moveFromList();
   return size() > 0;
@@ -834,7 +879,21 @@ CNfcConfig& CNfcConfig::GetInstance() {
         ALOGI("config file used = %s\n",strPath.c_str());
         theInstance.readConfig(strPath.c_str(), true);
 #if(NXP_EXTNS == TRUE)
-        readOptionalConfig("brcm");
+
+        int rc = 0;
+        char nq_fw_ver[PROPERTY_VALUE_MAX] = {0};
+
+        rc = __system_property_get("sys.nfc.nq.fwver", nq_fw_ver);
+        if (rc <= 0)
+            ALOGE("get sys.nfc.nq.fwver fail, rc = %d\n", rc);
+        else
+            ALOGD("sys.nfc.nq.fwver = %s\n", nq_fw_ver);
+
+        if (!strncmp(nq_fw_ver, FW_MAJOR_NUM_NQ4xx, FW_MAJOR_NUM_LENGTH))
+           readOptionalConfig("brcm_NCI2_0");
+        else
+           readOptionalConfig("brcm");
+
         theInstance.readNxpTransitConfig("nxpTransit");
 #endif
     }
@@ -1115,94 +1174,79 @@ void CNfcConfig::moveToList() {
   clear();
 }
 
-/*******************************************************************************
-**
-** Function:    CNfcConfig::checkTimestamp(const char* fileName,const char*
-*fileNameTime)
-**
-** Description: check if config file has modified
-**
-** Returns:     0 if not modified, 1 otherwise.
-**
-*******************************************************************************/
-int CNfcConfig::checkTimestamp(const char* fileName, const char* fileNameTime) {
-  FILE* fd;
-  struct stat st;
-  unsigned long value = 0, timeStamp = 0;
-  int ret = 0;
-  if (strcmp(config_timestamp_path, fileNameTime) == 0) {
-    timeStamp = m_timeStamp;
-  } else if (strcmp(rf_config_timestamp_path, fileNameTime) == 0) {
-    timeStamp = m_timeStampRF;
-  } else if (strcmp(tr_config_timestamp_path, fileNameTime) == 0) {
-    timeStamp = m_timeStampTransit;
-  } else
-    ALOGD("Invalid file \n");
-
-  if (stat(fileNameTime, &st) != 0) {
-    ALOGD("%s file not exist.\n", __func__);
-    if ((fd = fopen(fileNameTime, "w+")) != NULL) {
-      fwrite(&timeStamp, sizeof(unsigned long), 1, fd);
-      fclose(fd);
-    }
-    return 1;
-  } else {
-    fd = fopen(fileNameTime, "r+");
-    if (fd == NULL) {
-      ALOGE("%s Cannot open file %s\n", __func__, fileNameTime);
-      return 1;
-    }
-    fread(&value, sizeof(unsigned long), 1, fd);
-    ret = (value != timeStamp) ? 1 : 0;
-    if (ret) {
-      ALOGD("Config File Modified Update timestamp");
-      fseek(fd, 0, SEEK_SET);
-      fwrite(&timeStamp, sizeof(unsigned long), 1, fd);
-    }
-    fclose(fd);
+bool CNfcConfig::isModified() {
+  FILE* fd = fopen(config_timestamp_path, "r+");
+  if (fd == nullptr) {
+    ALOGE("%s Unable to open file '%s' - assuming modified", __func__,
+          config_timestamp_path);
+    return true;
   }
-  return ret;
+
+  uint32_t stored_crc32 = 0;
+  fread(&stored_crc32, sizeof(uint32_t), 1, fd);
+  fclose(fd);
+
+  return stored_crc32 != config_crc32_;
 }
 
-/*******************************************************************************
-**
-** Function:    CNfcConfig::updateTimestamp()
-**
-** Description: update if config file has modified
-**
-** Returns:     0 if not modified, 1 otherwise.
-**
-*******************************************************************************/
-int CNfcConfig::updateTimestamp() {
-  FILE* fd;
-  struct stat st;
-  unsigned long value = 0;
-  int ret = 0;
+bool CNfcConfig::isModified(const char* pName) {
+  FILE* fd = nullptr;
+  bool isRfFile = false;
+  if (strcmp(nxp_rf_config_path, pName) == 0) {
+    isRfFile = true;
+    fd = fopen(rf_config_timestamp_path, "r+");
+  }
+  else if (strcmp(transit_config_path, pName) == 0) {
+    fd = fopen(tr_config_timestamp_path, "r+");
+  }
+  if (fd == nullptr) {
+    return true;
+  }
 
-  if (stat(config_timestamp_path, &st) != 0) {
-    ALOGD("%s file %s not exist, creat it.\n", __func__, config_timestamp_path);
-    fd = fopen(config_timestamp_path, "w+");
-    if (fd != NULL) {
-      fwrite(&m_timeStamp, sizeof(unsigned long), 1, fd);
-      fclose(fd);
-    }
-    return 1;
-  } else {
-    fd = fopen(config_timestamp_path, "r+");
-    if (fd == NULL) {
-      ALOGE("%s Cannot open file %s\n", __func__, config_timestamp_path);
-      return 1;
-    }
+  uint32_t stored_crc32 = 0;
+  fread(&stored_crc32, sizeof(uint32_t), 1, fd);
+  fclose(fd);
 
-    fread(&value, sizeof(unsigned long), 1, fd);
-    ret = (value != m_timeStamp);
-    if (ret) {
-      fseek(fd, 0, SEEK_SET);
-      fwrite(&m_timeStamp, sizeof(unsigned long), 1, fd);
-    }
+  if(isRfFile)
+    return stored_crc32 != config_crc32_rf_;
+  else
+    return stored_crc32 != config_crc32_tr_;
+}
+
+void CNfcConfig::resetModified() {
+  FILE* fd = nullptr;
+
+  fd = fopen(config_timestamp_path, "w+");
+  if (fd == nullptr) {
+    ALOGE("%s Unable to open file '%s' for writing", __func__,
+          config_timestamp_path);
+  }
+  else
+  {
+    fwrite(&config_crc32_, sizeof(uint32_t), 1, fd);
     fclose(fd);
   }
-  return ret;
+  fd = fopen(rf_config_timestamp_path, "w+");
+  if (fd == nullptr) {
+    ALOGE("%s Unable to open file '%s' for writing", __func__,
+        rf_config_timestamp_path);
+  }
+  else
+  {
+    fwrite(&config_crc32_rf_, sizeof(uint32_t), 1, fd);
+    fclose(fd);
+  }
+
+  fd = fopen(tr_config_timestamp_path, "w+");
+  if (fd == nullptr) {
+    ALOGE("%s Unable to open file '%s' for writing", __func__,
+        tr_config_timestamp_path);
+  }
+  else
+  {
+    fwrite(&config_crc32_tr_, sizeof(uint32_t), 1, fd);
+    fclose(fd);
+  }
 }
 
 /*******************************************************************************
@@ -1386,7 +1430,7 @@ extern "C" void resetNxpConfig()
 *******************************************************************************/
 extern "C" int isNxpConfigModified() {
   nxp::CNfcConfig& rConfig = nxp::CNfcConfig::GetInstance();
-  return rConfig.checkTimestamp(default_nxp_config_path, config_timestamp_path);
+  return rConfig.isModified();
 }
 /*******************************************************************************
 **
@@ -1400,9 +1444,8 @@ extern "C" int isNxpConfigModified() {
 extern "C" int isNxpRFConfigModified() {
   int retRF = 0, rettransit = 0, ret = 0;
   nxp::CNfcConfig& rConfig = nxp::CNfcConfig::GetInstance();
-  retRF = rConfig.checkTimestamp(nxp_rf_config_path, rf_config_timestamp_path);
-  rettransit =
-      rConfig.checkTimestamp(transit_config_path, tr_config_timestamp_path);
+  retRF = rConfig.isModified(nxp_rf_config_path);
+  rettransit = rConfig.isModified(transit_config_path);
   ret = retRF | rettransit;
   ALOGD("ret RF or Transit value %d", ret);
   return ret;
@@ -1419,5 +1462,6 @@ extern "C" int isNxpRFConfigModified() {
 *******************************************************************************/
 extern "C" int updateNxpConfigTimestamp() {
   nxp::CNfcConfig& rConfig = nxp::CNfcConfig::GetInstance();
-  return rConfig.updateTimestamp();
+  rConfig.resetModified();
+  return 0;
 }

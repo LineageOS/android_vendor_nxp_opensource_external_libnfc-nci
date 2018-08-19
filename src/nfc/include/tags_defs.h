@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -310,14 +310,13 @@
 /* Tag len for MEM_CTRL TLV per spec */
 #define T2T_TLEN_MEM_CTRL_TLV 3
 
-#if (NXP_EXTNS == TRUE)
+
 /* Maximum number of sectors supported */
+#if (NXP_EXTNS==TRUE || APPL_DTA_MODE == TRUE)
 #define T2T_MAX_SECTOR 3
 #else
-/* Maximum number of sectors supported */
 #define T2T_MAX_SECTOR 2
 #endif
-
 /* Tlv type identifier len                */
 #define T2T_TLV_TYPE_LEN 1
 

@@ -86,7 +86,6 @@ tNFC_chipType capability::processChipType(uint8_t* msg, uint16_t msg_len) {
     ALOGD ("%s NxpNci > Product : %s",__func__,product[chipType]);
     return chipType;
 }
-
 extern "C" tNFC_chipType configChipType(uint8_t* msg, uint16_t msg_len) {
     return pConfigFL->processChipType(msg,msg_len);
 }
