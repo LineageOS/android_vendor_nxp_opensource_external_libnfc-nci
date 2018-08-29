@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -39,16 +39,9 @@
 
 #include "gki.h"
 
-#ifndef GKI_DEBUG
-#define GKI_DEBUG false
-#endif
-
 /* Task States: (For OSRdyTbl) */
 #define TASK_DEAD 0    /* b0000 */
 #define TASK_READY 1   /* b0001 */
-#define TASK_WAIT 2    /* b0010 */
-#define TASK_DELAY 4   /* b0100 */
-#define TASK_SUSPEND 8 /* b1000 */
 
 /********************************************************************
 **  Internal Error codes
@@ -63,14 +56,12 @@
 #define GKI_ERROR_DELETE_POOL_BAD_QID 0xFFF8
 #define GKI_ERROR_BUF_SIZE_TOOBIG 0xFFF7
 #define GKI_ERROR_BUF_SIZE_ZERO 0xFFF6
-#define GKI_ERROR_ADDR_NOT_IN_BUF 0xFFF5
 
 /********************************************************************
 **  Misc constants
 *********************************************************************/
 
 #define GKI_MAX_INT32 (0x7fffffffL)
-#define GKI_MAX_TIMESTAMP (0xffffffffL)
 
 /********************************************************************
 **  Buffer Management Data Structures
@@ -82,14 +73,6 @@ typedef struct _buffer_hdr {
   uint8_t task_id;            /* task which allocated the buffer*/
   uint8_t status;             /* FREE, UNLINKED or QUEUED */
   uint8_t Type;
-
-#if (GKI_BUFFER_DEBUG == true)
-/* for tracking who allocated the buffer */
-#define _GKI_MAX_FUNCTION_NAME_LEN (50)
-  char _function[_GKI_MAX_FUNCTION_NAME_LEN + 1];
-  int _line;
-#endif
-
 } BUFFER_HDR_T;
 
 typedef struct _free_queue {
@@ -122,18 +105,6 @@ typedef struct _free_queue {
 #define BUF_STATUS_UNLINKED 1
 #define BUF_STATUS_QUEUED 2
 
-#define GKI_USE_DEFERED_ALLOC_BUF_POOLS true
-
-/* Exception related structures (Used in debug mode only)
-*/
-#if (GKI_DEBUG == true)
-typedef struct {
-  uint16_t type;
-  uint8_t taskid;
-  uint8_t msg[GKI_MAX_EXCEPTION_MSGLEN];
-} EXCEPTION_T;
-#endif
-
 /* Put all GKI variables into one control block
 */
 typedef struct {
@@ -141,7 +112,6 @@ typedef struct {
 */
 /* The stack and stack size are not used on Windows
 */
-#if (GKI_USE_DYNAMIC_BUFFERS == false)
 
 #if (GKI_NUM_FIXED_BUF_POOLS > 0)
   uint8_t bufpool0[(ALIGN_POOL(GKI_BUF0_SIZE) + BUFFER_PADDING_SIZE) *
@@ -221,74 +191,6 @@ typedef struct {
 #if (GKI_NUM_FIXED_BUF_POOLS > 15)
   uint8_t bufpool15[(ALIGN_POOL(GKI_BUF15_SIZE) + BUFFER_PADDING_SIZE) *
                     GKI_BUF15_MAX];
-#endif
-
-#else
-/* Definitions for dynamic buffer use */
-#if (GKI_NUM_FIXED_BUF_POOLS > 0)
-  uint8_t* bufpool0;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 1)
-  uint8_t* bufpool1;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 2)
-  uint8_t* bufpool2;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 3)
-  uint8_t* bufpool3;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 4)
-  uint8_t* bufpool4;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 5)
-  uint8_t* bufpool5;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 6)
-  uint8_t* bufpool6;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 7)
-  uint8_t* bufpool7;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 8)
-  uint8_t* bufpool8;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 9)
-  uint8_t* bufpool9;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 10)
-  uint8_t* bufpool10;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 11)
-  uint8_t* bufpool11;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 12)
-  uint8_t* bufpool12;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 13)
-  uint8_t* bufpool13;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 14)
-  uint8_t* bufpool14;
-#endif
-
-#if (GKI_NUM_FIXED_BUF_POOLS > 15)
-  uint8_t* bufpool15;
-#endif
-
 #endif
 
   uint8_t* OSStack[GKI_MAX_TASKS];     /* pointer to beginning of stack */
@@ -392,16 +294,8 @@ typedef struct {
   bool system_tick_running; /* true if system tick is running. Valid only if
                                p_tick_cb is not NULL */
 
-#if (GKI_DEBUG == true)
-  uint16_t ExceptionCnt; /* number of GKI exceptions that have happened */
-  EXCEPTION_T Exception[GKI_MAX_EXCEPTION];
-#endif
-
 } tGKI_COM_CB;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* Internal GKI function prototypes
 */
@@ -411,35 +305,9 @@ extern void gki_buffer_init(void);
 extern void gki_timers_init(void);
 extern void gki_adjust_timer_count(int32_t);
 
-extern void OSStartRdy(void);
-extern void OSCtxSw(void);
-extern void OSIntCtxSw(void);
-extern void OSSched(void);
-extern void OSIntEnter(void);
-extern void OSIntExit(void);
-
 /* Debug aids
 */
 typedef void (*FP_PRINT)(char*, ...);
 
-#if (GKI_DEBUG == true)
-
-typedef void (*PKT_PRINT)(uint8_t*, uint16_t);
-
-extern void gki_print_task(FP_PRINT);
-extern void gki_print_exception(FP_PRINT);
-extern void gki_print_timer(FP_PRINT);
-extern void gki_print_stack(FP_PRINT);
-extern void gki_print_buffer(FP_PRINT);
-extern void gki_print_buffer_statistics(FP_PRINT, int16_t);
-extern void gki_print_used_bufs(FP_PRINT, uint8_t);
-extern void gki_dump(uint8_t*, uint16_t, FP_PRINT);
-extern void gki_dump2(uint16_t*, uint16_t, FP_PRINT);
-extern void gki_dump4(uint32_t*, uint16_t, FP_PRINT);
-
-#endif
-#ifdef __cplusplus
-}
-#endif
 
 #endif

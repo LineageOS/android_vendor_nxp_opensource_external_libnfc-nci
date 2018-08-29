@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -37,17 +37,25 @@
 #pragma once
 #include <pthread.h>
 
+#include "config.h"
 #include "nfc_target.h"
 #include "nfc_hal_api.h"
 #include <hardware/nfc.h>
 #include <utils/RefBase.h>
+#include <android/hardware/nfc/1.0/INfc.h>
+#include <android/hardware/nfc/1.0/INfcClientCallback.h>
+#include <android/hardware/nfc/1.0/types.h>
+#include <vendor/nxp/nxpnfc/1.0/INxpNfc.h>
+
+using vendor::nxp::nxpnfc::V1_0::INxpNfc;
+using ::android::sp;
 
 namespace android {
 namespace hardware {
 namespace nfc {
 namespace V1_0 {
-    struct INfc;
-    struct INfcClientCallback;
+struct INfc;
+struct INfcClientCallback;
 }
 namespace V1_1 {
 struct INfc;
@@ -103,6 +111,8 @@ class AutoThreadMutex {
   ThreadMutex& mm;
 };
 
+class NfcDeathRecipient ;
+
 class NfcAdaptation {
  public:
   virtual ~NfcAdaptation();
@@ -113,6 +123,9 @@ class NfcAdaptation {
   static NfcAdaptation& GetInstance();
   tHAL_NFC_ENTRY* GetHalEntryFuncs();
   void DownloadFirmware();
+  void GetNxpConfigs(std::map<std::string, ConfigValue>& configMap);
+  void GetVendorConfigs(std::map<std::string, ConfigValue>& configMap);
+  void Dump(int fd);
 #if (NXP_EXTNS == TRUE)
   void MinInitialize();
   int HalGetFwDwnldFlag(uint8_t* fwDnldRequest);
@@ -127,7 +140,6 @@ class NfcAdaptation {
   static ThreadMutex sIoctlLock;
   ThreadCondVar mCondVar;
   tHAL_NFC_ENTRY mHalEntryFuncs;  // function pointers for HAL entry points
-  static nfc_nci_device_t* mHalDeviceContext;
   static tHAL_NFC_CBACK* mHalCallback;
   static tHAL_NFC_DATA_CBACK* mHalDataCallback;
   static ThreadCondVar mHalOpenCompletedEvent;
@@ -137,8 +149,8 @@ class NfcAdaptation {
   static android::sp<android::hardware::nfc::V1_1::INfc> mHal_1_1;
   static android::sp<vendor::nxp::hardware::nfc::V1_0::INqNfc> mNqHal;
   static android::hardware::nfc::V1_1::INfcClientCallback* mCallback;
+  sp<NfcDeathRecipient> mNfcHalDeathRecipient;
 #if (NXP_EXTNS == TRUE)
-  pthread_t mThreadId;
   static ThreadCondVar mHalCoreResetCompletedEvent;
   static ThreadCondVar mHalCoreInitCompletedEvent;
   static ThreadCondVar mHalInitCompletedEvent;

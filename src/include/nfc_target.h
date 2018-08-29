@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -47,9 +47,6 @@
 #include "gki_target.h"
 
 #include "bt_types.h" /* This must be defined AFTER buildcfg.h */
-#ifndef LMP_TEST
-#include "bt_trace.h"
-#endif
 
 #ifndef USERIAL_DEBUG
 #define USERIAL_DEBUG false
@@ -153,6 +150,17 @@
 #define NFC_HAL_NCI_POOL_BUF_SIZE NFC_NCI_POOL_BUF_SIZE
 #endif
 
+#if (NXP_EXTNS == TRUE)
+/* WIRED Mode pool */
+#ifndef NFC_WIRED_POOL_ID
+#define NFC_WIRED_POOL_ID GKI_POOL_ID_4
+#endif
+
+#ifndef NFC_WIRED_POOL_SIZE
+#define NFC_WIRED_POOL_SIZE GKI_BUF4_SIZE
+#endif
+
+#endif
 /******************************************************************************
 **
 ** NCI Transport definitions
@@ -177,15 +185,12 @@
 
 #define NCI_VERSION_UNKNOWN 0x00
 #define NCI_VERSION_1_0     0x10
-#define NCI_VERSION_1_1     0x11
 #define NCI_VERSION_2_0     0x20
 
 #ifndef NCI_VERSION
-//#define NCI_VERSION NCI_VERSION_1_0
 #define NCI_VERSION NCI_VERSION_2_0
 #endif
 #define NCI_CORE_RESET_RSP_LEN(X) (((X) == NCI_VERSION_2_0)?(0x01) : (0x03))
-#define NCI_VERSION_0_F 0x0F
 /* true I2C patch is needed */
 #ifndef NFC_I2C_PATCH_INCLUDED
 #define NFC_I2C_PATCH_INCLUDED true /* NFC-Android uses this!!! */
@@ -699,7 +704,7 @@
 #ifndef HAL_WRITE
 #define HAL_WRITE(p)                                            \
   {                                                             \
-    nfc_cb.p_hal->write(p->len, (uint8_t*)(p + 1) + p->offset); \
+    nfc_cb.p_hal->write((p)->len, (uint8_t*)((p) + 1) + (p)->offset); \
     GKI_freebuf(p);                                             \
   }
 #if (NXP_EXTNS == TRUE)

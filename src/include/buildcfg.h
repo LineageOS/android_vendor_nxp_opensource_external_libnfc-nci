@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -45,28 +45,19 @@
 #define NFC_CONTORLLER_ID (1)
 #endif
 
-#define BTE_APPL_MAX_USERIAL_DEV_NAME (256)
-
-#ifdef BT_TRACE_VERBOSE
-#undef BT_TRACE_VERBOSE
-#endif
-#define BT_TRACE_VERBOSE true
-
-#define TRACE_TASK_INCLUDED true
-
 #define GKI_BUF1_MAX 0
 // 2 is in use
-#if (NXP_EXTNS == TRUE)
-#define GKI_BUF2_MAX 70
-#define GKI_BUF3_MAX 70
-#define GKI_NUM_FIXED_BUF_POOLS 9
-#else
 #define GKI_BUF2_MAX 50
 #define GKI_BUF3_MAX 30
-#define GKI_NUM_FIXED_BUF_POOLS 4
-#endif
+
+#if (NXP_EXTNS == TRUE)
+#define GKI_BUF4_SIZE 268
+#define GKI_BUF4_MAX 130
+#else
 #define GKI_BUF4_SIZE 2400
 #define GKI_BUF4_MAX 30
+#endif
+
 #define GKI_BUF5_MAX 0
 #define GKI_BUF6_MAX 0
 #define GKI_BUF7_MAX 0
@@ -76,37 +67,11 @@
 #define GKI_BUF0_SIZE 268
 #define GKI_BUF0_MAX 40
 
-#define NCI_BUF_POOL_ID GKI_POOL_ID_0
-
-#ifdef __cplusplus
-extern "C" {
+#if (NXP_EXTNS == TRUE)
+#define GKI_NUM_FIXED_BUF_POOLS 5
+#else
+#define GKI_NUM_FIXED_BUF_POOLS 4
 #endif
 
-extern uint8_t* scru_dump_hex(uint8_t* p, char* p_title, uint32_t len,
-                              uint32_t trace_layer, uint32_t trace_type);
-extern void ScrLog(uint32_t trace_set_mask, const char* fmt_str, ...);
-extern void DispNci(uint8_t* p, uint16_t len, bool is_recv);
-
-extern void downloadFirmwarePatchFile(uint32_t brcm_hw_id);
-
-void ProtoDispAdapterDisplayNciPacket(uint8_t* nciPacket, uint16_t nciPacketLen,
-                                      bool is_recv);
-#define DISP_NCI ProtoDispAdapterDisplayNciPacket
-#define LOGMSG_TAG_NAME "BrcmNfcNfa"
-
-#ifndef _TIMEB
-#define _TIMEB
-struct _timeb {
-  long time;
-  short millitm;
-  short timezone;
-  short dstflag;
-};
-void _ftime(struct _timeb*);
-
-#endif
-
-#ifdef __cplusplus
-};
-#endif
+void initializeGlobalAppDtaMode();
 #endif
