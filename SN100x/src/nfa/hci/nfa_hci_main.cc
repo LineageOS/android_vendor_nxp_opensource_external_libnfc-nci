@@ -761,7 +761,7 @@ void nfa_hci_startup_complete(tNFA_STATUS status) {
     nfa_ee_proc_hci_info_cback();
     nfa_sys_cback_notify_nfcc_power_mode_proc_complete(NFA_ID_HCI);
 
-  } else 
+  } else
 #if(NXP_EXTNS == TRUE)
   if(nfa_hci_cb.hci_state == NFA_HCI_STATE_WAIT_NETWK_ENABLE ||
         nfa_hci_cb.hci_state == NFA_HCI_STATE_STARTUP)
@@ -1092,6 +1092,7 @@ static void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   pipe = (*p++) & 0x7F;
   if (pkt_len != 0) pkt_len--;
 #if(NXP_EXTNS == TRUE)
+
   p_pipe_cmdrsp_info = nfa_hciu_get_pipe_cmdrsp_info (pipe);
   if (!p_pipe_cmdrsp_info)
   {
@@ -1207,10 +1208,12 @@ static void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
       ** is not the last fragment and will continue to reassemble
       */
       p_pipe_cmdrsp_info->msg_rx_len = nfa_hci_cb.msg_len;
+          /* if not last packet, release GKI buffer */
+      nfa_sys_start_timer (&(p_pipe_cmdrsp_info->rsp_timer),
+        NFA_HCI_RSP_TIMEOUT_EVT, p_pipe_cmdrsp_info->rsp_timeout);
 #else
   if (nfa_hci_cb.assembling) {
 #endif
-    /* if not last packet, release GKI buffer */
     GKI_freebuf(p_pkt);
     return;
   }
@@ -1219,6 +1222,8 @@ static void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
           &&(p_pipe_cmdrsp_info->w4_rsp_apdu_evt)) {
           /* Response APDU: stop the timers */
       nfa_sys_stop_timer (&(p_pipe_cmdrsp_info->rsp_timer));
+      /*Clear chaining resp pending once full resp is received*/
+      p_pipe_cmdrsp_info->msg_rx_len = 0;
       nfa_hci_cb.hci_state = NFA_HCI_STATE_IDLE;
     }
 #endif
@@ -1928,13 +1933,15 @@ static void nfa_hci_timer_cback (TIMER_LIST_ENT *p_tle)
 
             p_pipe_cmdrsp_info->p_rsp_buf    = NULL;
             p_pipe_cmdrsp_info->rsp_buf_size = 0;
-
+            /*In case of chaining Rx timeout clear resp len*/
+            p_pipe_cmdrsp_info->msg_rx_len = 0;
             if (p_pipe_cmdrsp_info->w4_atr_evt)
             {
                 /* Timeout to ETSI_HCI_EVT_ATR after ETSI_HCI_EVT_ABORT is sent on the APDU pipe
                 ** and so cannot send next command APDU on the pipe till APDU server initialize
                 ** and sends ETSI_HCI_EVT_ATR on the pipe
                 */
+                p_pipe_cmdrsp_info->w4_atr_evt = false;
                 p_pipe_cmdrsp_info->w4_rsp_apdu_evt = false;
 
                 evt_data.apdu_aborted.status  = NFA_STATUS_TIMEOUT;
@@ -1952,7 +1959,7 @@ static void nfa_hci_timer_cback (TIMER_LIST_ENT *p_tle)
                 evt_data.apdu_rcvd.status  = NFA_STATUS_TIMEOUT;
                 evt_data.apdu_rcvd.p_apdu  = NULL;
                 evt_data.apdu_rcvd.host_id = p_pipe->dest_host;
-
+                nfa_hci_cb.hci_state = NFA_HCI_STATE_IDLE;
                 /* notify NFA_HCI_RSP_APDU_RCVD_EVT to the application */
                 nfa_hciu_send_to_app (NFA_HCI_RSP_APDU_RCVD_EVT, &evt_data,
                                       p_pipe_cmdrsp_info->pipe_user);

@@ -56,8 +56,8 @@
 #define NXP_EN_SN100U    1
 #define NXP_ANDROID_VER (9U)        /* NXP android version */
 #define NFC_NXP_MW_VERSION_MAJ (0x00) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN (0x07) /* MW Minor Version */
-#define NFC_NXP_MW_RC_VERSION (0x01) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MIN (0x0C) /* MW Minor Version */
+#define NFC_NXP_MW_RC_VERSION (0x00) /* MW Minor Version */
 #define NFC_EE_DISC_OP_REMOVE 1
 #endif
 /* NFC application return status codes */
@@ -225,8 +225,10 @@ typedef uint8_t tNFC_STATUS;
 #define NFC_ROUTE_TAG_PROTO NCI_ROUTE_TAG_PROTO
 #define NFC_ROUTE_TAG_AID NCI_ROUTE_TAG_AID /* AID routing */
 #define NFC_ROUTE_TAG_SYSCODE NCI_ROUTE_TAG_SYSCODE /* System Code routing*/
+#if (NXP_EXTNS == TRUE)
 /* tag, len, 2 byte value for technology/protocol based routing */
-
+#define NFC_ROUTE_TAG_APDU NCI_ROUTE_TAG_APDU /* APDU routing*/
+#endif
 /* For routing */
 #define NFC_DH_ID NCI_DH_ID /* for DH */
 /* To identify the loopback test */
@@ -419,7 +421,12 @@ typedef struct {
 } tNFC_FW_VERSION;
 #endif
 #define NFC_MAX_AID_LEN NCI_MAX_AID_LEN /* 16 */
-
+#if (NXP_EXTNS == TRUE)
+#define NFC_MIN_APDU_DATA_LEN NCI_MIN_APDU_DATA_LEN
+#define NFC_MIN_APDU_MASK_LEN NCI_MIN_APDU_MASK_LEN
+#define NFC_MAX_APDU_DATA_LEN NCI_MAX_APDU_DATA_LEN
+#define NFC_MAX_APDU_MASK_LEN NCI_MAX_APDU_MASK_LEN
+#endif
 /* the data type associated with NFC_CE_GET_ROUTING_REVT */
 typedef struct {
   tNFC_STATUS status; /* The event status                 */
@@ -1387,7 +1394,7 @@ extern tNFC_STATUS NFC_TestLoopback(NFC_HDR* p_data);
 *******************************************************************************/
 extern tNFC_STATUS NFC_ISODEPNakPresCheck();
 
-#if (APPL_DTA_MODE == TRUE)
+#if (NXP_EXTNS == TRUE)
 /*******************************************************************************
 **
 ** Function         nfc_ncif_getFWVersion

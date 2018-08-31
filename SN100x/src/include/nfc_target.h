@@ -513,6 +513,14 @@
 ** NFA
 **
 ******************************************************************************/
+#if (NXP_EXTNS == TRUE)
+/* Maximum number of AID entries per target_handle  */
+#ifndef NFA_EE_MAX_AID_ENTRIES
+#define NFA_EE_MIN_AID_SIZE (5)
+#define NFA_EE_MIN_AID_ENTRY_SIZE (NFA_EE_MIN_AID_SIZE + 4)
+#define NFA_EE_MAX_AID_ENTRIES (50)
+#endif
+#endif
 
 #ifndef NFA_P2P_INCLUDED
 #define NFA_P2P_INCLUDED TRUE
@@ -642,7 +650,12 @@
 #ifndef NFA_EE_MAX_AID_ENTRIES
 #define NFA_EE_MAX_AID_ENTRIES (32)
 #endif
-
+#if (NXP_EXTNS == TRUE)
+/* Maximum number of AID entries per target_handle  */
+#ifndef NFA_EE_MAX_APDU_PATTERN_ENTRIES
+#define NFA_EE_MAX_APDU_PATTERN_ENTRIES (5)
+#endif
+#endif
 /* Maximum number of callback functions can be registered through
  * NFA_EeRegister() */
 #ifndef NFA_EE_MAX_CBACKS

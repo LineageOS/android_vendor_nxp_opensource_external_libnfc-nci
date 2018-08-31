@@ -54,7 +54,8 @@
 
 #if (NFC_NFCEE_INCLUDED == TRUE)
 #include "nfa_ee_int.h"
-
+#include "nfc_int.h"
+#include "hal_nxpese.h"
 #endif
 
 #if (NFA_SNEP_INCLUDED == TRUE)
@@ -1126,7 +1127,61 @@ bool nfa_dm_act_disable_listening(__attribute__((unused)) tNFA_DM_MSG* p_data) {
 
   return true;
 }
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         nfa_dm_act_change_discovery_tech
+**
+** Description      Process change listening command
+**
+** Returns          true (message buffer to be freed by caller)
+**
+*******************************************************************************/
+bool nfa_dm_act_change_discovery_tech (tNFA_DM_MSG *p_data)
+{
+    tNFA_CONN_EVT_DATA evt_data;
 
+    DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf ("nfa_dm_act_change_discovery_tech ()");
+
+    if(p_data->change_discovery_tech.listenTech == 0xFF && p_data->change_discovery_tech.pollTech == 0xFF)
+        nfa_dm_cb.flags &= ~NFA_DM_FLAGS_DISCOVERY_TECH_CHANGED;
+    else
+        nfa_dm_cb.flags |= NFA_DM_FLAGS_DISCOVERY_TECH_CHANGED;
+
+    nfa_dm_cb.pollTech = p_data->change_discovery_tech.pollTech;
+    nfa_dm_cb.listenTech = p_data->change_discovery_tech.listenTech;
+    evt_data.status = NFA_STATUS_OK;
+    nfa_dm_conn_cback_event_notify (NFA_LISTEN_ENABLED_EVT, &evt_data);
+
+    return (true);
+}
+
+/*******************************************************************************
+**
+** Function         nfa_dm_set_transit_config
+**
+** Description      Sends transit configuration NFC Hal
+**
+** Returns          true (message buffer to be freed by caller)
+**
+*******************************************************************************/
+bool nfa_dm_set_transit_config(tNFA_DM_MSG* p_data) {
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s", __func__);
+  nfc_nci_IoctlInOutData_t inpOutData;
+  tNFA_DM_CBACK_DATA dm_cback_data;
+  dm_cback_data.set_transit_config.status = NFA_STATUS_OK;
+
+  inpOutData.inp.data.transitConfig.val =
+      p_data->transit_config.transitConfig;
+  inpOutData.inp.data.transitConfig.len =
+      strlen(p_data->transit_config.transitConfig);
+  nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_SET_TRANSIT_CONFIG, (void*)&inpOutData);
+  (*nfa_dm_cb.p_dm_cback)(NFA_DM_SET_TRANSIT_CONFIG_EVT, &dm_cback_data);
+
+  return true;
+}
+#endif
 /*******************************************************************************
 **
 ** Function         nfa_dm_act_pause_p2p
