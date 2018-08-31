@@ -1,5 +1,8 @@
 /******************************************************************************
  *
+ *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *  Not a Contribution.
+ *
  *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
@@ -315,7 +318,7 @@ tNFA_STATUS nfa_hciu_send_msg(uint8_t pipe_id, uint8_t type,
 #if (NXP_EXTNS == TRUE)
   nfa_hci_cb.IsChainedPacket = false;
 #endif
-  char buff[100];
+  char buff[VERBOSE_BUFF_SIZE];
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
       "nfa_hciu_send_msg pipe_id:%d   %s  len:%d", pipe_id,
       nfa_hciu_get_type_inst_names(pipe_id, type, instruction, buff), msg_len);
@@ -1531,23 +1534,23 @@ char* nfa_hciu_get_type_inst_names(uint8_t pipe, uint8_t type, uint8_t inst,
                                    char* p_buff) {
   int xx;
 
-  xx = sprintf(p_buff, "Type: %s [0x%02x] ", nfa_hciu_type_2_str(type).c_str(), type);
+  xx = snprintf(p_buff, VERBOSE_BUFF_SIZE, "Type: %s [0x%02x] ", nfa_hciu_type_2_str(type).c_str(), type);
 
   switch (type) {
     case NFA_HCI_COMMAND_TYPE:
-      sprintf(&p_buff[xx], "Inst: %s [0x%02x] ", nfa_hciu_instr_2_str(inst).c_str(),
+      snprintf(&p_buff[xx], VERBOSE_BUFF_SIZE, "Inst: %s [0x%02x] ", nfa_hciu_instr_2_str(inst).c_str(),
               inst);
       break;
     case NFA_HCI_EVENT_TYPE:
-      sprintf(&p_buff[xx], "Evt: %s [0x%02x] ", nfa_hciu_evt_2_str(pipe, inst).c_str(),
+      snprintf(&p_buff[xx], VERBOSE_BUFF_SIZE, "Evt: %s [0x%02x] ", nfa_hciu_evt_2_str(pipe, inst).c_str(),
               inst);
       break;
     case NFA_HCI_RESPONSE_TYPE:
-      sprintf(&p_buff[xx], "Resp: %s [0x%02x] ",
+      snprintf(&p_buff[xx], VERBOSE_BUFF_SIZE, "Resp: %s [0x%02x] ",
               nfa_hciu_get_response_name(inst).c_str(), inst);
       break;
     default:
-      sprintf(&p_buff[xx], "Inst: %u ", inst);
+      snprintf(&p_buff[xx], VERBOSE_BUFF_SIZE, "Inst: %u ", inst);
       break;
   }
   return (p_buff);

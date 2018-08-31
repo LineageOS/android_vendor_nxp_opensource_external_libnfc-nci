@@ -1,5 +1,8 @@
 /******************************************************************************
  *
+ *  Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+ *  Not a Contribution.
+ *
  *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
@@ -22,6 +25,7 @@
 #include <android-base/stringprintf.h>
 #include <android/hardware/nfc/1.0/types.h>
 #include <android/hardware/nfc/1.1/INfc.h>
+#include <vendor/nxp/hardware/nfc/1.0/INqNfc.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <cutils/properties.h>
@@ -29,7 +33,9 @@
 #include <hwbinder/ProcessState.h>
 #include <vector>
 #include "debug_nfcsnoop.h"
+#ifdef ENABLE_ESE_CLIENT
 #include "hal_nxpese.h"
+#endif
 #include "nfa_api.h"
 #include "nfa_rw_api.h"
 #include "nfc_config.h"
@@ -574,13 +580,13 @@ void NfcAdaptation::InitializeHalDeviceContext() {
           (mHal->isRemote() ? "remote" : "local"));
   }
   mHal->linkToDeath(mNfcHalDeathRecipient,0);
-  LOG(INFO) << StringPrintf("%s: INxpNfc::getService()", func);
-  mHalNxpNfc = INxpNfc::tryGetService();
-  if(mHalNxpNfc == nullptr) {
+  LOG(INFO) << StringPrintf("%s: INqNfc::getService()", func);
+  mNqHal = INqNfc::tryGetService();
+  if(mNqHal == nullptr) {
     LOG(INFO) << StringPrintf ( "Failed to retrieve the NXPNFC HAL!");
   } else {
-    LOG(INFO) << StringPrintf("%s: INxpNfc::getService() returned %p (%s)", func, mHalNxpNfc.get(),
-          (mHalNxpNfc->isRemote() ? "remote" : "local"));
+    LOG(INFO) << StringPrintf("%s: INqNfc::getService() returned %p (%s)", func, mNqHal.get(),
+          (mNqHal->isRemote() ? "remote" : "local"));
   }
 
 }
@@ -758,8 +764,8 @@ int NfcAdaptation::HalIoctl(long arg, void* p_data) {
             (pInpOutData->inp.data.transitConfig.len));
     data = tempStdVec;
   }
-  if(mHalNxpNfc != nullptr)
-      mHalNxpNfc->ioctl(arg, data, IoctlCallback);
+  if(mNqHal != nullptr)
+      mNqHal->ioctl(arg, data, IoctlCallback);
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Ioctl Completed for Type=%llu", func, (unsigned long long)pInpOutData->out.ioctlType);
   return (pInpOutData->out.result);
 }

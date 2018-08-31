@@ -53,7 +53,9 @@
 #include "nci_hmsgs.h"
 
 #if (NFC_NFCEE_INCLUDED == true)
+#ifdef ENABLE_ESE_CLIENT
 #include "hal_nxpese.h"
+#endif
 #include "nfa_ee_int.h"
 #include "nfa_hci_int.h"
 #include "nfc_int.h"

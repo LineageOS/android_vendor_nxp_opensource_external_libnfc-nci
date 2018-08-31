@@ -1,5 +1,8 @@
 /******************************************************************************
  *
+ *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *  Not a Contribution.
+ *
  *  Copyright (C) 2011-2012 Broadcom Corporation
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");

@@ -49,7 +49,9 @@
 #include "nfa_ce_int.h"
 #include "ndef_utils.h"
 #if (NXP_EXTNS == TRUE)
+#ifdef ENABLE_ESE_CLIENT
 #include "hal_nxpese.h"
+#endif
 #include "nfa_sys_int.h"
 #include "nfc_int.h"
 

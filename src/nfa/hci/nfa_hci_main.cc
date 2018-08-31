@@ -1,9 +1,12 @@
 /******************************************************************************
  *
- *  Copyright (C) 2010-2014 Broadcom Corporation
+ *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *  Not a Contribution.
  *
  *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2010-2014 Broadcom Corporation
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -967,7 +970,7 @@ static void nfa_hci_sys_disable(void) {
 void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
                         tNFC_CONN* p_data) {
   uint8_t* p;
-  NFC_HDR* p_pkt = (NFC_HDR*)p_data->data.p_data;
+  NFC_HDR* p_pkt = NULL;
   uint8_t chaining_bit;
   uint8_t pipe;
   uint16_t pkt_len;
@@ -1047,6 +1050,9 @@ void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
       nfa_ee_nci_conn(&p_msgdata);
 #endif
   }
+
+  if(event == NFC_DATA_CEVT)
+      p_pkt = (NFC_HDR*)p_data->data.p_data;
 
   if ((event != NFC_DATA_CEVT) || (p_pkt == NULL)) return;
 

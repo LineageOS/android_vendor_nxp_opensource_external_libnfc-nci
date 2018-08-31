@@ -1,5 +1,8 @@
 /******************************************************************************
  *
+ *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *  Not a Contribution.
+ *
  *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
@@ -44,7 +47,9 @@
 #include "rw_int.h"
 #include "ce_int.h"
 #include "nfa_sys.h"
+#ifdef ENABLE_ESE_CLIENT
 #include "hal_nxpese.h"
+#endif
 #include <config.h>
 #if (NFC_RW_ONLY == FALSE)
 

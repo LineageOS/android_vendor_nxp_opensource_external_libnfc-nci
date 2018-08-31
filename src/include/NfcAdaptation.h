@@ -45,9 +45,7 @@
 #include <android/hardware/nfc/1.0/INfc.h>
 #include <android/hardware/nfc/1.0/INfcClientCallback.h>
 #include <android/hardware/nfc/1.0/types.h>
-#include <vendor/nxp/nxpnfc/1.0/INxpNfc.h>
 
-using vendor::nxp::nxpnfc::V1_0::INxpNfc;
 using ::android::sp;
 
 namespace android {
@@ -72,6 +70,12 @@ namespace nfc {
 namespace V1_0 {
 struct INqNfc;
 } } } } }
+
+/*
+ * Uncomment define ENABLE_ESE_CLIENT to
+ * enable eSE client
+ */
+//#define ENABLE_ESE_CLIENT TRUE
 
 class ThreadMutex {
  public:

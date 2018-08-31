@@ -1,9 +1,12 @@
 /******************************************************************************
  *
- *  Copyright (C) 2010-2014 Broadcom Corporation
+ *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *  Not a Contribution.
  *
  *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright (C) 2010-2014 Broadcom Corporation
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -447,13 +450,14 @@ uint8_t LLCP_RegisterServer(uint8_t reg_sap, uint8_t link_type,
           length);
       return LLCP_INVALID_SAP;
     }
-    p_app_cb->p_service_name = (char*)GKI_getbuf((uint16_t)(length + 1));
+
+    p_app_cb->p_service_name = (char *)GKI_getbuf((uint16_t)(length + 1));
     if (p_app_cb->p_service_name == NULL) {
       LOG(ERROR) << StringPrintf("LLCP_RegisterServer (): Out of resource");
       return LLCP_INVALID_SAP;
     }
 
-    strncpy((char*)p_app_cb->p_service_name, p_service_name.c_str(), length + 1);
+    NQ_STRLCPY_S ((char *) p_app_cb->p_service_name, length + 1, p_service_name.c_str(), length + 1);
     p_app_cb->p_service_name[length] = 0;
   } else
     p_app_cb->p_service_name = NULL;
