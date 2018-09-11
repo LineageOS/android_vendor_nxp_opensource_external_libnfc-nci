@@ -27,8 +27,9 @@
 #include "android_logmsg.h"
 #include "debug_nfcsnoop.h"
 #if (NXP_EXTNS == TRUE)
-#include <vendor/nxp/nxpnfc/1.0/INxpNfc.h>
+#ifdef ENABLE_ESE_CLIENT
 #include "hal_nxpese.h"
+#endif
 #endif
 #include "nfa_api.h"
 #include "nfa_rw_api.h"
@@ -54,10 +55,7 @@ using android::hardware::hidl_vec;
 using android::hardware::hidl_death_recipient;
 using android::hardware::configureRpcThreadpool;
 #if (NXP_EXTNS == TRUE)
-using vendor::nxp::nxpnfc::V1_0::INxpNfc;
-
 ThreadMutex NfcAdaptation::sIoctlLock;
-sp<INxpNfc> NfcAdaptation::mHalNxpNfc;
 #endif
 extern bool nfc_debug_enabled;
 
@@ -74,6 +72,7 @@ ThreadCondVar NfcAdaptation::mHalCloseCompletedEvent;
 sp<INfc> NfcAdaptation::mHal;
 sp<INfcV1_1> NfcAdaptation::mHal_1_1;
 INfcClientCallback* NfcAdaptation::mCallback;
+sp<INqNfc> NfcAdaptation::mNqHal;
 sp<NfcDeathRecipient> NfcAdaptation::mDeathRecipient = NULL;
 
 bool nfc_debug_enabled = false;
@@ -529,6 +528,11 @@ void NfcAdaptation::InitializeHalDeviceContext() {
   LOG(INFO) << StringPrintf("%s: INfc::getService() returned %p (%s)", func,
                             mHal.get(),
                             (mHal->isRemote() ? "remote" : "local"));
+  mNqHal = INqNfc::getService();
+  LOG_FATAL_IF(mNqHal == nullptr, "Failed to retrieve the vendor NFC HAL!");
+  LOG(INFO) << StringPrintf("%s: INqNfc::getService() returned %p (%s)", func,
+                            mNqHal.get(),
+                            (mNqHal->isRemote() ? "remote" : "local"));
 }
 
 /*******************************************************************************
@@ -711,8 +715,8 @@ int NfcAdaptation::HalIoctl(long arg, void* p_data) {
             (pInpOutData->inp.data.transitConfig.len));
     data = tempStdVec;
   }
-  if(mHalNxpNfc != nullptr)
-      mHalNxpNfc->ioctl(arg, data, IoctlCallback);
+  if(mNqHal != nullptr)
+      mNqHal->ioctl(arg, data, IoctlCallback);
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Ioctl Completed for Type=%llu", func, (unsigned long long)pInpOutData->out.ioctlType);
   return (pInpOutData->out.result);
 }

@@ -41,8 +41,8 @@ Return<void> NxpNfc::ioctl(uint64_t ioctlType, const hidl_vec<uint8_t>& inOutDat
      * underlying HAL implementation since its an inout argument*/
     memcpy(&inpOutData,pInOutData,sizeof(nfc_nci_IoctlInOutData_t));
     //status = phNxpNciHal_ioctl(ioctlType, &inpOutData);
-     status = 0;
-     pInOutData->inp.context = 0;
+    status = 0;
+    pInOutData->inp.context = 0;
     /*copy data and additional fields indicating status of ioctl operation
      * and context of the caller. Then invoke the corresponding proxy callback*/
     inpOutData.out.ioctlType = ioctlType;

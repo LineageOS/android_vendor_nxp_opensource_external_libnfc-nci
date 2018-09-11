@@ -34,10 +34,13 @@ struct INfcClientCallback;
 namespace V1_1 {
 struct INfc;
 struct INfcClientCallback;
-}
-}
-}
-}
+} } } }
+
+/*
+ * Uncomment define ENABLE_ESE_CLIENT to
+ * enable eSE client
+ */
+//#define ENABLE_ESE_CLIENT TRUE
 
 namespace vendor {
 namespace nxp {
