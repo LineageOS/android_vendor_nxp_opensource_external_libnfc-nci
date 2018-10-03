@@ -56,8 +56,8 @@
 #define NXP_EN_SN100U    1
 #define NXP_ANDROID_VER (9U)        /* NXP android version */
 #define NFC_NXP_MW_VERSION_MAJ (0x00) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN (0x0C) /* MW Minor Version */
-#define NFC_NXP_MW_RC_VERSION (0x00) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MIN (0x0F) /* MW Minor Version */
+#define NFC_NXP_MW_RC_VERSION (0x01) /* MW Minor Version */
 #define NFC_EE_DISC_OP_REMOVE 1
 #endif
 /* NFC application return status codes */
@@ -1394,7 +1394,7 @@ extern tNFC_STATUS NFC_TestLoopback(NFC_HDR* p_data);
 *******************************************************************************/
 extern tNFC_STATUS NFC_ISODEPNakPresCheck();
 
-#if (NXP_EXTNS == TRUE)
+#if (NXP_EXTNS == TRUE || APPL_DTA_MODE == TRUE)
 /*******************************************************************************
 **
 ** Function         nfc_ncif_getFWVersion
