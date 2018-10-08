@@ -4,7 +4,7 @@ cc_library_shared {
             instruction_set: "arm",
         },
     },
-    name: "libnqnfc-nci",
+    name: "libsn100nfc-nci",
     shared_libs: [
         "libcutils",
         "liblog",
