@@ -1,5 +1,5 @@
 cc_defaults {
-    name: "nqnfc_utils_defaults",
+    name: "sn100nfc_utils_defaults",
     include_dirs: [
         "system/nfc",
     ],
@@ -18,8 +18,8 @@ cc_defaults {
 }
 
 cc_library_static {
-    name: "libnqnfcutils",
-    defaults: ["nqnfc_utils_defaults"],
+    name: "libsn100nfcutils",
+    defaults: ["sn100nfc_utils_defaults"],
     export_include_dirs: ["include"],
     host_supported: true,
     srcs: [
@@ -32,8 +32,8 @@ cc_library_static {
 }
 
 cc_test {
-    name: "nqnfc_test_utils",
-    defaults: ["nqnfc_utils_defaults"],
+    name: "sn100nfc_test_utils",
+    defaults: ["sn100nfc_utils_defaults"],
     test_suites: ["device-tests"],
     host_supported: true,
     srcs: [
