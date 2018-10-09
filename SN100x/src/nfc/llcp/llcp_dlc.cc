@@ -1292,7 +1292,7 @@ NFC_HDR* llcp_dlc_get_next_pdu(tLLCP_DLCB* p_dlcb) {
     p_msg = (NFC_HDR*)GKI_dequeue(&p_dlcb->i_xmit_q);
     llcp_cb.total_tx_i_pdu--;
 
-    if (p_msg->offset >= LLCP_MIN_OFFSET) {
+    if (p_msg != NULL && p_msg->offset >= LLCP_MIN_OFFSET) {
       /* add LLCP header, DSAP, PTYPE, SSAP, N(S), N(R) and update sent_ack_seq,
        * V(RA) */
       llcp_util_build_info_pdu(p_dlcb, p_msg);
