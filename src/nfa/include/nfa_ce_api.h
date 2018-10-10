@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -53,9 +53,6 @@
 /*****************************************************************************
 **  External Function Declarations
 *****************************************************************************/
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*******************************************************************************
 **
@@ -182,7 +179,7 @@ extern tNFA_STATUS NFA_CeConfigureEseListenTech(tNFA_HANDLE ee_handle,
 *******************************************************************************/
 extern tNFA_STATUS NFA_CeRegisterFelicaSystemCodeOnDH(
     uint16_t system_code, uint8_t nfcid2[NCI_RF_F_UID_LEN],
-    tNFA_CONN_CBACK* p_conn_cback);
+    uint8_t t3tPmm[NCI_T3T_PMM_LEN], tNFA_CONN_CBACK* p_conn_cback);
 
 /*******************************************************************************
 **
@@ -281,8 +278,5 @@ extern tNFA_STATUS NFA_CeDeregisterAidOnDH(tNFA_HANDLE handle);
 *******************************************************************************/
 extern tNFA_STATUS NFA_CeSetIsoDepListenTech(tNFA_TECHNOLOGY_MASK tech_mask);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* NFA_CE_API_H */
