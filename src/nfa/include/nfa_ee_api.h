@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -70,9 +70,13 @@ enum {
   NFA_EE_DEREGISTER_EVT, /* The status for NFA_EeDeregister () */
   NFA_EE_MODE_SET_EVT, /* The status for activating or deactivating an NFCEE */
   NFA_EE_ADD_AID_EVT,  /* The status for adding an AID to a routing table entry
-                          */
-  NFA_EE_REMOVE_AID_EVT, /* The status for removing an AID from a routing table
-                            */
+                        */
+  NFA_EE_REMOVE_AID_EVT,  /* The status for removing an AID from a routing table
+                           */
+  NFA_EE_ADD_SYSCODE_EVT, /* The status for adding an System Code to a routing
+                             table entry */
+  NFA_EE_REMOVE_SYSCODE_EVT, /* The status for removing an System Code from
+                              routing table */
   NFA_EE_REMAINING_SIZE_EVT, /* The remaining size of the Listen Mode Routing
                                 Table   */
   NFA_EE_SET_TECH_CFG_EVT,   /* The status for setting the routing based on RF
@@ -86,10 +90,10 @@ enum {
   NFA_EE_NEW_EE_EVT, /* A new NFCEE is discovered                             */
   NFA_EE_ACTION_EVT, /* An action happened in NFCEE                           */
   NFA_EE_DISCOVER_REQ_EVT, /* NFCEE Discover Request Notification */
-  NFA_EE_ROUT_ERR_EVT,     /* Error - exceed NFCC CE Routing size */
   NFA_EE_NO_MEM_ERR_EVT,   /* Error - out of GKI buffers */
   NFA_EE_NO_CB_ERR_EVT, /* Error - Can not find control block or wrong state */
 #if (NXP_EXTNS == TRUE)
+  NFA_EE_ROUT_ERR_EVT,     /* Error - exceed NFCC CE Routing size */
   NFA_EE_SET_MODE_INFO_EVT,
   NFA_EE_PWR_LINK_CTRL_EVT, /* NFCEE Pwr and link cotnrol command Evt */
 #endif
@@ -99,27 +103,13 @@ enum {
 typedef uint8_t tNFA_EE_EVT;
 
 /* tNFA_NFCEE_INTERFACE values */
-/* APDU Interface       */
-#define NFA_EE_INTERFACE_APDU NFC_NFCEE_INTERFACE_APDU
 /* HCI Access Interface*/
 #define NFA_EE_INTERFACE_HCI_ACCESS NFC_NFCEE_INTERFACE_HCI_ACCESS
-/* T3T Command Interface*/
-#define NFA_EE_INTERFACE_T3T NFC_NFCEE_INTERFACE_T3T
-/* Transparent Interface*/
-#define NFA_EE_INTERFACE_TRANSPARENT NFC_NFCEE_INTERFACE_TRANSPARENT
-/* Proprietary          */
-#define NFA_EE_INTERFACE_PROPRIETARY NFC_NFCEE_INTERFACE_PROPRIETARY
 typedef uint8_t tNFA_EE_INTERFACE;
 
-/* HW/Registration ID   */
-#define NFA_EE_TAG_HW_ID NFC_NFCEE_TAG_HW_ID
-/* ATR Bytes            */
-#define NFA_EE_TAG_ATR_BYTES NFC_NFCEE_TAG_ATR_BYTES
-/* T3T Supplement. Info */
-#define NFA_EE_TAG_T3T_INFO NFC_NFCEE_TAG_T3T_INFO
+#if (NXP_EXTNS == TRUE)
 /* Broadcom Proprietary */
 #define NFA_EE_TAG_HCI_HOST_ID NFC_NFCEE_TAG_HCI_HOST_ID
-#if (NXP_EXTNS == TRUE)
 typedef uint16_t tNFA_EE_TAG;
 #else
 typedef uint8_t tNFA_EE_TAG;
@@ -136,9 +126,7 @@ typedef uint8_t tNFA_EE_MD;
 #define NFA_EE_PWR_STATE_SWITCH_OFF 0x02
 /* The device's battery is removed  */
 #define NFA_EE_PWR_STATE_BATT_OFF 0x04
-/* used to remove a particular technology or protocol based routing cfg of a
- * handle from the routing table. */
-#define NFA_EE_PWR_STATE_NONE 0
+
 typedef uint8_t tNFA_EE_PWR_STATE;
 
 /* NFCEE connected and inactive */
@@ -149,10 +137,6 @@ typedef uint8_t tNFA_EE_PWR_STATE;
 #define NFA_EE_STATUS_REMOVED NFC_NFCEE_STATUS_REMOVED
 /* waiting for response from NFCC */
 #define NFA_EE_STATUS_PENDING 0x10
-#define NFA_EE_STATUS_ACTIVATING \
-  (NFA_EE_STATUS_PENDING + NFC_NFCEE_STATUS_ACTIVE)
-#define NFA_EE_STATUS_DEACTIVATING \
-  (NFA_EE_STATUS_PENDING + NFC_NFCEE_STATUS_INACTIVE)
 typedef uint8_t tNFA_EE_STATUS;
 
 /* list of events for controlling DWP transceive state */
@@ -204,14 +188,6 @@ typedef struct {
       ee_interface; /* NFCEE interface associated with this connection  */
 } tNFA_EE_CONNECT;
 
-/* ISO 7816-4 SELECT command */
-#define NFA_EE_TRGR_SELECT NFC_EE_TRIG_SELECT
-/* RF Protocol changed       */
-#define NFA_EE_TRGR_RF_PROTOCOL NFC_EE_TRIG_RF_PROTOCOL
-/* RF Technology changed     */
-#define NFA_EE_TRGR_RF_TECHNOLOGY NFC_EE_TRIG_RF_TECHNOLOGY
-/* Application initiation    */
-#define NFA_EE_TRGR_APP_INIT NFC_EE_TRIG_APP_INIT
 typedef tNFC_EE_TRIGGER tNFA_EE_TRIGGER;
 
 /* Union of NFCEE action parameter depending on the associated trigger */
@@ -287,6 +263,8 @@ typedef union {
   tNFA_STATUS deregister;
   tNFA_STATUS add_aid;
   tNFA_STATUS remove_aid;
+  tNFA_STATUS add_sc;
+  tNFA_STATUS remove_sc;
   tNFA_STATUS set_tech;
   tNFA_STATUS set_proto;
   uint16_t size;
@@ -307,9 +285,6 @@ typedef void(tNFA_EE_CBACK)(tNFA_EE_EVT event, tNFA_EE_CBACK_DATA* p_data);
 /*****************************************************************************
 **  External Function Declarations
 *****************************************************************************/
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*******************************************************************************
 **
@@ -440,15 +415,10 @@ extern tNFA_STATUS NFA_EeModeSet(tNFA_HANDLE ee_handle, tNFA_EE_MD mode);
 extern tNFA_STATUS NFA_EeSetDefaultTechRouting(
     tNFA_HANDLE ee_handle, tNFA_TECHNOLOGY_MASK technologies_switch_on,
     tNFA_TECHNOLOGY_MASK technologies_switch_off,
-    tNFA_TECHNOLOGY_MASK technologies_battery_off
-#if (NXP_EXTNS == TRUE)
-    ,
+    tNFA_TECHNOLOGY_MASK technologies_battery_off,
     tNFA_TECHNOLOGY_MASK technologies_screen_lock,
     tNFA_TECHNOLOGY_MASK technologies_screen_off,
-    tNFA_TECHNOLOGY_MASK technologies_screen_off_lock
-#endif
-
-    );
+    tNFA_TECHNOLOGY_MASK technologies_screen_off_lock);
 
 /*******************************************************************************
 **
@@ -474,14 +444,10 @@ extern tNFA_STATUS NFA_EeSetDefaultTechRouting(
 extern tNFA_STATUS NFA_EeSetDefaultProtoRouting(
     tNFA_HANDLE ee_handle, tNFA_PROTOCOL_MASK protocols_switch_on,
     tNFA_PROTOCOL_MASK protocols_switch_off,
-    tNFA_PROTOCOL_MASK protocols_battery_off
-#if (NXP_EXTNS == TRUE)
-    ,
+    tNFA_PROTOCOL_MASK protocols_battery_off,
     tNFA_PROTOCOL_MASK protocols_screen_lock,
     tNFA_PROTOCOL_MASK protocols_screen_off,
-    tNFA_PROTOCOL_MASK protocols_screen_off_lock
-#endif
-    );
+    tNFA_PROTOCOL_MASK protocols_screen_off_lock);
 
 /*******************************************************************************
 **
@@ -505,12 +471,8 @@ extern tNFA_STATUS NFA_EeSetDefaultProtoRouting(
 *******************************************************************************/
 extern tNFA_STATUS NFA_EeAddAidRouting(tNFA_HANDLE ee_handle, uint8_t aid_len,
                                        uint8_t* p_aid,
-                                       tNFA_EE_PWR_STATE power_state
-#if (NXP_EXTNS == TRUE)
-                                       ,
-                                       uint8_t vs_info
-#endif
-                                       );
+                                       tNFA_EE_PWR_STATE power_state,
+                                       uint8_t aidInfo);
 
 /*******************************************************************************
 **
@@ -580,6 +542,54 @@ extern tNFA_STATUS NFA_EeAddApduPatternRouting(uint8_t apdu_data_len,uint8_t* ap
 **
 *******************************************************************************/
 extern tNFA_STATUS NFA_EeRemoveApduPatternRouting(uint8_t apdu_len, uint8_t* p_apdu);
+
+/*******************************************************************************
+ **
+ ** Function         NFA_EeAddSystemCodeRouting
+ **
+ ** Description      This function is called to add an system code entry in the
+ **                  listen mode routing table in NFCC. The status of this
+ **                  operation is reported as the NFA_EE_ADD_SYSCODE_EVT.
+ **
+ ** Note:            If RF discovery is started,
+ **                  NFA_StopRfDiscovery()/NFA_RF_DISCOVERY_STOPPED_EVT should
+ **                  happen before calling this function
+ **
+ ** Note:            NFA_EeUpdateNow() should be called after last NFA-EE
+ **                  function to change the listen mode routing is called.
+ **
+ ** Returns          NFA_STATUS_OK if successfully initiated
+ **                  NFA_STATUS_FAILED otherwise
+ **                  NFA_STATUS_INVALID_PARAM If bad parameter
+ **
+ *******************************************************************************/
+extern tNFA_STATUS NFA_EeAddSystemCodeRouting(uint16_t systemcode,
+                                              tNFA_HANDLE ee_handle,
+                                              tNFA_EE_PWR_STATE power_state);
+
+/*******************************************************************************
+**
+** Function         NFA_EeRemoveSystemCodeRouting
+**
+** Description      This function is called to remove the given System Code
+*based entry from
+**                  the listen mode routing table. The status of this operation
+*is reported
+**                  as the NFA_EE_REMOVE_SYSCODE_EVT.
+**
+** Note:            If RF discovery is started,
+**                  NFA_StopRfDiscovery()/NFA_RF_DISCOVERY_STOPPED_EVT should
+**                  happen before calling this function
+**
+** Note:            NFA_EeUpdateNow() should be called after last NFA-EE
+**                  function to change the listen mode routing is called.
+**
+** Returns          NFA_STATUS_OK if successfully initiated
+**                  NFA_STATUS_FAILED otherwise
+**                  NFA_STATUS_INVALID_PARAM If bad parameter
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_EeRemoveSystemCodeRouting(uint16_t systemcode);
 
 /*******************************************************************************
 **
@@ -734,8 +744,5 @@ extern void NFA_setProvisionMode(bool provisionMode);
 
 #endif
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* NFA_EE_API_H */

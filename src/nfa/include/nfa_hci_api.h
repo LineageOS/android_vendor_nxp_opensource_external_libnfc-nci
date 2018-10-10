@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -366,10 +366,6 @@ typedef void(tNFA_HCI_CBACK)(tNFA_HCI_EVT event, tNFA_HCI_EVT_DATA* p_data);
 /*****************************************************************************
 **  External Function Declarations
 *****************************************************************************/
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*******************************************************************************
 **
 ** Function         NFA_HciRegister
@@ -563,25 +559,6 @@ extern tNFA_STATUS NFA_HciSetRegistry(tNFA_HANDLE hci_handle, uint8_t pipe,
 
 /*******************************************************************************
 **
-** Function         NFA_HciSendCommand
-**
-** Description      This function is called to send a command on a pipe created
-**                  by the application.
-**                  The app will be notified by NFA_HCI_CMD_SENT_EVT if an error
-**                  occurs.
-**                  When the peer host responds,the app is notified with
-**                  NFA_HCI_RSP_RCVD_EVT
-**
-** Returns          NFA_STATUS_OK if successfully initiated
-**                  NFA_STATUS_FAILED otherwise
-**
-*******************************************************************************/
-extern tNFA_STATUS NFA_HciSendCommand(tNFA_HANDLE hci_handle, uint8_t pipe,
-                                      uint8_t cmd_code, uint16_t cmd_size,
-                                      uint8_t* p_data);
-
-/*******************************************************************************
-**
 ** Function         NFA_HciSendResponse
 **
 ** Description      This function is called to send a response on a pipe created
@@ -706,6 +683,16 @@ void NFA_HciDebug(uint8_t action, uint8_t size, uint8_t* p_data);
 #if (NXP_EXTNS == TRUE)
 extern tNFA_STATUS NFA_HciSendHostTypeListCommand(tNFA_HANDLE hci_handle);
 extern tNFA_STATUS NFA_HciConfigureNfceeETSI12();
+/*******************************************************************************
+**
+** Function         NFA_IsPipeStatusNotCorrect
+**
+** Description      Checks and resets pipe status
+**
+** Returns          TRUE/FALSE
+**
+*******************************************************************************/
+extern bool NFA_IsPipeStatusNotCorrect();
 #endif
 #if (NXP_EXTNS == TRUE)
 /*******************************************************************************
@@ -744,10 +731,6 @@ extern void nfa_hci_handle_nfcee_config_evt(uint16_t event);
 extern void nfa_hci_nfcee_config_rsp_handler(tNFA_HCI_EVT event,
                                              tNFA_HCI_EVT_DATA* p_evt);
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif /* NFA_P2P_API_H */
