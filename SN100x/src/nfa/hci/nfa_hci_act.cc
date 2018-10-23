@@ -2578,7 +2578,7 @@ void nfa_hci_handle_pending_host_reset() {
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_hci_handle_pending_host_reset");
     for(xx = 0; xx < NFA_HCI_MAX_HOST_IN_NETWORK; xx++) {
       if(nfa_hci_cb.reset_host[xx].reset_cfg & NFCEE_INIT_COMPLETED) {
-        nfa_hciu_clear_host_resetting(nfa_hci_cb.curr_nfcee, NFCEE_INIT_COMPLETED);
+        //nfa_hciu_clear_host_resetting(nfa_hci_cb.curr_nfcee, NFCEE_INIT_COMPLETED);
         tNFA_HCI_EVT_DATA             evt_data;
         evt_data.status  = NFA_STATUS_OK;
         evt_data.rcvd_evt.evt_code = NFA_HCI_EVT_INIT_COMPLETED;
@@ -2623,7 +2623,9 @@ bool nfa_hci_check_set_apdu_pipe_ready_for_next_host ()
 
     for(xx = 0; xx < NFA_HCI_MAX_HOST_IN_NETWORK; xx++) {
         p_host = &nfa_hci_cb.cfg.host[xx];
-        if (nfa_hci_cb.curr_nfcee == p_host->host_id) {
+        uint8_t nfcee = nfa_hciu_get_hci_host_id(nfa_hci_cb.curr_nfcee);
+        LOG(ERROR) << StringPrintf("after updating uicc id%x", nfcee);
+        if (nfcee == p_host->host_id) {
             nfa_hciu_clear_host_resetting(p_host->host_id, NFCEE_HCI_NOTIFY_ALL_PIPE_CLEARED);
             if(p_host->host_id == NFA_HCI_FIRST_PROP_HOST)
               nfa_hci_api_add_prop_host_info();
