@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -188,55 +188,53 @@ tNFA_STATUS NFA_Disable(bool graceful) {
 
   return (NFA_STATUS_FAILED);
 }
-
 /*******************************************************************************
 **
-** Function         NFA_SetPowerSubState
+** Function         NFA_SetPowerSubStateForScreenState
 **
-** Description      send the current screen state to NFCC
+** Description      Update the power sub-state as per current screen state to
+**                  NFCC.
 **
 ** Returns          NFA_STATUS_OK if successfully initiated
 **                  NFA_STATUS_FAILED otherwise
 **
 *******************************************************************************/
-tNFA_STATUS NFA_SetPowerSubState (uint8_t ScreenState)
-{
-  tNFA_DM_API_SET_POWER_SUB_STATE *p_msg;
+tNFA_STATUS NFA_SetPowerSubStateForScreenState(uint8_t screenState) {
+  NFA_TRACE_API2("%s: state:0x%X", __func__, screenState);
+
   uint8_t nci_scren_state = 0xFF;
+  uint16_t buf_size = sizeof(tNFA_DM_API_SET_POWER_SUB_STATE);
+  tNFA_DM_API_SET_POWER_SUB_STATE* p_msg =
+      (tNFA_DM_API_SET_POWER_SUB_STATE*)GKI_getbuf(buf_size);
 
-  NFA_TRACE_API1 ("NFA_SetPowerSubState (): state:0x%X", ScreenState);
-
-
-  if ((p_msg = (tNFA_DM_API_SET_POWER_SUB_STATE *) GKI_getbuf ((uint16_t) (sizeof (tNFA_DM_API_SET_POWER_SUB_STATE)))) != NULL)
-  {
+  if (p_msg != NULL) {
     p_msg->hdr.event = NFA_DM_API_SET_POWER_SUB_STATE_EVT;
-    switch (ScreenState){
+    switch (screenState) {
       case NFA_SCREEN_STATE_ON_UNLOCKED:
-         nci_scren_state = SCREEN_STATE_ON_UNLOCKED;
-         break;
+        nci_scren_state = SCREEN_STATE_ON_UNLOCKED;
+        break;
       case NFA_SCREEN_STATE_OFF_UNLOCKED:
-         nci_scren_state = SCREEN_STATE_OFF_UNLOCKED;
-         break;
+        nci_scren_state = SCREEN_STATE_OFF_UNLOCKED;
+        break;
       case NFA_SCREEN_STATE_ON_LOCKED:
-         nci_scren_state = SCREEN_STATE_ON_LOCKED;
-         break;
+        nci_scren_state = SCREEN_STATE_ON_LOCKED;
+        break;
       case NFA_SCREEN_STATE_OFF_LOCKED:
-         nci_scren_state = SCREEN_STATE_OFF_LOCKED;
-         break;
-      default:
-         NFA_TRACE_API1("%s, unknown screen state", __FUNCTION__);
-         break;
-    }
-    if(nci_scren_state != 0xFF) {
-      p_msg->screen_state = nci_scren_state;
+        nci_scren_state = SCREEN_STATE_OFF_LOCKED;
+        break;
 
-      nfa_sys_sendmsg (p_msg);
-        return (NFA_STATUS_OK);
+      default:
+        NFA_TRACE_API1("%s, unknown screen state", __func__);
+        break;
     }
+
+    p_msg->screen_state = nci_scren_state;
+
+    nfa_sys_sendmsg(p_msg);
+    return (NFA_STATUS_OK);
   }
   return (NFA_STATUS_FAILED);
 }
-
 /*******************************************************************************
 **
 ** Function         NFA_SetConfig
@@ -1368,33 +1366,32 @@ tNFA_STATUS NFA_SendVsCommand(uint8_t oid, uint8_t cmd_params_len,
   return (NFA_STATUS_FAILED);
 }
 
-#if (NXP_EXTNS == TRUE)
 /*******************************************************************************
 **
-** Function         NFA_SendNxpNciCommand
+** Function         NFA_SendRawVsCommand
 **
-** Description      This function is called to send an NXP NCI Vendor Specific
+** Description      This function is called to send raw Vendor Specific
 **                  command to NFCC.
 **
 **                  cmd_params_len  - The command parameter len
 **                  p_cmd_params    - The command parameter
 **                  p_cback         - The callback function to receive the
-*command
+**                                    command
 **
 ** Returns          NFA_STATUS_OK if successfully initiated
 **                  NFA_STATUS_FAILED otherwise
 **
 *******************************************************************************/
-tNFA_STATUS NFA_SendNxpNciCommand(uint8_t cmd_params_len, uint8_t* p_cmd_params,
-                                  tNFA_VSC_CBACK* p_cback) {
+tNFA_STATUS NFA_SendRawVsCommand(uint8_t cmd_params_len, uint8_t* p_cmd_params,
+                                 tNFA_VSC_CBACK* p_cback) {
   if (cmd_params_len == 0x00 || p_cmd_params == NULL || p_cback == NULL) {
-    return (NFA_STATUS_INVALID_PARAM);
+    return NFA_STATUS_INVALID_PARAM;
   }
-  tNFA_DM_API_SEND_VSC* p_msg;
   uint16_t size = sizeof(tNFA_DM_API_SEND_VSC) + cmd_params_len;
+  tNFA_DM_API_SEND_VSC* p_msg = (tNFA_DM_API_SEND_VSC*)GKI_getbuf(size);
 
-  if ((p_msg = (tNFA_DM_API_SEND_VSC*)GKI_getbuf(size)) != NULL) {
-    p_msg->hdr.event = NFA_DM_API_SEND_NXP_EVT;
+  if (p_msg != NULL) {
+    p_msg->hdr.event = NFA_DM_API_SEND_RAW_VS_EVT;
     p_msg->p_cback = p_cback;
     if (cmd_params_len && p_cmd_params) {
       p_msg->cmd_params_len = cmd_params_len;
@@ -1407,12 +1404,11 @@ tNFA_STATUS NFA_SendNxpNciCommand(uint8_t cmd_params_len, uint8_t* p_cmd_params,
 
     nfa_sys_sendmsg(p_msg);
 
-    return (NFA_STATUS_OK);
+    return NFA_STATUS_OK;
   }
 
-  return (NFA_STATUS_FAILED);
+  return NFA_STATUS_FAILED;
 }
-#endif
 
 /*******************************************************************************
 **
@@ -1428,6 +1424,20 @@ uint8_t NFA_SetTraceLevel(uint8_t new_level) {
   if (new_level != 0xFF) nfa_sys_set_trace_level(new_level);
 
   return (nfa_sys_cb.trace_level);
+}
+/*******************************************************************************
+**
+** Function:        NFA_EnableDtamode
+**
+** Description:     Enable DTA Mode
+**
+** Returns:         none:
+**
+*******************************************************************************/
+void NFA_EnableDtamode(tNFA_eDtaModes eDtaMode) {
+  NFA_TRACE_API2("%s: 0x%x ", __func__, eDtaMode);
+  appl_dta_mode_flag = 0x01;
+  nfa_dm_cb.eDtaMode = eDtaMode;
 }
 #if (NXP_EXTNS == TRUE)
 /*******************************************************************************
@@ -1484,20 +1494,6 @@ void NFA_SetReaderMode(bool ReaderModeFlag, uint32_t Technologies) {
 **
 *******************************************************************************/
 void NFA_SetBootMode(uint8_t boot_mode) { hal_Initcntxt.boot_mode = boot_mode; }
-/*******************************************************************************
-**
-** Function:        NFA_EnableDtamode
-**
-** Description:     Enable DTA Mode
-**
-** Returns:         none:
-**
-*******************************************************************************/
-void NFA_EnableDtamode(tNFA_eDtaModes eDtaMode) {
-  NFA_TRACE_API1("0x%x: DTA Enabled", eDtaMode);
-  appl_dta_mode_flag = 0x01;
-  nfa_dm_cb.eDtaMode = eDtaMode;
-}
 tNFA_MW_VERSION NFA_GetMwVersion() {
   tNFA_MW_VERSION mwVer;
   mwVer.validation =

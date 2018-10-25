@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -111,6 +111,10 @@ uint32_t initializeProtocolLogLevel() {
   return ScrProtocolTraceFlag;
 }
 
+void initializeGlobalAppDtaMode() {
+  appl_dta_mode_flag = 0x01;
+  ALOGD("%s: DTA Enabled", __func__);
+}
 #if (NXP_EXTNS == TRUE)
 /*********************************************************************************
 ** Function:        enableDisableAppLevel
@@ -128,18 +132,5 @@ void enableDisableAppLevel(uint8_t type) {
     backup_app_trace = appl_trace_level;
     appl_trace_level = 0x00;
   }
-}
-/*******************************************************************************
-**
-** Function:        initializeGlobalDtaMode
-**
-** Description:     Initialize and get global DTA mode from .conf
-**
-** Returns:         none:
-**
-*******************************************************************************/
-void initializeGlobalAppDtaMode() {
-  appl_dta_mode_flag = 0x01;
-  ALOGD("%s: DTA Enabled", __func__);
 }
 #endif

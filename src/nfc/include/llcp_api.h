@@ -20,7 +20,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -689,9 +689,8 @@ extern tLLCP_STATUS LLCP_DiscoverService(char* p_name, tLLCP_SDP_CBACK* p_cback,
 ** Returns          The new or current trace level
 **
 *******************************************************************************/
-extern uint8_t LLCP_SetTraceLevel(uint8_t new_level);
 
-#if (NXP_EXTNS == TRUE)
+extern uint8_t LLCP_SetTraceLevel(uint8_t new_level);
 /*******************************************************************************
 **
 ** Function         LLCP_RegisterDtaCback
@@ -703,7 +702,6 @@ extern uint8_t LLCP_SetTraceLevel(uint8_t new_level);
 **
 *******************************************************************************/
 extern void LLCP_RegisterDtaCback(tLLCP_DTA_CBACK* p_dta_cback);
-#endif
 
 #if (LLCP_TEST_INCLUDED == true)
 /*******************************************************************************

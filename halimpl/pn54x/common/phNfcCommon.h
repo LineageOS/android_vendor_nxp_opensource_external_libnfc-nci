@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 NXP Semiconductors
+ * Copyright (C) 2015-2018 NXP Semiconductors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@
 #include <phNfcCompId.h>
 
 /* HAL Version number (Updated as per release) */
-#define NXP_MW_VERSION_MAJ (0x03)
+#define NXP_MW_VERSION_MAJ (0x04)
 #define NXP_MW_VERSION_MIN (0x00)
 
 #define GET_EEPROM_DATA (1U)
@@ -105,7 +105,7 @@
                                          0x01, 0xA3, 0x82, 0x88, 0x01, 0xE2, 0x02}
 
 #define SET_CONFIG_CMD_PLL_38_4MHZ      {0x20, 0x02, 0x0C, 0x01, 0xA0, 0x20, 0x08, 0x88,\
-                                         0x51, 0xE3, 0x82, 0x88, 0x21, 0xE1, 0x02}
+                                         0x51, 0xE3, 0x82, 0xB8, 0x21, 0xE1, 0x02}
 
 #define SET_CONFIG_CMD_DPLL_38_4MHZ     {0x20, 0x02, 0x0C, 0x01, 0xA0, 0x26, 0x08, 0x88,\
                                         0x01, 0xE2, 0x82, 0xF0, 0x00, 0xA2, 0x01}

@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -389,9 +389,7 @@ typedef struct {
   uint8_t aid_len;
   uint8_t* p_aid;
   tNFA_EE_PWR_STATE power_state;
-#if (NXP_EXTNS == TRUE)
-  uint8_t aid_info;
-#endif
+  uint8_t aidInfo;
 } tNFA_EE_API_ADD_AID;
 
 /* data type for NFA_EE_API_REMOVE_AID_EVT */
@@ -654,11 +652,11 @@ typedef struct {
 } tNFA_EE_CB;
 
 /* Order of Routing entries in Routing Table */
-#define NCI_ROUTE_ORDER_AID  0x01/* AID routing order */
-#define NCI_ROUTE_ORDER_PATTERN 0x02 /* Pattern routing order*/
-#define NCI_ROUTE_ORDER_SYS_CODE 0x03/* System Code routing order*/
-#define NCI_ROUTE_ORDER_PROTOCOL 0x04/* Protocol routing order*/
-#define NCI_ROUTE_ORDER_TECHNOLOGY 0x05/* Technology routing order*/
+#define NCI_ROUTE_ORDER_AID 0x01        /* AID routing order */
+#define NCI_ROUTE_ORDER_PATTERN 0x02    /* Pattern routing order*/
+#define NCI_ROUTE_ORDER_SYS_CODE 0x03   /* System Code routing order*/
+#define NCI_ROUTE_ORDER_PROTOCOL 0x04   /* Protocol routing order*/
+#define NCI_ROUTE_ORDER_TECHNOLOGY 0x05 /* Technology routing order*/
 
 /*****************************************************************************
 **  External variables

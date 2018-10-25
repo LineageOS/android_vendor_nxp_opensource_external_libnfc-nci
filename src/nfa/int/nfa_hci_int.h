@@ -2,7 +2,7 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
@@ -532,6 +532,7 @@ typedef struct {
   bool IsEventAbortSent;
   bool IsLastEvtAbortFailed;
   bool w4_nfcee_enable;
+  bool IsApduPipeStatusNotCorrect;
   tNFA_HCI_EVENT_SENT evt_sent;
   struct {
     tNFA_CONFIG_STATE

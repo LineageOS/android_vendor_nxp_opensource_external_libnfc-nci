@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -66,6 +66,14 @@
 #define NFA_RW_TLV_DETECT_ST_MEM_TLV_OP_COMPLETE 0x02
 /* Both Lock and Memory control Tlvs are detected */
 #define NFA_RW_TLV_DETECT_ST_COMPLETE 0x03
+
+/* Tag deselect cmd*/
+#define NFA_RW_TAG_DESELECT_CMD 0xC2
+
+#define NFA_RW_TAG_SLP_REQ_LEN 0x02
+
+/* Tag sleep req cmd*/
+extern uint8_t NFA_RW_TAG_SLP_REQ[];
 
 typedef uint8_t tNFA_RW_TLV_ST;
 

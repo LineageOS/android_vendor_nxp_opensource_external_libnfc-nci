@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -70,6 +70,7 @@ extern "C" {
 /* NFC Timer events */
 #define NFC_TTYPE_NCI_WAIT_RSP 0
 #define NFC_TTYPE_WAIT_2_DEACTIVATE 1
+#define NFC_WAIT_RSP_RAW_VS 0x02
 #define NFC_TTYPE_WAIT_SETMODE_NTF 6
 #if (NXP_EXTNS == TRUE)
 #define NFC_TTYPE_NCI_WAIT_DATA_NTF 2
@@ -218,7 +219,6 @@ typedef void(tNFC_PWR_ST_CBACK)(void);
 /* NCI command buffer contains a VSC (in NFC_HDR.layer_specific) */
 #define NFC_WAIT_RSP_VSC 0x01
 #if (NXP_EXTNS == TRUE)
-#define NFC_WAIT_RSP_NXP 0x02
 #endif
 typedef struct {
   bool bPwrLinkCmdRequested;
@@ -244,9 +244,6 @@ typedef struct {
   tNFC_TEST_CBACK* p_test_cback;
   tNFC_VS_CBACK*
       p_vs_cb[NFC_NUM_VS_CBACKS]; /* Register for vendor specific events  */
-#if (NXP_EXTNS == TRUE)
-  uint8_t nxpCbflag;
-#endif
 
 #if (NFC_RW_ONLY == FALSE)
   /* NFCC information at init rsp */
@@ -261,8 +258,8 @@ typedef struct {
   uint8_t vs_interface
       [NFC_NFCC_MAX_NUM_VS_INTERFACE]; /* the NCI VS interfaces of NFCC    */
   uint16_t nci_interfaces;             /* the NCI interfaces of NFCC       */
-  uint8_t  nci_intf_extensions;
-  uint8_t  nci_intf_extension_map[NCI_INTERFACE_EXTENSION_MAX];
+  uint8_t nci_intf_extensions;
+  uint8_t nci_intf_extension_map[NCI_INTERFACE_EXTENSION_MAX];
   uint8_t num_disc_maps; /* number of RF Discovery interface mappings */
   void* p_disc_pending;  /* the parameters associated with pending
                             NFC_DiscoveryStart */
@@ -336,6 +333,8 @@ typedef struct {
   uint16_t nci_max_v_size; /*maximum NFC V rf frame size*/
 
   TIMER_LIST_ENT nci_setmode_ntf_timer;/*Mode notification timer*/
+  uint8_t rawVsCbflag;
+  uint8_t deact_reason;
 } tNFC_CB;
 
 #if (NXP_EXTNS == TRUE)
@@ -410,19 +409,19 @@ extern void nfc_ncif_proc_init_rsp(NFC_HDR* p_msg);
 extern void nfc_ncif_proc_get_config_rsp(NFC_HDR* p_msg);
 extern void nfc_ncif_proc_data(NFC_HDR* p_msg);
 #if (NXP_EXTNS == TRUE)
-extern uint8_t nfc_ncif_retransmit_data(tNFC_CONN_CB* p_cb, NFC_HDR* p_data);
 extern tNFC_STATUS nfc_ncif_store_FWVersion(uint8_t* p_buf);
+extern uint8_t nfc_ncif_retransmit_data(tNFC_CONN_CB* p_cb, NFC_HDR* p_data);
 extern tNFC_STATUS nfc_ncif_set_MaxRoutingTableSize(uint8_t* p_buf);
-extern void nfc_ncif_proc_isodep_nak_presence_check_status (uint8_t status, bool is_ntf);
-extern void nfc_ncif_update_window(void);
 extern void nfc_ncif_empty_cmd_queue();
-extern bool nfc_ncif_proc_proprietary_rsp(uint8_t mt, uint8_t gid, uint8_t oid);
 extern void nfc_ncif_proc_rf_wtx_ntf(uint8_t* p, uint16_t plen);
 #endif
 extern bool nfa_dm_p2p_prio_logic(uint8_t event, uint8_t* p, uint8_t ntf_rsp);
 extern void nfa_dm_p2p_timer_event();
+extern bool nfc_ncif_proc_proprietary_rsp(uint8_t mt, uint8_t gid, uint8_t oid);
 extern void nfa_dm_p2p_prio_logic_cleanup();
-
+extern void nfc_ncif_proc_isodep_nak_presence_check_status(uint8_t status,
+                                                           bool is_ntf);
+extern void nfc_ncif_update_window(void);
 #if (NFC_RW_ONLY == FALSE)
 extern void nfc_ncif_proc_rf_field_ntf(uint8_t rf_status);
 #else

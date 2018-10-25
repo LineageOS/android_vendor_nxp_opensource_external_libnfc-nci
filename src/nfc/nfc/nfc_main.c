@@ -3,7 +3,7 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
@@ -50,9 +50,10 @@
 #include "llcp_int.h"
 
 #if (NXP_EXTNS == TRUE)
+#include "nfa_dm_int.h"
 extern void nfa_dm_init_cfgs(phNxpNci_getCfg_info_t* mGetCfg_info_main);
-extern nfa_ee_max_ee_cfg;
 #endif
+
 
 /* NFC mandates support for at least one logical connection;
  * Update max_conn to the NFCC capability on InitRsp */
@@ -244,7 +245,6 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
   uint8_t num_interface_extensions = 0, zz;
   uint8_t interface_type;
   int yy = 0;
-
   memset(&evt_data, 0, sizeof(tNFC_RESPONSE));
 
   if (nfc_status == NCI_STATUS_OK) {
@@ -254,26 +254,26 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
         NCI_MSG_HDR_SIZE + 1;
     /* we currently only support NCI of the same version.
     * We may need to change this, when we support multiple version of NFCC */
+
     evt_data.enable.nci_version = nfc_cb.nci_version;
     STREAM_TO_UINT32(evt_data.enable.nci_features, p);
-    if(nfc_cb.nci_version == NCI_VERSION_1_0) {
-        STREAM_TO_UINT8(num_interfaces, p);
-        evt_data.enable.nci_interfaces = 0;
-        for (xx = 0; xx < num_interfaces; xx++) {
-          if ((*p) <= NCI_INTERFACE_MAX)
-            evt_data.enable.nci_interfaces |= (1 << (*p));
-          else if (((*p) >= NCI_INTERFACE_FIRST_VS) &&
-                   (yy < NFC_NFCC_MAX_NUM_VS_INTERFACE)) {
-            /* save the VS RF interface in control block, if there's still room */
-            nfc_cb.vs_interface[yy++] = *p;
-          }
-          p++;
+    if (nfc_cb.nci_version == NCI_VERSION_1_0) {
+      STREAM_TO_UINT8(num_interfaces, p);
+      evt_data.enable.nci_interfaces = 0;
+      for (xx = 0; xx < num_interfaces; xx++) {
+        if ((*p) <= NCI_INTERFACE_MAX)
+          evt_data.enable.nci_interfaces |= (1 << (*p));
+        else if (((*p) >= NCI_INTERFACE_FIRST_VS) &&
+                 (yy < NFC_NFCC_MAX_NUM_VS_INTERFACE)) {
+          /* save the VS RF interface in control block, if there's still room */
+          nfc_cb.vs_interface[yy++] = *p;
         }
-        nfc_cb.nci_interfaces = evt_data.enable.nci_interfaces;
-        memcpy(evt_data.enable.vs_interface, nfc_cb.vs_interface,
-               NFC_NFCC_MAX_NUM_VS_INTERFACE);
+        p++;
+      }
+      nfc_cb.nci_interfaces = evt_data.enable.nci_interfaces;
+      memcpy(evt_data.enable.vs_interface, nfc_cb.vs_interface,
+             NFC_NFCC_MAX_NUM_VS_INTERFACE);
     }
-
     evt_data.enable.max_conn = *p++;
     STREAM_TO_UINT16(evt_data.enable.max_ce_table, p);
 #if (NFC_RW_ONLY == FALSE)
@@ -283,7 +283,6 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
 #endif
     nfc_cb.nci_ctrl_size = *p++; /* Max Control Packet Payload Length */
     p_cb->init_credits = p_cb->num_buff = 0;
-
     nfc_set_conn_id(p_cb, NFC_RF_CONN_ID);
     if(nfc_cb.nci_version == NCI_VERSION_2_0) {
       if (evt_data.enable.nci_features & NCI_FEAT_HCI_NETWORK)
@@ -946,9 +945,7 @@ uint16_t NFC_GetLmrtSize(void) {
 ** Returns          NCI version NCI2.0 / NCI1.0
 **
 *******************************************************************************/
-uint8_t NFC_GetNCIVersion() {
-  return nfc_cb.nci_version;
-}
+uint8_t NFC_GetNCIVersion() { return nfc_cb.nci_version; }
 
 /*******************************************************************************
 **
@@ -1375,6 +1372,7 @@ tNFC_STATUS NFC_Deactivate(tNFC_DEACT_TYPE deactivate_type) {
       nfc_cb.p_last_disc = NULL;
     }
     nfc_cb.p_last_disc = nfc_cb.p_disc_pending;
+    nfa_dm_cb.disc_cb.disc_flags &= ~NFA_DM_DISC_FLAGS_W4_RSP;
 #else
       GKI_freebuf(nfc_cb.p_disc_pending);
 #endif
@@ -1400,7 +1398,22 @@ tNFC_STATUS NFC_Deactivate(tNFC_DEACT_TYPE deactivate_type) {
   status = nci_snd_deactivate_cmd(deactivate_type);
   return status;
 }
-
+/*******************************************************************************
+**
+** Function         NFC_SetPowerSubState
+**
+** Description      This function is called to send the power sub state (screen
+**                  state) to NFCC. The response from NFCC is reported by
+**                  tNFC_RESPONSE_CBACK as NFC_SET_POWER_STATE_REVT.
+**
+** Parameters       scree_state
+**
+** Returns          tNFC_STATUS
+**
+*******************************************************************************/
+tNFC_STATUS NFC_SetPowerSubState(uint8_t screen_state) {
+  return nci_snd_core_set_power_sub_state(screen_state);
+}
 /*******************************************************************************
 **
 ** Function         NFC_UpdateRFCommParams
@@ -1494,23 +1507,6 @@ tNFC_STATUS NFC_SetPowerOffSleep(bool enable) {
   return NFC_STATUS_FAILED;
 }
 
-/*******************************************************************************
-**
-** Function         NFC_SetPowerSubState
-**
-** Description      This function is called to send the power sub state( screen state)
-**                      to NFCC. The response from NFCC is reported by
-**                  tNFC_RESPONSE_CBACK as NFC_SET_POWER_STATE_REVT.
-**
-** Parameters       scree_state
-**
-** Returns          tNFC_STATUS
-**
-*******************************************************************************/
-tNFC_STATUS NFC_SetPowerSubState (uint8_t screen_state)
-{
-  return nci_snd_core_set_power_sub_state(screen_state);
-}
 /*******************************************************************************
 **
 ** Function         NFC_PowerCycleNFCC
@@ -1882,16 +1878,17 @@ int32_t NFC_ResetNfcServicePid()
 **
 ** Function         NFC_ISODEPNakPresCheck
 **
-** Description      This function is called to send the ISO DEP nak presenc check cmd
-**                  to check that the remote end point in RF field.
+** Description      This function is called to send the ISO DEP nak presenc
+**                  check cmd to check that the remote end point in RF field.
 **
-**                  The response from NFCC is reported by call back.The ntf indicates
-**                  success if card is present in field or failed if card is lost.
+**                  The response from NFCC is reported by call back.The ntf
+**                  indicates success if card is present in field or failed
+**                  if card is lost.
 **
 ** Returns          tNFC_STATUS
 **
 *******************************************************************************/
-tNFC_STATUS NFC_ISODEPNakPresCheck () {
+tNFC_STATUS NFC_ISODEPNakPresCheck() {
   return nci_snd_iso_dep_nak_presence_check_cmd();
 }
 /*******************************************************************************

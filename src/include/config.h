@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -80,6 +80,7 @@ int GetNumValue(const char* name, void* p_value, unsigned long len);
 #define NAME_POWER_ON_DELAY "POWER_ON_DELAY"
 #define NAME_PRE_POWER_OFF_DELAY "PRE_POWER_OFF_DELAY"
 #define NAME_POST_POWER_OFF_DELAY "POST_POWER_OFF_DELAY"
+#define NAME_APPL_DTA_MODE "APPL_DTA_MODE"
 #define NAME_CE3_PRE_POWER_OFF_DELAY "CE3_PRE_POWER_OFF_DELAY"
 #define NAME_NFA_STORAGE "NFA_STORAGE"
 #define NAME_NFA_DM_START_UP_VSC_CFG "NFA_DM_START_UP_VSC_CFG"
@@ -88,7 +89,6 @@ int GetNumValue(const char* name, void* p_value, unsigned long len);
 #define NAME_P2P_LISTEN_TECH_MASK "P2P_LISTEN_TECH_MASK"
 #define NAME_UICC_LISTEN_TECH_EX_MASK "UICC_LISTEN_TECH_EXCLUDE_MASK"
 #if (NXP_EXTNS == TRUE)
-#define NAME_APPL_DTA_MODE "APPL_DTA_MODE"
 #define NAME_DEFAULT_AID_ROUTE "DEFAULT_AID_ROUTE"
 #define NAME_DEFAULT_DESFIRE_ROUTE "DEFAULT_DESFIRE_ROUTE"
 #define NAME_DEFAULT_MIFARE_CLT_ROUTE "DEFAULT_MIFARE_CLT_ROUTE"
@@ -130,6 +130,7 @@ int GetNumValue(const char* name, void* p_value, unsigned long len);
 #define NAME_NCI_HAL_MODULE "NCI_HAL_MODULE"
 #define NAME_NFA_POLL_BAIL_OUT_MODE "NFA_POLL_BAIL_OUT_MODE"
 #define NAME_NFA_PROPRIETARY_CFG "NFA_PROPRIETARY_CFG"
+#define NAME_NFA_AID_BLOCK_ROUTE "NFA_AID_BLOCK_ROUTE"
 #if (NXP_EXTNS == TRUE)
 #define NAME_NXP_ESE_LISTEN_TECH_MASK   "NXP_ESE_LISTEN_TECH_MASK"
 #define NAME_NXP_WM_MAX_WTX_COUNT       "NXP_WM_MAX_WTX_COUNT"
@@ -154,6 +155,15 @@ int GetNumValue(const char* name, void* p_value, unsigned long len);
 
 // default configuration
 #define default_transport "/dev/bcm2079x"
+
+/**
+ *  @brief defines the different major number used.
+ */
+#define FW_MAJOR_NUM_NQ2xx      "10"
+#define FW_MAJOR_NUM_NQ3xx      "11"
+#define FW_MAJOR_NUM_NQ4xx      "12"
+
+#define FW_MAJOR_NUM_LENGTH     2
 
 struct tUART_CONFIG {
   int m_iBaudrate;  // 115200
