@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 NXP Semiconductors
+ * Copyright (C) 2015-2018 NXP Semiconductors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #if !defined(NXPLOG__H_INCLUDED)
 #define NXPLOG__H_INCLUDED
 
-#include <cutils/log.h>
+#include <log/log.h>
 #include <phNxpNciHal_utils.h>
 typedef struct nci_log_level {
   uint8_t global_log_level;

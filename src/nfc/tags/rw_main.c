@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -262,10 +262,9 @@ tNFC_STATUS RW_SetActivatedTagType(tNFC_ACTIVATE_DEVT* p_activate_params,
         (p_activate_params->rf_tech_param.mode == NFC_DISCOVERY_TYPE_POLL_A)) {
       status = rw_t4t_select();
     }
-  } else if (NFC_PROTOCOL_15693 ==
-             p_activate_params->protocol) { /* ISO 15693 */
-    if (p_activate_params->rf_tech_param.mode ==
-        NFC_DISCOVERY_TYPE_POLL_ISO15693) {
+  } else if (NFC_PROTOCOL_T5T == p_activate_params->protocol) {
+    /* T5T */
+    if (p_activate_params->rf_tech_param.mode == NFC_DISCOVERY_TYPE_POLL_V) {
       status = rw_i93_select(p_activate_params->rf_tech_param.param.pi93.uid);
     }
   } else {

@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -706,6 +706,16 @@ void NFA_HciDebug(uint8_t action, uint8_t size, uint8_t* p_data);
 #if (NXP_EXTNS == TRUE)
 extern tNFA_STATUS NFA_HciSendHostTypeListCommand(tNFA_HANDLE hci_handle);
 extern tNFA_STATUS NFA_HciConfigureNfceeETSI12();
+/*******************************************************************************
+**
+** Function         NFA_IsPipeStatusNotCorrect
+**
+** Description      Checks and resets pipe status
+**
+** Returns          TRUE/FALSE
+**
+*******************************************************************************/
+extern bool NFA_IsPipeStatusNotCorrect();
 #endif
 #if (NXP_EXTNS == TRUE)
 /*******************************************************************************

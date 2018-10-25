@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -129,6 +129,7 @@
 #define NFA_HCI_EVT_WTX 0x11
 #define NFA_HCI_ABORT 0x12
 #define NFA_EVT_ABORT 0x11 /* ETSI12 */
+#define HCI_INVALID_CMD 0xFF
 #endif
 
 /* NFA HCI Connectivity gate Events */

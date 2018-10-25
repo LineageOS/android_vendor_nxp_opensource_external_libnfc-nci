@@ -2,7 +2,7 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
@@ -61,7 +61,6 @@ void LLCP_SetTestParams(uint8_t version, uint16_t wks) {
 }
 #endif
 
-#if (NXP_EXTNS == TRUE)
 /*******************************************************************************
 **
 ** Function         LLCP_RegisterDtaCback
@@ -73,11 +72,10 @@ void LLCP_SetTestParams(uint8_t version, uint16_t wks) {
 **
 *******************************************************************************/
 void LLCP_RegisterDtaCback(tLLCP_DTA_CBACK* p_dta_cback) {
-  LLCP_TRACE_API0("LLCP_RegisterDtaCback ()");
+  LLCP_TRACE_API1("%s", __func__);
 
   llcp_cb.p_dta_cback = p_dta_cback;
 }
-#endif
 
 /*******************************************************************************
 **

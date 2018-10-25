@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -505,12 +505,8 @@ extern tNFA_STATUS NFA_EeSetDefaultProtoRouting(
 *******************************************************************************/
 extern tNFA_STATUS NFA_EeAddAidRouting(tNFA_HANDLE ee_handle, uint8_t aid_len,
                                        uint8_t* p_aid,
-                                       tNFA_EE_PWR_STATE power_state
-#if (NXP_EXTNS == TRUE)
-                                       ,
-                                       uint8_t vs_info
-#endif
-                                       );
+                                       tNFA_EE_PWR_STATE power_state,
+                                       uint8_t aidInfo);
 
 /*******************************************************************************
 **
