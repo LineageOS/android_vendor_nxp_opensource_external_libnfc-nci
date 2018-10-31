@@ -59,7 +59,7 @@ cc_library_shared {
         "gki/ulinux/*.cc",
     ],
     include_dirs: [
-        "vendor/nxp/opensource/halimpl/extns/impl/",
+        "vendor/nxp/opensource/halimpl/SN100x/extns/impl/",
     ],
     product_variables: {
         debuggable: {
