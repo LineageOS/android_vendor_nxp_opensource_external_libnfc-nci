@@ -1893,13 +1893,17 @@ static void nfa_hci_timer_cback (TIMER_LIST_ENT *p_tle)
 
         memset (&evt_data, 0, sizeof (evt_data));
 
-        if (p_pipe_cmdrsp_info != NULL && p_pipe_cmdrsp_info->w4_cmd_rsp)
+        if (p_pipe_cmdrsp_info == NULL || p_pipe == NULL)
+        {
+            LOG(ERROR) << StringPrintf ("p_pipe_cmdrsp_info or p_pipe was found NULL");
+            return;
+        }
+        if (p_pipe_cmdrsp_info->w4_cmd_rsp)
         {
             /* Timeout to command response on host specific generic pipe */
             p_pipe_cmdrsp_info->w4_cmd_rsp = false;
 
-            if (p_pipe != NULL)
-              p_gate = nfa_hciu_find_gate_by_gid (p_pipe->local_gate);
+            p_gate = nfa_hciu_find_gate_by_gid (p_pipe->local_gate);
 
             if (p_gate == NULL)
             {
@@ -1974,8 +1978,7 @@ static void nfa_hci_timer_cback (TIMER_LIST_ENT *p_tle)
                 p_pipe_cmdrsp_info->w4_rsp_apdu_evt = false;
 
                 evt_data.apdu_aborted.status  = NFA_STATUS_TIMEOUT;
-                if (p_pipe != NULL)
-                  evt_data.apdu_aborted.host_id = p_pipe->dest_host;
+                evt_data.apdu_aborted.host_id = p_pipe->dest_host;
 
                 /* Send NFA_HCI_APDU_ABORTED_EVT to notify status */
                 nfa_hciu_send_to_app (NFA_HCI_APDU_ABORTED_EVT, &evt_data,
@@ -1988,8 +1991,7 @@ static void nfa_hci_timer_cback (TIMER_LIST_ENT *p_tle)
                 NFC_FlushData(NFC_HCI_CONN_ID);
                 evt_data.apdu_rcvd.status  = NFA_STATUS_TIMEOUT;
                 evt_data.apdu_rcvd.p_apdu  = NULL;
-                if (p_pipe != NULL)
-                  evt_data.apdu_rcvd.host_id = p_pipe->dest_host;
+                evt_data.apdu_rcvd.host_id = p_pipe->dest_host;
                 nfa_hci_cb.hci_state = NFA_HCI_STATE_IDLE;
                 /* notify NFA_HCI_RSP_APDU_RCVD_EVT to the application */
                 nfa_hciu_send_to_app (NFA_HCI_RSP_APDU_RCVD_EVT, &evt_data,
