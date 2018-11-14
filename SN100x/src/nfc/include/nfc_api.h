@@ -56,8 +56,8 @@
 #define NXP_EN_SN100U    1
 #define NXP_ANDROID_VER (9U)        /* NXP android version */
 #define NFC_NXP_MW_VERSION_MAJ (0x00) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN (0x11) /* MW Minor Version */
-#define NFC_NXP_MW_RC_VERSION (0x01) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MIN (0x13) /* MW Minor Version */
+#define NFC_NXP_MW_RC_VERSION (0x02) /* MW Minor Version */
 #define NFC_EE_DISC_OP_REMOVE 1
 #endif
 /* NFC application return status codes */
@@ -293,7 +293,8 @@ enum {
 #if (NXP_EXTNS == TRUE)
   ,NFC_RF_WTX_CEVT, /* 6  received rf wtx */
   NFC_RF_TRANSMISSION_ERROR, /* 7 CE Error events */
-  NFC_HCI_RESTART_TIMER
+  NFC_HCI_FC_STOPPED_EVT,
+  NFC_HCI_FC_STARTED_EVT
 #endif
 };
 typedef uint16_t tNFC_CONN_EVT;
@@ -413,14 +414,6 @@ typedef struct {
   tNFC_NFCEE_MODE mode; /* NFCEE mode       */
 } tNFC_NFCEE_MODE_SET_REVT;
 
-#if (APPL_DTA_MODE == TRUE)
-/* This data type is for FW Version */
-typedef struct {
-  uint8_t rom_code_version; /* ROM code Version  */
-  uint8_t major_version;    /* Major Version */
-  uint8_t minor_version;    /* Minor Version  */
-} tNFC_FW_VERSION;
-#endif
 #define NFC_MAX_AID_LEN NCI_MAX_AID_LEN /* 16 */
 #if (NXP_EXTNS == TRUE)
 #define NFC_MIN_APDU_DATA_LEN NCI_MIN_APDU_DATA_LEN
@@ -504,6 +497,7 @@ extern uint8_t NFC_GetNCIVersion();
 
 #if (NXP_EXTNS == TRUE)
 #define NFC_PROTOCOL_ISO7816 NCI_PROTOCOL_ISO7816
+#define NFC_PROTOCOL_T3BT NCI_PROTOCOL_T3BT
 #endif
 typedef uint8_t tNFC_PROTOCOL;
 
@@ -681,11 +675,18 @@ typedef tNFC_STATUS tNFC_START_DEVT;
 typedef tNCI_RF_PA_PARAMS tNFC_RF_PA_PARAMS;
 #define NFC_MAX_SENSB_RES_LEN NCI_MAX_SENSB_RES_LEN
 #define NFC_NFCID0_MAX_LEN 4
+#if (NXP_EXTNS == TRUE)
+#define NFC_PUPIID_MAX_LEN 8
+#endif
 typedef struct {
   uint8_t sensb_res_len; /* Length of SENSB_RES Response (Byte 2 - Byte 12 or
                             13) Available after Technology Detection */
   uint8_t sensb_res[NFC_MAX_SENSB_RES_LEN]; /* SENSB_RES Response (ATQ) */
   uint8_t nfcid0[NFC_NFCID0_MAX_LEN];
+#if (NXP_EXTNS == TRUE)
+  uint8_t pupiid_len;
+  uint8_t pupiid[NFC_PUPIID_MAX_LEN];
+#endif
 } tNFC_RF_PB_PARAMS;
 
 #define NFC_MAX_SENSF_RES_LEN NCI_MAX_SENSF_RES_LEN

@@ -137,7 +137,7 @@ void nfa_hci_ee_info_cback(tNFA_EE_DISC_STS status) {
                   /* Discovery operation is complete, retrieve discovery result */
                   nfa_hci_cb.num_nfcee = NFA_HCI_MAX_HOST_IN_NETWORK;
                   NFA_EeGetInfo(&nfa_hci_cb.num_nfcee, nfa_hci_cb.ee_info);
-                  for (int yy = 0; yy < NFA_HCI_MAX_HOST_IN_NETWORK; yy++) {
+                  for (int yy = 0; yy < nfa_hci_cb.num_nfcee; yy++) {
                       nfa_hci_cb.ee_info[yy].hci_enable_state = NFA_HCI_FL_EE_NONE;
                       nfa_hciu_add_host_resetting((nfa_hci_cb.ee_info[yy].ee_handle & ~NFA_HANDLE_GROUP_EE), NFCEE_REINIT);
                   }
@@ -275,7 +275,14 @@ void nfa_hci_ee_info_cback(tNFA_EE_DISC_STS status) {
                  if(nfa_hci_cb.reset_host[xx].reset_cfg & NFCEE_HCI_NOTIFY_ALL_PIPE_CLEARED &&
                    (nfa_hci_cb.reset_host[xx].reset_cfg & NFCEE_INIT_COMPLETED)) {
                      nfa_hciu_clear_host_resetting(nfa_hci_cb.curr_nfcee, NFCEE_HCI_NOTIFY_ALL_PIPE_CLEARED);
-                     nfa_hciu_clear_host_resetting(nfa_hci_cb.curr_nfcee, NFCEE_INIT_COMPLETED);
+                    if(nfa_hci_cb.reset_host[xx].reset_cfg & NFCEE_REINIT)
+                    {
+                      DLOG_IF(INFO, nfc_debug_enabled)
+                          << StringPrintf("NFCEE_HCI_NOTIFY_ALL_PIPE_CLEARED () handling pending NFCEE_UNRECOVERABLE_ERRROR");
+                      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("resetting 11");
+                      nfa_hciu_clear_host_resetting(nfa_hci_cb.curr_nfcee, NFCEE_REINIT);
+                      nfa_hci_cb.next_nfcee_idx += 1;
+                    }
                     if(!nfa_hci_check_set_apdu_pipe_ready_for_next_host ()) {
                       DLOG_IF(INFO, nfc_debug_enabled)
                           << StringPrintf("NFCEE_HCI_NOTIFY_ALL_PIPE_CLEARED () reset handling");
@@ -327,7 +334,6 @@ void nfa_hci_ee_info_cback(tNFA_EE_DISC_STS status) {
                 if (nfa_hciu_find_dyn_apdu_pipe_for_host (nfa_ee_cb.ecb[ee_entry_index].nfcee_id) == NULL)
                 {
                   nfa_hci_cb.curr_nfcee = nfa_ee_cb.ecb[ee_entry_index].nfcee_id;
-                  nfa_hci_cb.next_nfcee_idx = 0x00;
                   if(nfa_ee_cb.ecb[ee_entry_index].nfcee_id == NFA_HCI_FIRST_PROP_HOST) {
                     NFC_NfceePLConfig(nfa_ee_cb.ecb[ee_entry_index].nfcee_id, 0x03);
                     nfa_hciu_add_host_resetting(nfa_ee_cb.ecb[ee_entry_index].nfcee_id, NFCEE_INIT_COMPLETED);
@@ -794,7 +800,22 @@ void nfa_hci_startup_complete(tNFA_STATUS status) {
 #if(NXP_EXTNS == TRUE)
   if (nfcFL.eseFL._NCI_NFCEE_PWR_LINK_CMD) {
         if (nfa_hci_cb.curr_nfcee == NFA_HCI_FIRST_PROP_HOST) {
-            NFC_NfceePLConfig(NFA_HCI_FIRST_PROP_HOST, 0x01);
+            switch (nfa_ee_cb.ese_prv_pwr_cfg) {
+            case 0xFF:
+                NFC_NfceePLConfig(NFA_HCI_FIRST_PROP_HOST, 0x01);
+                break;
+            case 0x03:
+                /*Already sent as part of recovery*/
+                break;
+            case 0x02:
+            case 0x01:
+            case 0x00:
+                NFC_NfceePLConfig(NFA_HCI_FIRST_PROP_HOST, nfa_ee_cb.ese_prv_pwr_cfg);
+                break;
+            default:
+                /*Should never be here*/
+                LOG(ERROR) << StringPrintf("%s: Invalid Value received!!",__func__);
+            }
         }
   }
   nfa_hci_handle_pending_host_reset();
@@ -840,10 +861,9 @@ void nfa_hci_enable_one_nfcee(void) {
  **
  *******************************************************************************/
 bool nfa_hci_enable_one_nfcee(void) {
-    uint8_t xx, yy;
+    uint8_t xx;
     uint8_t nfceeid = 0;
     bool enable_cmplt = false;
-    bool recreate_pipe = false;
     DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("nfa_hci_enable_one_nfcee () enter");
 
@@ -862,17 +882,7 @@ bool nfa_hci_enable_one_nfcee(void) {
                     continue;
                 }
                 if(nfa_hci_cb.ee_info[xx].hci_enable_state == NFA_HCI_FL_EE_ENABLED) {
-                  for (yy = 0; yy < NFA_HCI_MAX_HOST_IN_NETWORK; yy++) {
-                    if((nfa_hci_cb.reset_host[yy].reset_cfg & NFCEE_INIT_COMPLETED) &&
-                      (nfa_hci_cb.reset_host[yy].host_id == nfceeid)) {
-                      recreate_pipe = true;
-                      DLOG_IF(INFO, nfc_debug_enabled)
-                        << StringPrintf("nfa_hci_enable_one_nfcee reset_cfg NFCEE_INIT_COMPLETED()");
-                          nfa_hciu_clear_host_resetting(nfceeid, NFCEE_INIT_COMPLETED);
-                      break;
-                    }
-                  }
-                  if(recreate_pipe && nfa_hci_check_set_apdu_pipe_ready_for_next_host ()) {
+                  if(nfa_hci_check_set_apdu_pipe_ready_for_next_host ()) {
                     nfa_hci_cb.next_nfcee_idx = xx + 1;
                     enable_cmplt = true;
                     break;
@@ -1091,7 +1101,11 @@ static void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
     /* deregister message handler on NFA SYS */
     nfa_sys_deregister(NFA_ID_HCI);
   }
-
+#if(NXP_EXTNS == TRUE)
+    else if(event == NFC_HCI_FC_STARTED_EVT || event  == NFC_HCI_FC_STOPPED_EVT) {
+    nfa_hci_handle_control_evt(event , p_data);
+  }
+#endif
   if (event != NFC_DATA_CEVT)
       return;
 
@@ -1811,7 +1825,7 @@ void nfa_hci_release_transceive(uint8_t host_id) {
   {
       /* Timeout in APDU Pipe */
       DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf ("nfa_hci_timer_cback () Timeout on APDU Pipe");
+      << StringPrintf ("nfa_hci_release_transceive () pending requests");
 
       p_pipe_cmdrsp_info->p_rsp_buf    = NULL;
       p_pipe_cmdrsp_info->rsp_buf_size = 0;
@@ -1826,7 +1840,7 @@ void nfa_hci_release_transceive(uint8_t host_id) {
 
           evt_data.apdu_aborted.status  = NFA_STATUS_TIMEOUT;
           evt_data.apdu_aborted.host_id = p_pipe->dest_host;
-
+          evt_data.apdu_aborted.atr_len = 0;
           /* Send NFA_HCI_APDU_ABORTED_EVT to notify status */
           nfa_hciu_send_to_app (NFA_HCI_APDU_ABORTED_EVT, &evt_data,
                                 p_pipe_cmdrsp_info->pipe_user);
