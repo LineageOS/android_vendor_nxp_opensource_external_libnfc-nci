@@ -3306,7 +3306,7 @@ static bool nfa_hci_api_abort_apdu (tNFA_HCI_EVENT_DATA *p_evt_data)
                              pipe_id);
     }
 #endif
-    else if (p_pipe_cmdrsp_info->msg_rx_len > 0)
+    else if (p_pipe_cmdrsp_info != NULL && p_pipe_cmdrsp_info->msg_rx_len > 0)
     {
         /* Too late to Abort command-APDU as one or more fragment of response APDU is already
         ** received. NFA_HCI_RSP_APDU_RCVD_EVT will be reported after all fragments of response
@@ -3315,7 +3315,7 @@ static bool nfa_hci_api_abort_apdu (tNFA_HCI_EVENT_DATA *p_evt_data)
         DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf ("nfa_hci_api_abort_apdu(): Too late to Abort as C-APDU is processed");
     }
-    else
+    else if (p_pipe_cmdrsp_info != NULL)
     {
         /* No response APDU is received, release Rsp APDU buffer so that if any
         ** Rsp APDU is received later for the command APDU sent, it will be dropped
