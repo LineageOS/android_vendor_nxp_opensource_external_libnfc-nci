@@ -2451,8 +2451,19 @@ static void nfa_hci_get_pipe_state_cb(__attribute__((unused))uint8_t event, __at
       DLOG_IF(INFO, nfc_debug_enabled)
         << StringPrintf("nfa_hci_get_pipe_state_cb APDU pipe not available");
       if(nfa_hci_check_nfcee_init_complete(NFA_HCI_FIRST_PROP_HOST) || conn_status)
+      {
         nfa_hciu_send_create_pipe_cmd (NFA_HCI_APDU_APP_GATE,
             NFA_HCI_FIRST_PROP_HOST, NFA_HCI_APDU_GATE);
+      } else {
+        DLOG_IF(INFO, nfc_debug_enabled)
+          << StringPrintf("nfa_hci_get_pipe_state_cb APDU pipe not available wait for status NFCEE_INIT_COMPLETED");
+        if ((nfa_hci_cb.hci_state == NFA_HCI_STATE_STARTUP)
+          || (nfa_hci_cb.hci_state == NFA_HCI_STATE_WAIT_NETWK_ENABLE))
+        {
+          if (!nfa_hci_enable_one_nfcee ())
+            nfa_hci_startup_complete (NFA_STATUS_OK);
+       }
+      }
     }
 }
 
@@ -2632,7 +2643,7 @@ void nfa_hci_handle_pending_host_reset() {
         nfa_hci_handle_clear_all_pipe_cmd(nfa_hci_cb.reset_host[xx].host_id);
         break;
       } else if (nfa_hci_cb.reset_host[xx].reset_cfg & NFCEE_UNRECOVERABLE_ERRROR) {
-          nfa_hci_release_transceive(nfa_hci_cb.reset_host[xx].host_id);
+          nfa_hci_release_transceive(nfa_hci_cb.reset_host[xx].host_id, NFA_STATUS_HCI_UNRECOVERABLE_ERROR);
           nfa_hci_cb.curr_nfcee = nfa_hci_cb.reset_host[xx].host_id;
           nfa_hci_cb.next_nfcee_idx = 0x00;
           if(NFC_NfceeDiscover(true) == NFC_STATUS_FAILED) {
@@ -2991,6 +3002,9 @@ static void nfa_hci_handle_apdu_app_gate_hcp_msg_data (uint8_t *p_data, uint16_t
                        << StringPrintf ("%s:  Max WTX count reached",__func__);
                     nfa_hci_cb.m_wtx_count = 0;
                     if(p_pipe_cmdrsp_info->w4_rsp_apdu_evt) {
+                        DLOG_IF(INFO, nfc_debug_enabled)
+                           << StringPrintf ("%s:  Max WTX count w4_rsp_apdu_evt",__func__);
+
                         evt_data.apdu_rcvd.apdu_len = 0;
                         evt_data.apdu_rcvd.p_apdu = NULL;
                         evt_data.apdu_rcvd.status = NFA_STATUS_HCI_WTX_TIMEOUT;
@@ -3485,6 +3499,12 @@ static void nfa_hci_handle_clear_all_pipe_cmd(uint8_t source_host) {
         }
     }
     else {
+      if(source_host == NFA_HCI_FIRST_PROP_HOST) {
+        if ((p_pipe = nfa_hciu_find_dyn_apdu_pipe_for_host (source_host)) != NULL) {
+          if(nfcFL.eseFL._NCI_NFCEE_PWR_LINK_CMD)
+            NFC_NfceePLConfig(source_host, 0x03);
+        }
+      }
         nfa_hciu_remove_all_pipes_from_host(source_host);
     }
 }
