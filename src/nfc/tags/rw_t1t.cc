@@ -284,6 +284,7 @@ void rw_t1t_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
           p_data->data.p_data = NULL;
         }
       }
+      [[fallthrough]];
     /* Data event with error status...fall through to NFC_ERROR_CEVT case */
 
     case NFC_ERROR_CEVT:
