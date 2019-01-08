@@ -70,10 +70,6 @@ using android::base::StringPrintf;
 static const uint8_t nfc_mpl_code_to_size[] = {64, 128, 192, 254};
 
 #endif /* NFC_RW_ONLY */
-#if (APPL_DTA_MODE == TRUE)
-// Global Structure varibale for FW Version
-static tNFC_FW_VERSION nfc_fw_version;
-#endif
 #define NFC_PB_ATTRIB_REQ_FIXED_BYTES 1
 #define NFC_LB_ATTRIB_REQ_FIXED_BYTES 8
 
@@ -248,7 +244,6 @@ uint8_t nfc_ncif_send_data(tNFC_CONN_CB* p_cb, NFC_HDR* p_data) {
     NCI_DATA_PBLD_HDR(pp, pbf, hdr0, ulen);
 
     if (p_cb->num_buff != NFC_CONN_NO_FC) p_cb->num_buff--;
-
     /* send to HAL */
     HAL_WRITE(p);
   nfcsnoop_capture(p, false);
@@ -362,19 +357,6 @@ void nfc_ncif_check_cmd_queue(NFC_HDR* p_buf) {
     }
   }
 }
-
-#if (APPL_DTA_MODE == TRUE)
-/*******************************************************************************
-**
-** Function         nfc_ncif_getFWVersion
-**
-** Description      This function is called to fet the FW Version
-**
-** Returns          tNFC_FW_VERSION
-**
-*******************************************************************************/
-tNFC_FW_VERSION nfc_ncif_getFWVersion() { return nfc_fw_version; }
-#endif
 
 /*******************************************************************************
 **
@@ -671,6 +653,20 @@ void nfc_ncif_proc_credits(uint8_t* p, __attribute__((unused)) uint16_t plen) {
       if (p_cb->conn_id != NFC_RF_CONN_ID) {
         nfc_stop_timer(&nfc_cb.nci_wait_data_ntf_timer);
       }
+      tNFC_CONN evt_data;
+      if (p_cb->conn_id == NFC_HCI_CONN_ID) {
+        if(p_cb->num_buff == NFC_CONN_NO_CREDITS) {
+          LOG(ERROR) << StringPrintf("nfc_ncif_proc_credits  no credits");
+          nfc_cb.flags |= NFC_FL_HCI_FC_STOPPED;
+          if(p_cb->p_cback)
+            (*p_cb->p_cback)(NFC_HCI_CONN_ID , NFC_HCI_FC_STOPPED_EVT, &evt_data);
+        } else if(p_cb->num_buff && (nfc_cb.flags & NFC_FL_HCI_FC_STOPPED)) {
+            LOG(ERROR) << StringPrintf("nfc_ncif_proc_credits   credits received");
+            nfc_cb.flags &= ~NFC_FL_HCI_FC_STOPPED;
+            if(p_cb->p_cback)
+              (*p_cb->p_cback)(NFC_HCI_CONN_ID , NFC_HCI_FC_STARTED_EVT, &evt_data);
+        }
+      }
 #endif
       /* check if there's nay data in tx q to be sent */
       nfc_ncif_send_data(p_cb, NULL);
@@ -918,6 +914,12 @@ void nfc_ncif_proc_activate(uint8_t* p, uint8_t len) {
 
   if (evt_data.activate.protocol == NCI_PROTOCOL_18092_ACTIVE)
     evt_data.activate.protocol = NCI_PROTOCOL_NFC_DEP;
+
+#if(NXP_EXTNS == TRUE)
+  if ((evt_data.activate.protocol == NCI_PROTOCOL_UNKNOWN) &&
+      (p_intf->type == NCI_INTERFACE_FRAME))
+    evt_data.activate.protocol = NCI_PROTOCOL_T3BT;
+#endif
 
   evt_data.activate.rf_tech_param.mode = *p++;
   buff_size = *p++;

@@ -13,6 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/******************************************************************************
+ *
+ *  Copyright 2018 NXP
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
+
 #include "nfc_config.h"
 #include "NfcAdaptation.h"
 
@@ -25,7 +43,9 @@
 
 using namespace ::std;
 using namespace ::android::base;
-
+#if(NXP_EXTNS == TRUE)
+#define PATH_TRANSIT_CONF "/data/nfc/libnfc-nxpTransit.conf"
+#endif
 namespace {
 
 std::string findConfigPath() {
@@ -48,6 +68,12 @@ void NfcConfig::loadConfig() {
   string config_path = findConfigPath();
   CHECK(config_path != "");
   config_.parseFromFile(config_path);
+#if(NXP_EXTNS == TRUE)
+  struct stat file_stat;
+  /* Read Transit configs if available */
+  if (stat(PATH_TRANSIT_CONF, &file_stat) == 0)
+    config_.parseFromFile(PATH_TRANSIT_CONF);
+#endif
   /* Read vendor specific configs */
   NfcAdaptation& theInstance = NfcAdaptation::GetInstance();
   std::map<std::string, ConfigValue> configMap;

@@ -13,6 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/******************************************************************************
+ *
+ *  Copyright 2018 NXP
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
+
 #include "config.h"
 
 #include <android-base/file.h>
@@ -107,11 +125,34 @@ void ConfigFile::addConfig(const std::string& key, ConfigValue& value) {
   values_.emplace(key, value);
 }
 
+#if(NXP_EXTNS == TRUE)
+bool ConfigFile::updateConfig(const std::string& key, ConfigValue& value) {
+  std::map<std::string, ConfigValue>::iterator it = values_.find(key);
+  if (it != values_.end() && isUpdateAllowed(key)) {
+    it->second = value;
+    return true;
+  }
+  return false;
+}
+
+bool ConfigFile::isUpdateAllowed(const std::string& key) {
+  if ((key.compare("P2P_LISTEN_TECH_MASK") == 0) ||
+      (key.compare("HOST_LISTEN_TECH_MASK") == 0) ||
+      (key.compare("UICC_LISTEN_TECH_MASK") == 0) ||
+      (key.compare("POLLING_TECH_MASK") == 0))
+    return true;
+  return false;
+}
+#endif
+
 void ConfigFile::parseFromFile(const std::string& file_name) {
   string config;
   bool config_read = ReadFileToString(file_name, &config);
   CHECK(config_read);
   LOG(INFO) << "ConfigFile - Parsing file '" << file_name << "'";
+#if(NXP_EXTNS == TRUE)
+  cur_file_name_ = file_name;
+#endif
   parseFromString(config);
 }
 
@@ -133,10 +174,18 @@ void ConfigFile::parseFromString(const std::string& config) {
     ConfigValue value;
     bool value_parsed = value.parseFromString(value_string);
     CHECK(value_parsed);
-    addConfig(key, value);
 
-    LOG(INFO) << "ConfigFile - [" << key << "] = " << value_string;
+#if(NXP_EXTNS == TRUE)
+    if (cur_file_name_.find("nxpTransit") != std::string::npos) {
+      if (updateConfig(key, value))
+        LOG(INFO) << "ConfigFile Updated - [" << key << "] = " << value_string;
+    } else {
+      addConfig(key, value);
+      LOG(INFO) << "ConfigFile - [" << key << "] = " << value_string;
+    }
   }
+  cur_file_name_ = "";
+#endif
 }
 
 bool ConfigFile::hasKey(const std::string& key) {

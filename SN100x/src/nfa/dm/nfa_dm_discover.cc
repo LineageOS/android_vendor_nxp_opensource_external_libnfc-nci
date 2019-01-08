@@ -196,7 +196,12 @@ static uint8_t nfa_dm_get_rf_discover_config(
   }
 
   /* Check polling B */
+#if (NXP_EXTNS == TRUE)
+  if (dm_disc_mask & (NFA_DM_DISC_MASK_PB_ISO_DEP
+                      | NFA_DM_DISC_MASK_PB_T3BT)) {
+#else
   if (dm_disc_mask & NFA_DM_DISC_MASK_PB_ISO_DEP) {
+#endif
     disc_params[num_params].type = NFC_DISCOVERY_TYPE_POLL_B;
     disc_params[num_params].frequency = p_nfa_dm_rf_disc_freq_cfg->pb;
     num_params++;
@@ -721,6 +726,10 @@ static tNFA_DM_DISC_TECH_PROTO_MASK nfa_dm_disc_get_disc_mask(
   } else if (NFC_DISCOVERY_TYPE_POLL_B == tech_n_mode) {
     if (protocol == NFC_PROTOCOL_ISO_DEP)
       disc_mask = NFA_DM_DISC_MASK_PB_ISO_DEP;
+#if (NXP_EXTNS == TRUE)
+    else if (protocol == NFC_PROTOCOL_T3BT)
+      disc_mask = NFA_DM_DISC_MASK_PB_T3BT;
+#endif
   } else if (NFC_DISCOVERY_TYPE_POLL_F == tech_n_mode) {
     if (protocol == NFC_PROTOCOL_T3T)
       disc_mask = NFA_DM_DISC_MASK_PF_T3T;
@@ -1157,27 +1166,29 @@ void nfa_dm_start_rf_discover(void) {
     if (dm_disc_mask & NFA_DM_DISC_MASK_NFC_DEP) {
       nfa_p2p_set_config(dm_disc_mask);
     }
-    if (dm_disc_mask &
-        (NFA_DM_DISC_MASK_PF_NFC_DEP | NFA_DM_DISC_MASK_PF_T3T)) {
-      /* According to the NFC Forum Activity spec, controllers must:
-       * 1) Poll with RC=0 and SC=FFFF to find NFC-DEP targets
-       * 2) Poll with RC=1 and SC=FFFF to find T3T targets
-       * Many controllers don't do this yet, and seem to be activating
-       * NFC-DEP by default.
-       *
-       * We can at least fix the scenario where we're not interested
-       * in NFC-DEP, by setting RC=1 in that case. Otherwise, keep
-       * the default of RC=0. */
-      p = config_params;
-      UINT8_TO_STREAM(p, NFC_PMID_PF_RC);
-      UINT8_TO_STREAM(p, NCI_PARAM_LEN_PF_RC);
-      if ((dm_disc_mask & NFA_DM_DISC_MASK_PF_NFC_DEP) &&
-          !nfa_dm_is_p2p_paused()) {
-        UINT8_TO_STREAM(p, 0x00);  // RC=0
-      } else {
-        UINT8_TO_STREAM(p, 0x01);  // RC=1
+    if (NFC_GetNCIVersion() == NCI_VERSION_1_0) {
+      if (dm_disc_mask &
+          (NFA_DM_DISC_MASK_PF_NFC_DEP | NFA_DM_DISC_MASK_PF_T3T)) {
+        /* According to the NFC Forum Activity spec, controllers must:
+         * 1) Poll with RC=0 and SC=FFFF to find NFC-DEP targets
+         * 2) Poll with RC=1 and SC=FFFF to find T3T targets
+         * Many controllers don't do this yet, and seem to be activating
+         * NFC-DEP by default.
+         *
+         * We can at least fix the scenario where we're not interested
+         * in NFC-DEP, by setting RC=1 in that case. Otherwise, keep
+         * the default of RC=0. */
+        p = config_params;
+        UINT8_TO_STREAM(p, NFC_PMID_PF_RC);
+        UINT8_TO_STREAM(p, NCI_PARAM_LEN_PF_RC);
+        if ((dm_disc_mask & NFA_DM_DISC_MASK_PF_NFC_DEP) &&
+            !nfa_dm_is_p2p_paused()) {
+          UINT8_TO_STREAM(p, 0x00);  // RC=0
+        } else {
+          UINT8_TO_STREAM(p, 0x01);  // RC=1
+        }
+        nfa_dm_check_set_config(p - config_params, config_params, false);
       }
-      nfa_dm_check_set_config(p - config_params, config_params, false);
     }
   }
 

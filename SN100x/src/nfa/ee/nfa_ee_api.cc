@@ -329,7 +329,7 @@ tNFA_STATUS NFA_SendPowerLinkCommand(uint8_t nfcee_id, uint8_t cfg_value) {
     p_msg->hdr.event = NFA_EE_NCI_PWR_LNK_CTRL_SET_EVT;
     p_msg->nfcee_id= nfcee_id;
     p_msg->cfg_value = cfg_value;
-
+    nfa_ee_cb.ese_prv_pwr_cfg = cfg_value;
     nfa_sys_sendmsg(p_msg);
 
     return (NFA_STATUS_OK);
@@ -1054,7 +1054,7 @@ tNFA_STATUS NFA_EeDisconnect(tNFA_HANDLE ee_handle) {
 **
 *******************************************************************************/
 uint16_t NFA_GetAidTableSize() {
-  return NFA_EE_MAX_AID_CFG_LEN;
+  return NFA_EE_MAX_AID_CFG_LEN - 4;
 }
 
 /*******************************************************************************
