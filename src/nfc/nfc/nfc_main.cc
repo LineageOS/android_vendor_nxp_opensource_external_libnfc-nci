@@ -1287,11 +1287,6 @@ tNFC_STATUS NFC_SendData(uint8_t conn_id, NFC_HDR* p_data) {
 
   if (p_cb && p_data &&
       p_data->offset >= NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE) {
-#if (NXP_EXTNS == TRUE)
-    if(p_data->len > p_cb->buff_size){
-      p_data->offset = 0;
-    }
-#endif
     status = nfc_ncif_send_data(p_cb, p_data);
   }
   if (status != NFC_STATUS_OK) GKI_freebuf(p_data);
@@ -1814,6 +1809,7 @@ int32_t NFC_RelSvddWait(void* pdata) {
         return NFC_STATUS_EPERM;
     }
   nfc_nci_IoctlInOutData_t inpOutData;
+  inpOutData.inp.level = *(uint32_t*)pdata;
   int32_t status;
   status = nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_REL_SVDD_WAIT, &inpOutData);
   *(tNFC_STATUS*)pdata = inpOutData.out.data.status;
@@ -1831,7 +1827,9 @@ int32_t NFC_RelSvddWait(void* pdata) {
 *******************************************************************************/
 int32_t NFC_RelForceDwpOnOffWait (void *pdata)
 {
-    return (nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_REL_DWP_WAIT, pdata));
+  nfc_nci_IoctlInOutData_t inpOutData;
+  inpOutData.inp.level = *(uint32_t*)pdata;
+  return (nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_REL_DWP_WAIT, &inpOutData));
 }
 #endif
 

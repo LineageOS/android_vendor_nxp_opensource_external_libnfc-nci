@@ -154,18 +154,28 @@ void nfa_ee_init(void) {
 **
 *******************************************************************************/
 void nfa_ee_sys_enable(void) {
+  bool enableBlockRoute = false;
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s", __func__);
 
   nfa_ee_cb.route_block_control = 0x00;
 
-  if (NfcConfig::hasKey(NAME_AID_BLOCK_ROUTE)) {
+  if (NfcConfig::hasKey(NAME_NXP_PROP_BLACKLIST_ROUTING)) {
+    unsigned retlen = NfcConfig::getUnsigned(NAME_NXP_PROP_BLACKLIST_ROUTING);
+    if ((retlen == 0x01) && ((NFC_GetNCIVersion() == NCI_VERSION_1_0) ||
+                             (nfcFL.nfccFL._NFCC_ROUTING_BLOCK_BIT == true))) {
+      enableBlockRoute = true;
+    }
+  } else if (NfcConfig::hasKey(NAME_AID_BLOCK_ROUTE)) {
     unsigned retlen = NfcConfig::getUnsigned(NAME_AID_BLOCK_ROUTE);
     if ((retlen == 0x01) && ((NFC_GetNCIVersion() == NCI_VERSION_2_0)
         || (nfcFL.nfccFL._NFCC_ROUTING_BLOCK_BIT == true))) {
-      nfa_ee_cb.route_block_control = NCI_ROUTE_QUAL_BLOCK_ROUTE;
-      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_ee_cb.route_block_control=0x%x",
-                       nfa_ee_cb.route_block_control);
+      enableBlockRoute = true;
     }
+  }
+  if (enableBlockRoute == true) {
+    nfa_ee_cb.route_block_control = NCI_ROUTE_QUAL_BLOCK_ROUTE;
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+        "nfa_ee_cb.route_block_control=0x%x", nfa_ee_cb.route_block_control);
   }
 #if (NXP_EXTNS == TRUE)
   nfa_ee_get_num_nfcee_configured(nfa_ee_read_num_nfcee_config_cb);
@@ -359,7 +369,7 @@ void nfa_ee_proc_hci_info_cback(void) {
 void nfa_ee_proc_evt(tNFC_RESPONSE_EVT event, void* p_data) {
   tNFA_EE_INT_EVT int_event = 0;
   tNFA_EE_NCI_WAIT_RSP cbk;
-
+  cbk.opcode = 0;
   switch (event) {
     case NFC_NFCEE_DISCOVER_REVT: /* 4  NFCEE Discover response */
       int_event = NFA_EE_NCI_DISC_RSP_EVT;
@@ -407,10 +417,8 @@ void nfa_ee_proc_evt(tNFC_RESPONSE_EVT event, void* p_data) {
   if (int_event) {
     cbk.hdr.event = int_event;
     cbk.p_data = p_data;
-    cbk.opcode = 0;
     tNFA_EE_MSG nfa_ee_msg;
     nfa_ee_msg.wait_rsp = cbk;
-
     nfa_ee_evt_hdlr(&nfa_ee_msg.hdr);
   }
 }

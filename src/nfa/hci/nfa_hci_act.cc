@@ -2331,6 +2331,7 @@ static void nfa_hci_handle_generic_gate_evt(uint8_t* p_data, uint16_t data_len,
   evt_data.rcvd_evt.pipe = p_pipe->pipe_id;
   evt_data.rcvd_evt.evt_code = nfa_hci_cb.inst;
   evt_data.rcvd_evt.evt_len = data_len;
+  evt_data.rcvd_evt.last_SentEvtType = 0;
 
   if (nfa_hci_cb.assembly_failed)
     evt_data.rcvd_evt.status = NFA_STATUS_BUFFER_FULL;
@@ -2715,6 +2716,7 @@ void nfa_hci_handle_nfcee_config_evt(uint16_t event) {
         nfa_hci_cb.nfcee_cfg.discovery_stopped =
             nfa_dm_act_stop_rf_discovery(NULL);
       }
+      [[fallthrough]];
 
     case NFA_HCI_READ_SESSIONID:
       /*Read the session ID of the host discovered */
