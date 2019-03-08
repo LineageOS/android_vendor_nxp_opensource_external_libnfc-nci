@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -44,10 +44,11 @@
 
 #ifndef RW_API_H
 #define RW_API_H
+#include "nfc_api.h"
 #include "tags_defs.h"
 
-#define RW_T1T_BLD_ADD(a, k, y) a = ((k & 0xF) << 3) | (y & 0x7);
-#define RW_T1T_BLD_ADDS(a, s) a = ((s & 0xF) << 4);
+#define RW_T1T_BLD_ADD(a, k, y) (a) = (((k) & 0xF) << 3) | ((y) & 0x7);
+#define RW_T1T_BLD_ADDS(a, s) (a) = (((s) & 0xF) << 4);
 
 #define RW_T1T_FIRST_EVT 0x20
 #define RW_T2T_FIRST_EVT 0x40
@@ -178,23 +179,11 @@ typedef uint8_t tRW_EVENT;
 /* Tag is one time programmable */
 #define RW_NDEF_FL_OTP 0x80
 
-#define RW_T4T_CHK_ISO_DEP_NAK_PRES_CHK 5
-
 typedef uint8_t tRW_NDEF_FLAG;
 
-
 /* options for RW_T4tPresenceCheck  */
-#define RW_T4T_CHK_READ_BINARY_CH0 0
-#define RW_T4T_CHK_READ_BINARY_CH1 1
-#define RW_T4T_CHK_READ_BINARY_CH2 2
-#define RW_T4T_CHK_READ_BINARY_CH3 3
-#define RW_T4T_CHK_EMPTY_I_BLOCK 4
-
-typedef struct {
-  tNFC_STATUS status;
-  uint8_t hr[T1T_HR_LEN];
-  uint8_t uid[T1T_CMD_UID_LEN];
-} tRW_T1T_RID_EVT;
+#define RW_T4T_CHK_EMPTY_I_BLOCK 1
+#define RW_T4T_CHK_ISO_DEP_NAK_PRES_CHK 5
 
 typedef struct {
   tNFC_STATUS status;
@@ -284,6 +273,7 @@ typedef struct {
 
 typedef union {
   tNFC_STATUS status;
+  tRW_T2T_DETECT t2t_detect;       /* t2t NDEF information                  */
   tRW_T3T_POLL t3t_poll;           /* Response to t3t poll command          */
   tRW_T3T_SYSTEM_CODES t3t_sc;     /* Received system codes from t3 tag     */
   tRW_DETECT_TLV_DATA tlv;         /* The information of detected TLV data  */
@@ -1113,7 +1103,7 @@ extern tNFC_STATUS RW_I93ReadMultipleBlocks(uint16_t first_block_number,
 **                  NFC_STATUS_FAILED if other error
 **
 *******************************************************************************/
-extern tNFC_STATUS RW_I93WriteMultipleBlocks(uint8_t first_block_number,
+extern tNFC_STATUS RW_I93WriteMultipleBlocks(uint16_t first_block_number,
                                              uint16_t number_blocks,
                                              uint8_t* p_data);
 
@@ -1375,20 +1365,6 @@ extern tNFC_STATUS RW_SendRawFrame(uint8_t* p_raw_data, uint16_t data_len);
 *******************************************************************************/
 extern tNFC_STATUS RW_SetActivatedTagType(tNFC_ACTIVATE_DEVT* p_activate_params,
                                           tRW_CBACK* p_cback);
-
-/*******************************************************************************
-**
-** Function         RW_SetTraceLevel
-**
-** Description      This function sets the trace level for Reader/Writer mode.
-**                  If called with a value of 0xFF,
-**                  it simply returns the current trace level.
-**
-** Returns          The new or current trace level
-**
-*******************************************************************************/
-extern uint8_t RW_SetTraceLevel(uint8_t new_level);
-
 #if (NXP_EXTNS == TRUE)
 extern tNFC_STATUS RW_T3BtGetPupiID();
 #endif

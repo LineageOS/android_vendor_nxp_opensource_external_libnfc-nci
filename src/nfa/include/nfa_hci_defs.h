@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015 NXP Semiconductors
+ *  Copyright (C) 2015-2018 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -52,7 +52,6 @@
 #endif
 
 #define NFA_HCI_FIRST_HOST_SPECIFIC_GENERIC_GATE 0x10
-#define NFA_HCI_LAST_HOST_SPECIFIC_GENERIC_GATE 0xEF
 #define NFA_HCI_FIRST_PROP_GATE 0xF0
 #define NFA_HCI_LAST_PROP_GATE 0xFF
 
@@ -75,8 +74,6 @@
 
 /* host_table */
 #define NFA_HCI_HOST_CONTROLLER 0x00
-#define NFA_HCI_DH_HOST 0x01
-#define NFA_HCI_UICC_HOST 0x02
 
 /* Type of instruction */
 #define NFA_HCI_COMMAND_TYPE 0x00
@@ -129,6 +126,7 @@
 #define NFA_HCI_EVT_WTX 0x11
 #define NFA_HCI_ABORT 0x12
 #define NFA_EVT_ABORT 0x11 /* ETSI12 */
+#define HCI_INVALID_CMD 0xFF
 #endif
 
 /* NFA HCI Connectivity gate Events */
@@ -138,7 +136,6 @@
 
 /* Host controller Admin gate registry identifiers */
 #define NFA_HCI_SESSION_IDENTITY_INDEX 0x01
-#define NFA_HCI_MAX_PIPE_INDEX 0x02
 #define NFA_HCI_WHITELIST_INDEX 0x03
 #define NFA_HCI_HOST_LIST_INDEX 0x04
 #if (NXP_EXTNS == TRUE)
@@ -146,9 +143,6 @@
 #define NFA_HCI_HOST_TYPE_INDEX 0x06
 #define NFA_HCI_HOST_TYPE_LIST_INDEX 0x07
 #endif
-
-/* Host controller and DH Link management gate registry identifier */
-#define NFA_HCI_REC_ERROR_INDEX 0x02
 
 /* DH Identity management gate registry identifier */
 #define NFA_HCI_VERSION_SW_INDEX 0x01
