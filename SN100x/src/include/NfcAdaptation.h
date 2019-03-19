@@ -50,6 +50,14 @@ namespace V1_0 {
 struct INqNfc;
 } } } } }
 
+namespace vendor {
+namespace nxp {
+namespace hardware {
+namespace nfc {
+namespace V1_1 {
+struct INqNfc;
+} } } } }
+
 class NfcDeathRecipient;
 class ThreadMutex {
  public:
@@ -117,6 +125,7 @@ class NfcAdaptation {
   static android::sp<android::hardware::nfc::V1_0::INfc> mHal;
   static android::sp<android::hardware::nfc::V1_1::INfc> mHal_1_1;
   static android::sp<vendor::nxp::hardware::nfc::V1_0::INqNfc> mNqHal;
+  static android::sp<vendor::nxp::hardware::nfc::V1_1::INqNfc> mNqHal_1_1;
   static android::hardware::nfc::V1_1::INfcClientCallback* mCallback;
   static tHAL_NFC_CBACK* mHalCallback;
   static tHAL_NFC_DATA_CBACK* mHalDataCallback;

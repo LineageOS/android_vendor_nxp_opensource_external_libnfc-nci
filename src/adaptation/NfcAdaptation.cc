@@ -26,6 +26,7 @@
 #include <android/hardware/nfc/1.0/types.h>
 #include <android/hardware/nfc/1.1/INfc.h>
 #include <vendor/nxp/hardware/nfc/1.0/INqNfc.h>
+#include <vendor/nxp/hardware/nfc/1.1/INqNfc.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <cutils/properties.h>
@@ -57,6 +58,7 @@ using NfcVendorConfig = android::hardware::nfc::V1_1::NfcConfig;
 using android::hardware::nfc::V1_1::INfcClientCallback;
 using android::hardware::hidl_vec;
 using vendor::nxp::hardware::nfc::V1_0::INqNfc;
+using INqNfcV1_1 = vendor::nxp::hardware::nfc::V1_1::INqNfc;
 using android::hardware::configureRpcThreadpool;
 using ::android::hardware::hidl_death_recipient;
 using ::android::wp;
@@ -74,6 +76,7 @@ ThreadMutex NfcAdaptation::sIoctlLock;
 sp<INfc> NfcAdaptation::mHal;
 sp<INfcV1_1> NfcAdaptation::mHal_1_1;
 sp<INqNfc> NfcAdaptation::mNqHal;
+sp<INqNfcV1_1> NfcAdaptation::mNqHal_1_1;
 INfcClientCallback* NfcAdaptation::mCallback;
 tHAL_NFC_CBACK* NfcAdaptation::mHalCallback = NULL;
 tHAL_NFC_DATA_CBACK* NfcAdaptation::mHalDataCallback = NULL;
@@ -580,8 +583,12 @@ void NfcAdaptation::InitializeHalDeviceContext() {
           (mHal->isRemote() ? "remote" : "local"));
   }
   mHal->linkToDeath(mNfcHalDeathRecipient,0);
-  LOG(INFO) << StringPrintf("%s: INqNfc::getService()", func);
-  mNqHal = INqNfc::tryGetService();
+  LOG(INFO) << StringPrintf("%s: Try INqNfcV1_1::getService()", func);
+  mNqHal = mNqHal_1_1 = INqNfcV1_1::getService();
+  if (mNqHal_1_1 == nullptr) {
+    LOG(INFO) << StringPrintf("%s: Failure in INqNfcV1_1 getService. Try INqNfc::getService()", func);
+    mNqHal = INqNfc::getService();
+  }
   if(mNqHal == nullptr) {
     LOG(INFO) << StringPrintf ( "Failed to retrieve the NXPNFC HAL!");
   } else {
