@@ -130,7 +130,9 @@ class NfcAdaptation {
   static tHAL_NFC_CBACK* mHalCallback;
   static tHAL_NFC_DATA_CBACK* mHalDataCallback;
   static ThreadCondVar mHalOpenCompletedEvent;
+#if (NXP_EXTNS == FALSE)
   static ThreadCondVar mHalCloseCompletedEvent;
+#endif
   static android::sp<NfcDeathRecipient> mDeathRecipient;
 
   static uint32_t NFCA_TASK(uint32_t arg);
