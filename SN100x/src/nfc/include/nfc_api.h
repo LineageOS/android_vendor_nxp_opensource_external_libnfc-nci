@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018 NXP
+ *  Copyright 2018-2019 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -54,10 +54,10 @@
 
 #if (NXP_EXTNS == TRUE)
 #define NXP_EN_SN100U    1
-#define NXP_ANDROID_VER (9U)        /* NXP android version */
+#define NXP_ANDROID_VER (10U)        /* NXP android version */
 #define NFC_NXP_MW_VERSION_MAJ (0x00) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN (0x15) /* MW Minor Version */
-#define NFC_NXP_MW_RC_VERSION (0x01) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MIN (0x04) /* MW Minor Version */
+#define NFC_NXP_MW_CUSTOMER_ID (0x00) /* MW Customer Id */
 #define NFC_EE_DISC_OP_REMOVE 1
 #endif
 /* NFC application return status codes */
@@ -524,6 +524,7 @@ typedef uint8_t tNFC_RF_TECH_N_MODE;
 
 /* Select Response codes */
 #define NFC_SEL_RES_NFC_FORUM_T2T 0x00
+#define NFC_SEL_RES_MF_CLASSIC 0x08
 
 /* Bit Rates */
 #define NFC_BIT_RATE_212 NCI_BIT_RATE_212   /* 212 kbit/s */
@@ -553,6 +554,7 @@ typedef uint8_t tNFC_DEACT_TYPE;
  *  Deactivation Reasons
  **********************************************/
 #define NFC_DEACTIVATE_REASON_DH_REQ_FAILED NCI_DEACTIVATE_REASON_DH_REQ_FAILED
+#define NFC_DEACTIVATE_REASON_DH_REQ NCI_DEACTIVATE_REASON_DH_REQ
 typedef uint8_t tNFC_DEACT_REASON;
 
 /* the data type associated with NFC_RF_FIELD_REVT */

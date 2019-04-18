@@ -554,6 +554,8 @@ typedef uint8_t tNCI_DISCOVERY_TYPE;
 #define NCI_PARAM_ID_RF_FIELD_INFO 0x80
 #define NCI_PARAM_ID_NFC_DEP_OP 0x82
 
+#define NCI_PARAM_ID_NFCC_CONFIG_CONTROL 0x85
+
 /* Type A Parameters */
 #define NCI_PARAM_PLATFORM_T1T 0x0C
 #define NCI_PARAM_SEL_INFO_ISODEP 0x20
@@ -679,7 +681,7 @@ typedef struct {
 } tNCI_RF_LF_PARAMS;
 
 #ifndef NCI_MAX_ATS_LEN
-#define NCI_MAX_ATS_LEN 60
+#define NCI_MAX_ATS_LEN 64
 #endif
 #ifndef NCI_MAX_HIS_BYTES_LEN
 #define NCI_MAX_HIS_BYTES_LEN 50

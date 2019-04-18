@@ -75,7 +75,9 @@ const tNFA_EE_SM_ACT nfa_ee_actions[] = {
     nfa_ee_api_deregister,      /* NFA_EE_API_DEREGISTER_EVT    */
     nfa_ee_api_mode_set,        /* NFA_EE_API_MODE_SET_EVT      */
     nfa_ee_api_set_tech_cfg,    /* NFA_EE_API_SET_TECH_CFG_EVT  */
+    nfa_ee_api_clear_tech_cfg,  /*NFA_EE_API_CLEAR_TECH_CFG_EVT */
     nfa_ee_api_set_proto_cfg,   /* NFA_EE_API_SET_PROTO_CFG_EVT */
+    nfa_ee_api_clear_proto_cfg, /*NFA_EE_API_CLEAR_PROTO_CFG_EVT*/
     nfa_ee_api_add_aid,         /* NFA_EE_API_ADD_AID_EVT       */
     nfa_ee_api_remove_aid,      /* NFA_EE_API_REMOVE_AID_EVT    */
     nfa_ee_api_add_sys_code,    /* NFA_EE_API_ADD_SYSCODE_EVT   */
@@ -351,7 +353,7 @@ void nfa_ee_proc_hci_info_cback(void) {
 *******************************************************************************/
 void nfa_ee_proc_evt(tNFC_RESPONSE_EVT event, void* p_data) {
   tNFA_EE_INT_EVT int_event = 0;
-  tNFA_EE_NCI_WAIT_RSP cbk;
+  tNFA_EE_NCI_WAIT_RSP cbk = tNFA_EE_NCI_WAIT_RSP();
 
   switch (event) {
     case NFC_NFCEE_DISCOVER_REVT: /* 4  NFCEE Discover response */
@@ -432,7 +434,7 @@ uint8_t nfa_ee_ecb_to_mask(tNFA_EE_ECB* p_cb) {
 *******************************************************************************/
 tNFA_EE_ECB* nfa_ee_find_ecb(uint8_t nfcee_id) {
   uint32_t xx;
-  tNFA_EE_ECB *p_ret = NULL, *p_cb;
+  tNFA_EE_ECB *p_ret = nullptr, *p_cb;
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   if (nfcee_id == NFC_DH_ID) {
@@ -461,7 +463,7 @@ tNFA_EE_ECB* nfa_ee_find_ecb(uint8_t nfcee_id) {
 *******************************************************************************/
 tNFA_EE_ECB* nfa_ee_find_ecb_by_conn_id(uint8_t conn_id) {
   uint32_t xx;
-  tNFA_EE_ECB *p_ret = NULL, *p_cb;
+  tNFA_EE_ECB *p_ret = nullptr, *p_cb;
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   p_cb = nfa_ee_cb.ecb;
@@ -607,8 +609,12 @@ static std::string nfa_ee_sm_evt_2_str(uint16_t event) {
       return "API_MODE_SET";
     case NFA_EE_API_SET_TECH_CFG_EVT:
       return "API_SET_TECH_CFG";
+    case NFA_EE_API_CLEAR_TECH_CFG_EVT:
+      return "API_CLEAR_TECH_CFG";
     case NFA_EE_API_SET_PROTO_CFG_EVT:
       return "API_SET_PROTO_CFG";
+    case NFA_EE_API_CLEAR_PROTO_CFG_EVT:
+      return "API_CLEAR_PROTO_CFG";
     case NFA_EE_API_ADD_AID_EVT:
       return "API_ADD_AID";
     case NFA_EE_API_REMOVE_AID_EVT:

@@ -53,7 +53,6 @@
 #include "nfc_int.h"
 #include "rw_api.h"
 #include "rw_int.h"
-#include "trace_api.h"
 
 using android::base::StringPrintf;
 
@@ -348,7 +347,7 @@ bool rw_i93_process_sys_info(uint8_t* p_data) {
           */
           if (!(p_i93->intl_flags & RW_I93_FLAG_16BIT_NUM_BLOCK)) {
             /* get memory size with protocol extension flag */
-            if (rw_i93_send_cmd_get_sys_info(NULL, I93_FLAG_PROT_EXT_YES) ==
+            if (rw_i93_send_cmd_get_sys_info(nullptr, I93_FLAG_PROT_EXT_YES) ==
                 NFC_STATUS_OK) {
               /* STM supports more than 2040 bytes */
               p_i93->intl_flags |= RW_I93_FLAG_16BIT_NUM_BLOCK;
@@ -363,7 +362,7 @@ bool rw_i93_process_sys_info(uint8_t* p_data) {
           p_i93->block_size = 4;
         } else if (!(p_i93->info_flags & I93_INFO_FLAG_MEM_SIZE)) {
           if (!(p_i93->intl_flags & RW_I93_FLAG_EXT_COMMANDS)) {
-            if (rw_i93_send_cmd_get_ext_sys_info(NULL) == NFC_STATUS_OK) {
+            if (rw_i93_send_cmd_get_ext_sys_info(nullptr) == NFC_STATUS_OK) {
               /* STM supports more than 2040 bytes */
               p_i93->intl_flags |= RW_I93_FLAG_EXT_COMMANDS;
 
@@ -396,7 +395,7 @@ bool rw_i93_check_sys_info_prot_ext(uint8_t error_code) {
   if ((p_i93->uid[1] == I93_UID_IC_MFG_CODE_STM) &&
       (p_i93->sent_cmd == I93_CMD_GET_SYS_INFO) &&
       (error_code == I93_ERROR_CODE_OPTION_NOT_SUPPORTED) &&
-      (rw_i93_send_cmd_get_sys_info(NULL, I93_FLAG_PROT_EXT_YES) ==
+      (rw_i93_send_cmd_get_sys_info(nullptr, I93_FLAG_PROT_EXT_YES) ==
        NFC_STATUS_OK)) {
     return true;
   } else {
@@ -580,7 +579,7 @@ bool rw_i93_send_to_lower(NFC_HDR* p_msg) {
   /* store command for retransmitting */
   if (rw_cb.tcb.i93.p_retry_cmd) {
     GKI_freebuf(rw_cb.tcb.i93.p_retry_cmd);
-    rw_cb.tcb.i93.p_retry_cmd = NULL;
+    rw_cb.tcb.i93.p_retry_cmd = nullptr;
   }
 
   rw_cb.tcb.i93.p_retry_cmd = (NFC_HDR*)GKI_getpoolbuf(NFC_RW_POOL_ID);
@@ -909,7 +908,8 @@ tNFC_STATUS rw_i93_send_cmd_lock_block(uint8_t block_number) {
   ARRAY8_TO_STREAM(p, rw_cb.tcb.i93.uid); /* UID */
 
   if (rw_cb.tcb.i93.intl_flags & RW_I93_FLAG_EXT_COMMANDS) {
-    UINT16_TO_STREAM(p, block_number); /* Block number */
+    UINT8_TO_STREAM(p, block_number); /* Block number */
+    UINT8_TO_STREAM(p, 0x00);
     p_cmd->len++;
   } else {
     UINT8_TO_STREAM(p, block_number); /* Block number */
@@ -1652,7 +1652,7 @@ void rw_i93_sm_detect_ndef(NFC_HDR* p_resp) {
         rw_i93_handle_error(NFC_STATUS_FAILED);
       } else {
         /* get system information to get memory size */
-        if (rw_i93_send_cmd_get_sys_info(NULL, I93_FLAG_PROT_EXT_NO) ==
+        if (rw_i93_send_cmd_get_sys_info(nullptr, I93_FLAG_PROT_EXT_NO) ==
             NFC_STATUS_OK) {
           p_i93->sub_state = RW_I93_SUBSTATE_WAIT_SYS_INFO;
         } else {
@@ -2310,7 +2310,7 @@ void rw_i93_sm_update_ndef(NFC_HDR* p_resp) {
 
         p_i93->state = RW_I93_STATE_IDLE;
         p_i93->sent_cmd = 0;
-        p_i93->p_update_data = NULL;
+        p_i93->p_update_data = nullptr;
 
         rw_data.status = NFC_STATUS_OK;
         (*(rw_cb.p_cback))(RW_I93_NDEF_UPDATE_CPLT_EVT, &rw_data);
@@ -2379,7 +2379,7 @@ void rw_i93_sm_format(NFC_HDR* p_resp) {
       STREAM_TO_ARRAY8(p_uid, p); /* store UID */
 
       /* get system information to get memory size */
-      if (rw_i93_send_cmd_get_sys_info(NULL, I93_FLAG_PROT_EXT_NO) ==
+      if (rw_i93_send_cmd_get_sys_info(nullptr, I93_FLAG_PROT_EXT_NO) ==
           NFC_STATUS_OK) {
         p_i93->sub_state = RW_I93_SUBSTATE_WAIT_SYS_INFO;
       } else {
@@ -2639,7 +2639,7 @@ void rw_i93_sm_format(NFC_HDR* p_resp) {
         }
       } else {
         GKI_freebuf(p_i93->p_update_data);
-        p_i93->p_update_data = NULL;
+        p_i93->p_update_data = nullptr;
 
         p_i93->state = RW_I93_STATE_IDLE;
         p_i93->sent_cmd = 0;
@@ -2790,7 +2790,12 @@ void rw_i93_handle_error(tNFC_STATUS status) {
 
   if (rw_cb.p_cback) {
     rw_data.status = status;
-
+#if (NXP_EXTNS == TRUE)
+      if(NFC_STATUS_TIMEOUT == rw_data.status)
+      {
+        p_i93->state = RW_I93_STATE_IDLE;
+      }
+#endif
     switch (p_i93->state) {
       case RW_I93_STATE_IDLE: /* in case of RawFrame */
         event = RW_I93_INTF_ERROR_EVT;
@@ -2823,14 +2828,14 @@ void rw_i93_handle_error(tNFC_STATUS status) {
         break;
 
       case RW_I93_STATE_UPDATE_NDEF:
-        p_i93->p_update_data = NULL;
+        p_i93->p_update_data = nullptr;
         event = RW_I93_NDEF_UPDATE_FAIL_EVT;
         break;
 
       case RW_I93_STATE_FORMAT:
         if (p_i93->p_update_data) {
           GKI_freebuf(p_i93->p_update_data);
-          p_i93->p_update_data = NULL;
+          p_i93->p_update_data = nullptr;
         }
         event = RW_I93_FORMAT_CPLT_EVT;
         break;
@@ -2881,7 +2886,7 @@ void rw_i93_process_timeout(TIMER_LIST_ENT* p_tle) {
       LOG(ERROR) << StringPrintf("retry_count = %d", rw_cb.tcb.i93.retry_count);
 
       p_buf = rw_cb.tcb.i93.p_retry_cmd;
-      rw_cb.tcb.i93.p_retry_cmd = NULL;
+      rw_cb.tcb.i93.p_retry_cmd = nullptr;
 
       if (rw_i93_send_to_lower(p_buf)) {
         return;
@@ -2891,7 +2896,7 @@ void rw_i93_process_timeout(TIMER_LIST_ENT* p_tle) {
     /* all retrial is done or failed to send command to lower layer */
     if (rw_cb.tcb.i93.p_retry_cmd) {
       GKI_freebuf(rw_cb.tcb.i93.p_retry_cmd);
-      rw_cb.tcb.i93.p_retry_cmd = NULL;
+      rw_cb.tcb.i93.p_retry_cmd = nullptr;
       rw_cb.tcb.i93.retry_count = 0;
     }
     rw_i93_handle_error(NFC_STATUS_TIMEOUT);
@@ -2930,8 +2935,12 @@ static void rw_i93_data_cback(__attribute__((unused)) uint8_t conn_id,
         LOG(ERROR) << StringPrintf("retry_count = %d", p_i93->retry_count);
 
         p_resp = p_i93->p_retry_cmd;
-        p_i93->p_retry_cmd = NULL;
+        p_i93->p_retry_cmd = nullptr;
         if (rw_i93_send_to_lower(p_resp)) {
+          if (event == NFC_DATA_CEVT) {
+            p_resp = (NFC_HDR*)p_data->data.p_data;
+            GKI_freebuf(p_resp);
+          }
           return;
         }
       }
@@ -2939,7 +2948,7 @@ static void rw_i93_data_cback(__attribute__((unused)) uint8_t conn_id,
       /* all retrial is done or failed to send command to lower layer */
       if (p_i93->p_retry_cmd) {
         GKI_freebuf(p_i93->p_retry_cmd);
-        p_i93->p_retry_cmd = NULL;
+        p_i93->p_retry_cmd = nullptr;
         p_i93->retry_count = 0;
       }
 
@@ -2954,11 +2963,15 @@ static void rw_i93_data_cback(__attribute__((unused)) uint8_t conn_id,
       /* free retry buffer */
       if (p_i93->p_retry_cmd) {
         GKI_freebuf(p_i93->p_retry_cmd);
-        p_i93->p_retry_cmd = NULL;
+        p_i93->p_retry_cmd = nullptr;
         p_i93->retry_count = 0;
       }
-      NFC_SetStaticRfCback(NULL);
+      NFC_SetStaticRfCback(nullptr);
       p_i93->state = RW_I93_STATE_NOT_ACTIVATED;
+    }
+    if ((event == NFC_DATA_CEVT) && (p_data->status != NFC_STATUS_OK)) {
+      p_resp = (NFC_HDR*)p_data->data.p_data;
+      GKI_freebuf(p_resp);
     }
     return;
   }
@@ -2974,7 +2987,7 @@ static void rw_i93_data_cback(__attribute__((unused)) uint8_t conn_id,
   /* free retry buffer */
   if (p_i93->p_retry_cmd) {
     GKI_freebuf(p_i93->p_retry_cmd);
-    p_i93->p_retry_cmd = NULL;
+    p_i93->p_retry_cmd = nullptr;
     p_i93->retry_count = 0;
   }
 
@@ -2991,7 +3004,7 @@ static void rw_i93_data_cback(__attribute__((unused)) uint8_t conn_id,
         rw_data.raw_frame.status = p_data->data.status;
         rw_data.raw_frame.p_data = p_resp;
         (*(rw_cb.p_cback))(RW_I93_RAW_FRAME_EVT, &rw_data);
-        p_resp = NULL;
+        p_resp = nullptr;
       } else {
         GKI_freebuf(p_resp);
       }
@@ -3565,7 +3578,7 @@ tNFC_STATUS RW_I93GetSysInfo(uint8_t* p_uid) {
   if (p_uid) {
     status = rw_i93_send_cmd_get_sys_info(p_uid, I93_FLAG_PROT_EXT_NO);
   } else {
-    status = rw_i93_send_cmd_get_sys_info(NULL, I93_FLAG_PROT_EXT_NO);
+    status = rw_i93_send_cmd_get_sys_info(nullptr, I93_FLAG_PROT_EXT_NO);
   }
 
   if (status == NFC_STATUS_OK) {
@@ -3638,7 +3651,7 @@ tNFC_STATUS RW_I93DetectNDef(void) {
   }
 
   if (rw_cb.tcb.i93.uid[0] != I93_UID_FIRST_BYTE) {
-    status = rw_i93_send_cmd_inventory(NULL, false, 0x00);
+    status = rw_i93_send_cmd_inventory(nullptr, false, 0x00);
     sub_state = RW_I93_SUBSTATE_WAIT_UID;
   } else if ((rw_cb.tcb.i93.num_block == 0) ||
              (rw_cb.tcb.i93.block_size == 0)) {
