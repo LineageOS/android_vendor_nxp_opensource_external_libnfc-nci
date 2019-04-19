@@ -88,7 +88,7 @@ typedef struct
 
 #if(NXP_EXTNS == TRUE)
 /*
- * nxp_nfc_config_t shall contain the respective flag value from the
+ * nfc_config_t for NQx shall contain the respective flag value from the
  * libnfc-nxp.conf
  */
 typedef struct {
@@ -172,7 +172,7 @@ typedef struct {
   uint8_t uicc_wired_prt_mask;
   uint8_t wired_mode_rf_field_enable;
   uint8_t aid_block_route;
-}nxp_nfc_config_t;
+}nq_nfc_config_t;
 
 /*
  * outputData_t :ioctl has multiple commands/responses
@@ -189,6 +189,7 @@ typedef union{
     uint8_t             chipType;
 #if(NXP_EXTNS == TRUE)
     nxp_nfc_config_t    nxpConfigs;
+    nq_nfc_config_t    nqConfigs;
 #endif
 }outputData_t;
 
