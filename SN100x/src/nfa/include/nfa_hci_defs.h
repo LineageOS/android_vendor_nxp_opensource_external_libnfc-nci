@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018 NXP
+ *  Copyright 2018-2019 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -195,5 +195,6 @@
 #define NFA_HCI_GATES_LIST_INDEX 0x06
 #if(NXP_EXTNS == TRUE)
 #define NFA_HCI_MAX_CURRENT_INDEX 0x08
+#define NFA_HCI_EVT_UNKNOWN 0xFF
 #endif
 #endif /* NFA_HCI_DEFS_H */

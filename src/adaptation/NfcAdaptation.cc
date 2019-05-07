@@ -232,24 +232,24 @@ void NfcAdaptation::GetNxpConfigs(
       << StringPrintf("HAL_NFC_GET_NXP_CONFIG ioctl return value = %d", ret);
   configMap.emplace(
       NAME_NAME_NXP_ESE_LISTEN_TECH_MASK,
-      ConfigValue(inpOutData.out.data.nxpConfigs.ese_listen_tech_mask));
+      ConfigValue(inpOutData.out.data.nqConfigs.ese_listen_tech_mask));
   configMap.emplace(
       NAME_NXP_DEFAULT_NFCEE_DISC_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.default_nfcee_disc_timeout));
+      ConfigValue(inpOutData.out.data.nqConfigs.default_nfcee_disc_timeout));
   configMap.emplace(
       NAME_NXP_DEFAULT_NFCEE_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.default_nfcee_timeout));
+      ConfigValue(inpOutData.out.data.nqConfigs.default_nfcee_timeout));
   configMap.emplace(
       NAME_NXP_ESE_WIRED_PRT_MASK,
-      ConfigValue(inpOutData.out.data.nxpConfigs.ese_wired_prt_mask));
+      ConfigValue(inpOutData.out.data.nqConfigs.ese_wired_prt_mask));
   configMap.emplace(
       NAME_NXP_UICC_WIRED_PRT_MASK,
-      ConfigValue(inpOutData.out.data.nxpConfigs.uicc_wired_prt_mask));
+      ConfigValue(inpOutData.out.data.nqConfigs.uicc_wired_prt_mask));
   configMap.emplace(
       NAME_NXP_WIRED_MODE_RF_FIELD_ENABLE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.wired_mode_rf_field_enable));
+      ConfigValue(inpOutData.out.data.nqConfigs.wired_mode_rf_field_enable));
   configMap.emplace(NAME_AID_BLOCK_ROUTE,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.aid_block_route));
+                    ConfigValue(inpOutData.out.data.nqConfigs.aid_block_route));
 }
 
 void NfcAdaptation::GetVendorConfigs(

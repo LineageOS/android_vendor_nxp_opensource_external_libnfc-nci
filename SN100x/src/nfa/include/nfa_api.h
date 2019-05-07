@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018 NXP
+ *  Copyright 2018-2019 NXP
  *
  ******************************************************************************/
 
@@ -252,9 +252,7 @@ typedef enum power_substate {
   SCREEN_STATE_OFF_UNLOCKED,
   SCREEN_STATE_ON_LOCKED,
   SCREEN_STATE_OFF_LOCKED,
-#if (NXP_EXTNS == TRUE)
   SCREEN_STATE_INVALID = 0xFF
-#endif
 } epower_substate_t;
 
 #define NFA_SCREEN_STATE_MASK 0x0F
@@ -327,7 +325,7 @@ typedef struct {
   uint8_t android_version; /* Nxp's android version */
   uint8_t major_version;   /* Major Version of MW*/
   uint8_t minor_version;   /* Minor Version of Mw */
-  uint8_t rc_version;      /*RC version*/
+  uint8_t cust_id;         /*Customer id*/
 } tNFA_MW_VERSION;
 #endif
 

@@ -88,8 +88,12 @@ extern void nfa_nv_co_read(uint8_t* pBuffer, uint16_t nbytes, uint8_t block) {
       "%s: buffer len=%u; file=%s", __func__, nbytes, filename.c_str());
   int fileStream = open(filename.c_str(), O_RDONLY);
   if (fileStream >= 0) {
-    unsigned short checksum = 0;
-    read(fileStream, &checksum, sizeof(checksum));
+    uint16_t checksum = 0;
+    size_t checkSumRdData = read(fileStream, &checksum, sizeof(checksum));
+    if (checkSumRdData <= 0) {
+      LOG(ERROR) << StringPrintf("%s: failed to read checksum, errno = 0x%02x",
+                                 __func__, errno);
+    }
     size_t actualReadData = read(fileStream, pBuffer, nbytes);
     close(fileStream);
     if (actualReadData > 0) {
@@ -136,7 +140,7 @@ extern void nfa_nv_co_write(const uint8_t* pBuffer, uint16_t nbytes,
   int fileStream =
       open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
   if (fileStream >= 0) {
-    unsigned short checksum = crcChecksumCompute(pBuffer, nbytes);
+    uint16_t checksum = crcChecksumCompute(pBuffer, nbytes);
     size_t actualWrittenCrc = write(fileStream, &checksum, sizeof(checksum));
     size_t actualWrittenData = write(fileStream, pBuffer, nbytes);
     DLOG_IF(INFO, nfc_debug_enabled)
@@ -174,11 +178,30 @@ void delete_stack_non_volatile_store(bool forceDelete) {
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s", __func__);
 
-  remove(getFilenameForBlock(DH_NV_BLOCK).c_str());
-  remove(getFilenameForBlock(HC_F2_NV_BLOCK).c_str());
-  remove(getFilenameForBlock(HC_F3_NV_BLOCK).c_str());
-  remove(getFilenameForBlock(HC_F4_NV_BLOCK).c_str());
-  remove(getFilenameForBlock(HC_F5_NV_BLOCK).c_str());
+  if (remove(getFilenameForBlock(DH_NV_BLOCK).c_str())) {
+    LOG(ERROR) << StringPrintf(
+        "%s: fail to delete DH_NV_BLOCK file, errno = 0x%02X", __func__, errno);
+  }
+  if (remove(getFilenameForBlock(HC_F2_NV_BLOCK).c_str())) {
+    LOG(ERROR) << StringPrintf(
+        "%s: fail to delete HC_F2_NV_BLOCK file, errno = 0x%02X", __func__,
+        errno);
+  }
+  if (remove(getFilenameForBlock(HC_F3_NV_BLOCK).c_str())) {
+    LOG(ERROR) << StringPrintf(
+        "%s: fail to delete HC_F3_NV_BLOCK file, errno = 0x%02X", __func__,
+        errno);
+  }
+  if (remove(getFilenameForBlock(HC_F4_NV_BLOCK).c_str())) {
+    LOG(ERROR) << StringPrintf(
+        "%s: fail to delete HC_F4_NV_BLOCK file, errno = 0x%02X", __func__,
+        errno);
+  }
+  if (remove(getFilenameForBlock(HC_F5_NV_BLOCK).c_str())) {
+    LOG(ERROR) << StringPrintf(
+        "%s: fail to delete HC_F5_NV_BLOCK file, errno = 0x%02X", __func__,
+        errno);
+  }
 }
 
 /*******************************************************************************
