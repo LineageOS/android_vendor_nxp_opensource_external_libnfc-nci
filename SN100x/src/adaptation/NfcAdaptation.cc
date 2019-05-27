@@ -2,7 +2,7 @@
  *
  *  Copyright (C) 1999-2012 Broadcom Corporation
  *
- *  Copyright (C) 2018 NXP
+ *  Copyright (C) 2018-2019 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -175,6 +175,9 @@ class NfcDeathRecipient : public hidl_death_recipient {
 NfcAdaptation::NfcAdaptation() {
   mCurrentIoctlData = nullptr;
   memset(&mHalEntryFuncs, 0, sizeof(mHalEntryFuncs));
+#if (NXP_EXTNS == TRUE)
+  nfcBootMode = NFA_NORMAL_BOOT_MODE;
+#endif
 }
 /*******************************************************************************
 **
@@ -578,6 +581,7 @@ void NfcAdaptation::InitializeHalDeviceContext() {
                         mNqHal.get(),
                         (mNqHal->isRemote() ? "remote" : "local"));
   }
+  nfcBootMode = NFA_NORMAL_BOOT_MODE;
 }
 
 /*******************************************************************************
@@ -850,6 +854,18 @@ void NfcAdaptation::GetNxpConfigs(
   configMap.emplace(
       NAME_NXPLOG_NCIR_LOGLEVEL,
       ConfigValue(inpOutData.out.data.nxpConfigs.nxpLogNcirLogLevel));
+  configMap.emplace(
+      NAME_FORWARD_FUNCTIONALITY_ENABLE,
+      ConfigValue(inpOutData.out.data.nxpConfigs.fwdFunctionalityEnable));
+  configMap.emplace(
+      NAME_HOST_LISTEN_TECH_MASK,
+      ConfigValue(inpOutData.out.data.nxpConfigs.hostListenTechMask));
+  configMap.emplace(
+      NAME_NXP_SE_APDU_GATE_SUPPORT,
+      ConfigValue(inpOutData.out.data.nxpConfigs.seApduGateEnabled));
+  configMap.emplace(
+      NAME_NXP_POLL_FOR_EFD_TIMEDELAY,
+      ConfigValue(inpOutData.out.data.nxpConfigs.pollEfdDelay));
 }
 #endif
 /*******************************************************************************
@@ -1023,7 +1039,38 @@ void NfcAdaptation::HalDownloadFirmwareCallback(nfc_event_t event,
     }
   }
 }
+/*******************************************************************************
+**
+** Function         NFA_SetBootMode
+**
+** Description      This function enables the boot mode for NFC.
+**                  boot_mode  0 NORMAL_BOOT 1 FAST_BOOT
+**                  By default , the mode is set to NORMAL_BOOT.
 
+**
+** Returns          none
+**
+*******************************************************************************/
+void NfcAdaptation::NFA_SetBootMode(uint8_t boot_mode) {
+  nfcBootMode = boot_mode;
+  DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf("Set boot_mode:0x%x", nfcBootMode);
+}
+/*******************************************************************************
+**
+** Function         NFA_GetBootMode
+**
+** Description      This function returns the boot mode for NFC.
+**                  boot_mode  0 NORMAL_BOOT 1 FAST_BOOT
+**                  By default , the mode is set to NORMAL_BOOT.
+
+**
+** Returns          none
+**
+*******************************************************************************/
+uint8_t NfcAdaptation::NFA_GetBootMode() {
+  return nfcBootMode;
+}
 /*******************************************************************************
 **
 ** Function:    NfcAdaptation::HalDownloadFirmwareDataCallback
