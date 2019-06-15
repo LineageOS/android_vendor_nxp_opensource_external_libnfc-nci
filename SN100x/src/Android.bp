@@ -42,7 +42,7 @@ cc_library_shared {
         "gki/common",
         "nfa/include",
         "nfc/include",
-    ],
+       ],
     srcs: [
         "nfa/ce/*.cc",
         "nfa/dm/*.cc",
@@ -59,9 +59,6 @@ cc_library_shared {
         "adaptation/*.cc",
         "gki/common/*.cc",
         "gki/ulinux/*.cc",
-    ],
-    include_dirs: [
-        "vendor/nxp/opensource/commonsys/external/libnfc-nci/SN100x/extns/impl/",
     ],
     product_variables: {
         debuggable: {

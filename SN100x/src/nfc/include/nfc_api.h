@@ -53,11 +53,13 @@
 
 
 #if (NXP_EXTNS == TRUE)
+#define NXP_EN_SN110U    1
 #define NXP_EN_SN100U    1
 #define NXP_ANDROID_VER (10U)        /* NXP android version */
 #define NFC_NXP_MW_VERSION_MAJ (0x00) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN (0x04) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MIN (0x06) /* MW Minor Version */
 #define NFC_NXP_MW_CUSTOMER_ID (0x00) /* MW Customer Id */
+#define NFC_NXP_MW_RC_VERSION  (0x01) /* MW RC Version */
 #define NFC_EE_DISC_OP_REMOVE 1
 #endif
 /* NFC application return status codes */
@@ -134,6 +136,7 @@
 #define NFC_STATUS_BAD_HANDLE 0xFE
 /* congested                  */
 #define NFC_STATUS_CONGESTED 0xFF
+
 typedef uint8_t tNFC_STATUS;
 
 #if (NXP_EXTNS == TRUE)
@@ -179,7 +182,7 @@ typedef uint8_t tNFC_STATUS;
 #define NXP_NFC_PARAM_ID_RF_PARAM_ESE \
   ((unsigned char)0xF0) /* ESE RF parameter   */
 #define NXP_NFC_PARAM_ID_NFCC_RF_CONFIG \
-  ((unsigned char)0x9B) /* NFCC RF config parameter*/
+  ((unsigned char)0x85) /* NFCC RF config parameter*/
 #define NXP_NFC_EMVCO_PCD_COLLISION_DETECTED \
   ((unsigned char)0xE4) /* Core generic error for EMVCO collision detected */
 #define NXP_NFC_PARAM_ID_RF_PARAM_UICC2 \
