@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -54,9 +54,7 @@
 #define NCI_CTRL_INIT_SIZE 32  /* initial NFCC control payload size */
 #define NCI_MAX_VSC_SIZE 0xFF
 #define APPL_DTA_MODE TRUE
-#if (NXP_EXTNS == TRUE)
-#define NCI_EXT_DATA_MAX_HDR_SIZE 20 /* per NCI spec */
-#endif
+
 /* NCI header (3) + callback function pointer(8; use 8 to be safe) + HCIT (1
  * byte) */
 #define NCI_VSC_MSG_HDR_SIZE 12
@@ -541,6 +539,8 @@ typedef uint8_t tNCI_DISCOVERY_TYPE;
 
 #define NCI_PARAM_ID_RF_FIELD_INFO 0x80
 #define NCI_PARAM_ID_NFC_DEP_OP 0x82
+
+#define NCI_PARAM_ID_NFCC_CONFIG_CONTROL 0x85
 
 #define NCI_LISTEN_DH_NFCEE_ENABLE_MASK 0x00 /* The DH-NFCEE listen is considered as a enable NFCEE */
 #define NCI_LISTEN_DH_NFCEE_DISABLE_MASK 0x02 /* The DH-NFCEE listen is considered as a disable NFCEE */

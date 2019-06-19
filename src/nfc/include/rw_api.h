@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -58,6 +58,7 @@
 #if (NXP_EXTNS == TRUE)
 #define RW_T3BT_FIRST_EVT 0xB0
 #endif
+#define RW_MFC_FIRST_EVT 0xC0
 
 enum {
   /* Note: the order of these events can not be changed */
@@ -147,13 +148,27 @@ enum {
   RW_I93_PRESENCE_CHECK_EVT,   /* Response to RW_I93PresenceCheck    */
   RW_I93_RAW_FRAME_EVT,        /* Response of raw frame sent         */
   RW_I93_INTF_ERROR_EVT,       /* RF Interface error event           */
-#if (NXP_EXTNS == TRUE)
   RW_I93_MAX_EVT,
+#if (NXP_EXTNS == TRUE)
   RW_T3BT_RAW_READ_CPLT_EVT,
-  RW_T3BT_MAX_EVT
-#else
-  RW_I93_MAX_EVT
+  RW_T3BT_MAX_EVT,
 #endif
+
+  /* Mifare Classic tag events for tRW_CBACK */
+  RW_MFC_NDEF_DETECT_EVT =
+      RW_MFC_FIRST_EVT,      /* Result of NDEF detection procedure       */
+                             /* Mandatory NDEF file is selected          */
+  RW_MFC_NDEF_READ_EVT,      /* Segment of data received from mifare tag */
+  RW_MFC_NDEF_READ_CPLT_EVT, /* Read operation completed                 */
+  RW_MFC_NDEF_READ_FAIL_EVT, /* Read operation failed                    */
+
+  RW_MFC_NDEF_WRITE_CPLT_EVT,  /* Write operation completed               */
+  RW_MFC_NDEF_WRITE_FAIL_EVT,  /* Write operation failed                  */
+  RW_MFC_NDEF_FORMAT_CPLT_EVT, /* Format operation completed              */
+
+  RW_MFC_RAW_FRAME_EVT,  /* Response of raw frame sent               */
+  RW_MFC_INTF_ERROR_EVT, /* RF Interface error event                 */
+  RW_MFC_MAX_EVT
 };
 #if (NXP_EXTNS == TRUE)
 #define RW_I93_MAX_RSP_TIMEOUT 1000
@@ -1368,5 +1383,66 @@ extern tNFC_STATUS RW_SetActivatedTagType(tNFC_ACTIVATE_DEVT* p_activate_params,
 #if (NXP_EXTNS == TRUE)
 extern tNFC_STATUS RW_T3BtGetPupiID();
 #endif
+
+/*******************************************************************************
+**
+** Function         RW_MfcDetectNDef
+**
+** Description      This function performs NDEF detection procedure
+**
+**                  RW_MFC_NDEF_DETECT_EVT will be returned
+**
+** Returns          NFC_STATUS_OK if success
+**                  NFC_STATUS_FAILED if Mifare classic tag is busy or other
+*error
+**
+*******************************************************************************/
+extern tNFC_STATUS RW_MfcDetectNDef(void);
+
+/*******************************************************************************
+**
+** Function         RW_MfcReadNDef
+**
+** Description      This function can be called to read the NDEF message on the
+*tag.
+**
+** Parameters:      p_buffer:   The buffer into which to read the NDEF message
+**                  buf_len:    The length of the buffer
+**
+** Returns          NCI_STATUS_OK, if read was started. Otherwise, error status.
+**
+*******************************************************************************/
+extern tNFC_STATUS RW_MfcReadNDef(uint8_t* p_buffer, uint16_t buf_len);
+
+/*****************************************************************************
+**
+** Function         RW_MfcFormatNDef
+**
+** Description
+**      Format Tag content
+**
+** Returns
+**      NFC_STATUS_OK, Command sent to format Tag
+**      NFC_STATUS_REJECTED: cannot format the tag
+**      NFC_STATUS_FAILED: other error
+**
+*****************************************************************************/
+extern tNFC_STATUS RW_MfcFormatNDef(void);
+
+/*******************************************************************************
+**
+** Function         RW_MfcWriteNDef
+**
+** Description      This function can be called to write an NDEF message to the
+**                  tag.
+**
+** Parameters:      buf_len:    The length of the buffer
+**                  p_buffer:   The NDEF message to write
+**
+** Returns          NCI_STATUS_OK, if write was started. Otherwise, error
+**                  status.
+**
+*******************************************************************************/
+extern tNFC_STATUS RW_MfcWriteNDef(uint16_t buf_len, uint8_t* p_buffer);
 
 #endif /* RW_API_H */

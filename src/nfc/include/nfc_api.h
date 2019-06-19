@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -112,16 +112,17 @@
 #define NXP_EN_PN66T 0
 #define NXP_EN_PN551 0
 #define NXP_EN_PN67T 0
-#define NXP_EN_PN553 0
-#define NXP_EN_PN80T 0
+#define NXP_EN_PN553 1
+#define NXP_EN_PN80T 1
 #define NXP_EN_PN553_MR1 0
 #define NXP_EN_PN81A     0
 #define NXP_EN_PN553_MR2 0
 #define NXP_EN_PN557     1
 #define NXP_EN_PN81T     1
-#define NXP_ANDROID_VER (9U)        /* NXP android version */
-#define NFC_NXP_MW_VERSION_MAJ (0x02) /* MW Major Version */
+#define NXP_ANDROID_VER (10U)        /* NXP android version */
+#define NFC_NXP_MW_VERSION_MAJ (0x01) /* MW Major Version */
 #define NFC_NXP_MW_VERSION_MIN (0x00) /* MW Minor Version */
+#define NFC_NXP_MW_CUSTOMER_ID (0x00) /* MW Customer Id */
 #endif
 /* 0xE0 ~0xFF are proprietary status codes */
 /* Command started successfully                     */
@@ -357,6 +358,12 @@ enum {
   NFC_RF_TRANSMISSION_ERROR, /* 7 CE Error events */
   NFC_HCI_RESTART_TIMER
 };
+
+typedef enum {
+    NFC_INTF_REQ_SRC_SPI,
+    NFC_INTF_REQ_SRC_DWP
+} tNFC_INTF_REQ_SRC;
+
 typedef uint16_t tNFC_CONN_EVT;
 
 #define NFC_NFCC_INFO_LEN 4
@@ -605,6 +612,7 @@ typedef uint8_t tNFC_RF_TECH_N_MODE;
 
 /* Select Response codes */
 #define NFC_SEL_RES_NFC_FORUM_T2T 0x00
+#define NFC_SEL_RES_MF_CLASSIC 0x08
 
 #define  NCI_CALCULATE_ACK(a,v) {(a) &=  ((1 << (v)) -1);}
 #define  MAX_NUM_VALID_BITS_FOR_ACK      0x07
@@ -1001,6 +1009,10 @@ typedef union {
   tNFC_DATA_CEVT data;
 } tNFC_CONN;
 
+typedef enum {
+  NFC_HCI_INIT_COMPLETE = 0x00,/* Status of HCI initialization     */
+  NFC_HCI_INIT_START = 0x01
+} tNFC_HCI_INIT_STATUS;
 /*************************************
 **  Data Callback Functions
 **************************************/
@@ -1579,7 +1591,8 @@ extern uint16_t nfc_ncif_getMaxRoutingTableSize();
 ** Returns          tNFC_STATUS
 **
 *******************************************************************************/
-extern tNFC_STATUS NFC_Nfcee_PwrLinkCtrl(uint8_t nfcee_id, uint8_t cfg_value);
+extern tNFC_STATUS NFC_Nfcee_PwrLinkCtrl(uint8_t nfcee_id, uint8_t cfg_value,
+                                         tNFC_INTF_REQ_SRC reqSrc);
 
 /*******************************************************************************
 **
@@ -1775,6 +1788,16 @@ int32_t NFC_RelForceDwpOnOffWait (void *pdata);
 **
 *******************************************************************************/
 extern bool NFC_Queue_Is_empty(uint8_t conn_id);
+
+/*******************************************************************************
+ **
+ ** Function         NFC_updateHciInitStatus
+ **
+ ** Description      Send HCI Event to nfc HAL
+ **
+ ** Returns          Nothing
+ *******************************************************************************/
+void NFC_updateHciInitStatus(tNFC_HCI_INIT_STATUS status);
 #endif
 
 

@@ -28,7 +28,7 @@ namespace {
 bool parseBytesString(std::string in, std::vector<uint8_t>& out) {
   vector<string> values = Split(in, ":");
   if (values.size() == 0) return false;
-  for (string value : values) {
+  for (const string& value : values) {
     if (value.length() != 2) return false;
     uint8_t tmp = 0;
     string hexified = "0x";
@@ -41,13 +41,17 @@ bool parseBytesString(std::string in, std::vector<uint8_t>& out) {
 
 }  // namespace
 
-ConfigValue::ConfigValue() {}
+ConfigValue::ConfigValue() {
+  type_ = UNSIGNED;
+  value_unsigned_ = 0;
+}
 
 ConfigValue::ConfigValue(std::string value) {
   // Don't allow empty strings
   CHECK(!(value.empty()));
   type_ = STRING;
   value_string_ = value;
+  value_unsigned_ = 0;
 }
 
 ConfigValue::ConfigValue(unsigned value) {
@@ -59,6 +63,7 @@ ConfigValue::ConfigValue(std::vector<uint8_t> value) {
   CHECK(!(value.empty()));
   type_ = BYTES;
   value_bytes_ = value;
+  value_unsigned_ = 0;
 }
 
 ConfigValue::Type ConfigValue::getType() const { return type_; }
@@ -169,8 +174,8 @@ bool ConfigFile::hasKey(const std::string& key) {
 }
 
 ConfigValue& ConfigFile::getValue(const std::string& key) {
+  CHECK(values_.find(key) != values_.end());
   auto search = values_.find(key);
-  CHECK(search != values_.end());
   return search->second;
 }
 

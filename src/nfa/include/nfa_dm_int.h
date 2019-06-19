@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -220,15 +220,6 @@ typedef struct {
   uint8_t screen_state;
 } tNFA_DM_API_SET_POWER_SUB_STATE;
 
-#if (NXP_EXTNS == TRUE)
-typedef struct {
-  NFC_HDR hdr;
-  uint8_t hdr_info[NCI_EXT_DATA_MAX_HDR_SIZE];
-  uint8_t hdr_len;
-  uint8_t* p_data_buf;
-} tNFC_EXT_HDR;
-#endif
-
 /* union of all data types */
 typedef union {
   /* GKI event buffer header */
@@ -239,7 +230,6 @@ typedef union {
                                     /* NFA_DM_API_START_RF_DISCOVERY_EVT    */
                                     /* NFA_DM_API_STOP_RF_DISCOVERY_EVT     */
 #if (NXP_EXTNS == TRUE)
-  tNFC_EXT_HDR ext_hdr;             /* NFA_DM_API_RAW_FRAME_EVT             */
   tNFA_DM_API_SET_TRANSIT_CONFIG transit_config; /* NFA_DM_SET_TRANSIT_CONFIG */
 #endif
   tNFA_DM_API_ENABLE enable;        /* NFA_DM_API_ENABLE_EVT                */
@@ -336,7 +326,8 @@ typedef uint8_t tNFA_DM_RF_DISC_EVT;
 #define NFA_DM_DISC_MASK_PFA_NFC_DEP 0x00001000
 /* Legacy/proprietary/non-NFC Forum protocol (e.g Shanghai transit card) */
 #define NFA_DM_DISC_MASK_P_LEGACY 0x00002000
-#define NFA_DM_DISC_MASK_PB_T3BT 0x00004000
+#define NFA_DM_DISC_MASK_PA_MIFARE 0x00004000
+#define NFA_DM_DISC_MASK_PB_T3BT 0x00008000
 #define NFA_DM_DISC_MASK_POLL 0x0000FFFF
 
 #define NFA_DM_DISC_MASK_LA_T1T 0x00010000
@@ -598,6 +589,9 @@ typedef struct {
                                          sent in case of error scenerio */
 
   uint32_t eDtaMode;        /* For enable the DTA type modes. */
+  uint8_t pending_power_state; /* pending screen state change received in
+                                  LISTEN_ACTIVE state which needs to be applied
+                                  after current transaction is completed*/
 #if (NXP_EXTNS == TRUE)
   uint8_t selected_uicc_id; /* Current selected UICC ID */
 #endif
@@ -694,8 +688,6 @@ bool nfa_dm_act_send_vsc(tNFA_DM_MSG* p_data);
 #if (NXP_EXTNS == TRUE)
 void nfa_dm_p2p_prio_logic_disable();
 uint16_t nfa_dm_act_get_rf_disc_duration();
-tNFA_STATUS nfa_dm_get_extended_cmd_buf(tNFC_EXT_HDR** p_msg, uint32_t event,
-                                        uint8_t* p_data, uint16_t data_len) ;
 #endif
 bool nfa_dm_act_disable_timeout(tNFA_DM_MSG* p_data);
 bool nfa_dm_set_power_sub_state(tNFA_DM_MSG* p_data);

@@ -32,6 +32,7 @@
 
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
+#include <log/log.h>
 
 #include "nfc_target.h"
 
@@ -609,7 +610,12 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
             break;
 
           case TAG_LOCK_CTRL_TLV:
-            p_t2t->bytes_count--;
+            if (p_t2t->bytes_count > 0) {
+              p_t2t->bytes_count--;
+            } else {
+              LOG(ERROR) << StringPrintf("Underflow p_t2t->bytes_count!");
+              android_errorWriteLog(0x534e4554, "120506143");
+            }
             if ((tlvtype == TAG_LOCK_CTRL_TLV) || (tlvtype == TAG_NDEF_TLV)) {
               if (p_t2t->bytes_count > 2)
                 // avoid causing negative index
@@ -634,6 +640,10 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
 
                 /* Extract lockbytes info addressed by this Lock TLV */
                 xx = 0;
+                if (count > RW_T2T_MAX_LOCK_BYTES) {
+                  count = RW_T2T_MAX_LOCK_BYTES;
+                  android_errorWriteLog(0x534e4554, "112161557");
+                }
                 while (xx < count) {
                   p_t2t->lockbyte[p_t2t->num_lockbytes].tlv_index =
                       p_t2t->num_lock_tlvs;
@@ -656,7 +666,12 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
             break;
 
           case TAG_MEM_CTRL_TLV:
-            p_t2t->bytes_count--;
+            if (p_t2t->bytes_count > 0) {
+              p_t2t->bytes_count--;
+            } else {
+              LOG(ERROR) << StringPrintf("bytes_count underflow!");
+              android_errorWriteLog(0x534e4554, "120506143");
+            }
             if ((tlvtype == TAG_MEM_CTRL_TLV) || (tlvtype == TAG_NDEF_TLV)) {
               if (p_t2t->bytes_count > 2)
                 // avoid causing negative index
@@ -691,7 +706,12 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
             break;
 
           case TAG_PROPRIETARY_TLV:
-            p_t2t->bytes_count--;
+            if (p_t2t->bytes_count > 0) {
+              p_t2t->bytes_count--;
+            } else {
+              LOG(ERROR) << StringPrintf("bytes_count underflow!");
+              android_errorWriteLog(0x534e4554, "120506143");
+            }
             if (tlvtype == TAG_PROPRIETARY_TLV) {
               found = true;
               p_t2t->prop_msg_len = len;
@@ -714,7 +734,7 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
   /* If not found and not failed, read next block and search tlv */
   if (!found && !failed) {
     if (p_t2t->work_offset >=
-        (p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] * T2T_TMS_TAG_FACTOR)) {
+        (p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] * T2T_TMS_TAG_FACTOR + T2T_FIRST_DATA_BLOCK * T2T_BLOCK_LEN)) {
       if (((tlvtype == TAG_LOCK_CTRL_TLV) && (p_t2t->num_lockbytes > 0)) ||
           ((tlvtype == TAG_MEM_CTRL_TLV) && (p_t2t->num_mem_tlvs > 0))) {
         found = true;
@@ -722,8 +742,7 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
         failed = true;
       }
     } else {
-      if (rw_t2t_read((uint16_t)((p_t2t->work_offset / T2T_BLOCK_LEN) +
-                                 T2T_FIRST_DATA_BLOCK)) != NFC_STATUS_OK)
+      if (rw_t2t_read((uint16_t)(p_t2t->work_offset / T2T_BLOCK_LEN) ) != NFC_STATUS_OK)
         failed = true;
     }
   }
@@ -861,7 +880,7 @@ void rw_t2t_extract_default_locks_info(void) {
      * default location */
     /* Add a virtual Lock tlv to map this default lock location */
     p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], false, 0);
-    if (p_ret != NULL) bytes_locked_per_lock_bit = p_ret->default_lock_blpb;
+    if (p_ret != nullptr) bytes_locked_per_lock_bit = p_ret->default_lock_blpb;
 
     num_dynamic_lock_bits =
         ((p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] * T2T_TMS_TAG_FACTOR) -
@@ -1381,7 +1400,7 @@ static uint8_t rw_t2t_get_ndef_flags(void) {
   if ((p_t2t->tag_hdr[T2T_CC3_RWA_BYTE] & T2T_CC3_RWA_RO) == T2T_CC3_RWA_RO)
     flags |= RW_NDEF_FL_READ_ONLY;
 
-  if (((p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], false, 0)) != NULL) &&
+  if (((p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], false, 0)) != nullptr) &&
       (p_ret->b_otp)) {
     /* Set otp flag */
     flags |= RW_NDEF_FL_OTP;
@@ -1523,7 +1542,7 @@ static void rw_t2t_handle_ndef_read_rsp(uint8_t* p_data) {
 
   if (failed || done) {
     evt_data.status = failed ? NFC_STATUS_FAILED : NFC_STATUS_OK;
-    evt_data.p_data = NULL;
+    evt_data.p_data = nullptr;
     rw_t2t_handle_op_complete();
     tRW_DATA rw_data;
     rw_data.data = evt_data;
@@ -1679,7 +1698,7 @@ static void rw_t2t_handle_ndef_write_rsp(uint8_t* p_data) {
   }
 
   if (failed || done) {
-    evt_data.p_data = NULL;
+    evt_data.p_data = nullptr;
     /* NDEF WRITE Operation is done, inform up the stack */
     evt_data.status = failed ? NFC_STATUS_FAILED : NFC_STATUS_OK;
     if (done) {
@@ -1763,8 +1782,7 @@ static void rw_t2t_handle_config_tag_readonly(uint8_t* p_data) {
         b_notify = true;
         break;
       }
-      [[fallthrough]];
-
+      FALLTHROUGH_INTENDED;
     /* Coverity: [false-POSITIVE error] intended fall through */
     /* Missing break statement between cases in switch statement */
     /* fall through */
@@ -1866,7 +1884,7 @@ static void rw_t2t_handle_format_tag_rsp(uint8_t* p_data) {
       p_t2t->b_read_data = true;
       version_no = (uint16_t)p_data[0] << 8 | p_data[1];
       p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], true, version_no);
-      if (p_ret != NULL) {
+      if (p_ret != nullptr) {
         /* Valid Version Number */
         if (p_ret->b_calc_cc) /* Calculate tag size from Version Information */
           tms = rw_t2t_get_tag_size(p_data);
@@ -1886,7 +1904,7 @@ static void rw_t2t_handle_format_tag_rsp(uint8_t* p_data) {
       version_no = (uint16_t)p_t2t->tag_data[0] << 8 | p_t2t->tag_data[1];
       if ((version_no == 0) ||
           ((p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], true, version_no)) ==
-           NULL) ||
+           nullptr) ||
           (!p_ret->b_multi_version) || (!p_ret->b_calc_cc)) {
         /* Currently Formating a non blank tag or a blank tag with manufacturer
          * has only one variant of tag. Set Null NDEF TLV and complete Format
@@ -1910,8 +1928,7 @@ static void rw_t2t_handle_format_tag_rsp(uint8_t* p_data) {
         } else
           break;
       }
-      [[fallthrough]];
-
+      FALLTHROUGH_INTENDED;
     /* falls through */
     case RW_T2T_SUBSTATE_WAIT_SET_LOCK_TLV:
 
@@ -1919,7 +1936,7 @@ static void rw_t2t_handle_format_tag_rsp(uint8_t* p_data) {
       UINT8_TO_BE_STREAM(p, TAG_NDEF_TLV);
       UINT8_TO_BE_STREAM(p, 0);
 
-      if (((p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], false, 0)) != NULL) &&
+      if (((p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], false, 0)) != nullptr) &&
           (!p_ret->b_otp)) {
         UINT8_TO_BE_STREAM(p, TAG_TERMINATOR_TLV);
       } else
@@ -2602,7 +2619,7 @@ tNFC_STATUS rw_t2t_format_tag(void) {
   bool b_blank_tag = true;
 
   p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], false, 0);
-  if (p_ret == NULL) {
+  if (p_ret == nullptr) {
     LOG(WARNING) << StringPrintf(
         "rw_t2t_format_tag - Unknown Manufacturer ID: %u, Cannot Format the "
         "tag!",
@@ -3011,7 +3028,7 @@ tNFC_STATUS RW_T2tWriteNDef(uint16_t msg_len, uint8_t* p_msg) {
   /* If OTP tag and tag has valid NDEF Message, stop writting new NDEF Message
    * as it may corrupt the tag */
   if ((p_t2t->ndef_msg_len > 0) &&
-      ((p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], false, 0)) != NULL) &&
+      ((p_ret = t2t_tag_init_data(p_t2t->tag_hdr[0], false, 0)) != nullptr) &&
       (p_ret->b_otp)) {
     LOG(WARNING) << StringPrintf(
         "RW_T2tWriteNDef - Cannot Overwrite NDEF Message on a OTP tag!");

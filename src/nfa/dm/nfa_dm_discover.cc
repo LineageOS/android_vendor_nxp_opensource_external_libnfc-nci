@@ -510,44 +510,23 @@ static tNFA_STATUS nfa_dm_set_rf_listen_mode_config(
 #endif
 
   /*
-  ** for Listen A
-  **
-  ** Set ATQA 0x0C00 for T1T listen
-  ** If the ATQA values are 0x0000, then the FW will use 0x0400
-  ** which works for ISODEP, T2T and NFCDEP.
+  * for Listen A
+  *
+  * Set ATQA 0x0C00 for T1T listen
+  * If the ATQA values are 0x0000, then the FW will use 0x0400
+  * which works for ISODEP, T2T and NFCDEP.
   */
-  if (nfa_dm_cb.disc_cb.listen_RT[NFA_DM_DISC_LRT_NFC_A] ==
-      NFA_DM_DISC_HOST_ID_DH) {
-    UINT8_TO_STREAM(p, NFC_PMID_LA_BIT_FRAME_SDD);
-    UINT8_TO_STREAM(p, NCI_PARAM_LEN_LA_BIT_FRAME_SDD);
-    UINT8_TO_STREAM(p, 0x04);
-    UINT8_TO_STREAM(p, NFC_PMID_LA_PLATFORM_CONFIG);
-    UINT8_TO_STREAM(p, NCI_PARAM_LEN_LA_PLATFORM_CONFIG);
-    UINT8_TO_STREAM(p, platform);
-#if (NXP_EXTNS != TRUE)
-    UINT8_TO_STREAM(p, NFC_PMID_LA_SEL_INFO);
-    UINT8_TO_STREAM(p, NCI_PARAM_LEN_LA_SEL_INFO);
-    UINT8_TO_STREAM(p, sens_info);
-#endif
-  } else /* Let NFCC use UICC configuration by configuring with length = 0 */
-  {
-    UINT8_TO_STREAM(p, NFC_PMID_LA_BIT_FRAME_SDD);
-    UINT8_TO_STREAM(p, 0);
-    UINT8_TO_STREAM(p, NFC_PMID_LA_PLATFORM_CONFIG);
-    UINT8_TO_STREAM(p, 0);
-#if (NXP_EXTNS != TRUE)
-    UINT8_TO_STREAM(p, NFC_PMID_LA_SEL_INFO);
-    UINT8_TO_STREAM(p, 0);
-#endif
-    UINT8_TO_STREAM(p, NFC_PMID_LA_NFCID1);
-    UINT8_TO_STREAM(p, 0);
-    UINT8_TO_STREAM(p, NFC_PMID_LA_HIST_BY);
-    UINT8_TO_STREAM(p, 0);
-  }
+  UINT8_TO_STREAM(p, NFC_PMID_LA_BIT_FRAME_SDD);
+  UINT8_TO_STREAM(p, NCI_PARAM_LEN_LA_BIT_FRAME_SDD);
+  UINT8_TO_STREAM(p, 0x04);
+  UINT8_TO_STREAM(p, NFC_PMID_LA_PLATFORM_CONFIG);
+  UINT8_TO_STREAM(p, NCI_PARAM_LEN_LA_PLATFORM_CONFIG);
+  UINT8_TO_STREAM(p, platform);
+  UINT8_TO_STREAM(p, NFC_PMID_LA_SEL_INFO);
+  UINT8_TO_STREAM(p, NCI_PARAM_LEN_LA_SEL_INFO);
+  UINT8_TO_STREAM(p, sens_info);
 
   /* for Listen B */
-  if (nfa_dm_cb.disc_cb.listen_RT[NFA_DM_DISC_LRT_NFC_B] ==
-      NFA_DM_DISC_HOST_ID_DH) {
     UINT8_TO_STREAM(p, NFC_PMID_LB_SENSB_INFO);
     UINT8_TO_STREAM(p, NCI_PARAM_LEN_LB_SENSB_INFO);
     if (tech_proto_mask & NFA_DM_DISC_MASK_LB_ISO_DEP) {
@@ -555,19 +534,6 @@ static tNFA_STATUS nfa_dm_set_rf_listen_mode_config(
     } else {
       UINT8_TO_STREAM(p, 0x00);
     }
-  } else /* Let NFCC use UICC configuration by configuring with length = 0 */
-  {
-    UINT8_TO_STREAM(p, NFC_PMID_LB_SENSB_INFO);
-    UINT8_TO_STREAM(p, 0);
-    UINT8_TO_STREAM(p, NFC_PMID_LB_NFCID0);
-    UINT8_TO_STREAM(p, 0);
-    UINT8_TO_STREAM(p, NFC_PMID_LB_APPDATA);
-    UINT8_TO_STREAM(p, 0);
-    UINT8_TO_STREAM(p, NFC_PMID_LB_ADC_FO);
-    UINT8_TO_STREAM(p, 0);
-    UINT8_TO_STREAM(p, NFC_PMID_LB_H_INFO);
-    UINT8_TO_STREAM(p, 0);
-  }
 
 #if (NXP_EXTNS == TRUE)
   /** SEL_INFO will be updated irrespective of UICC/eSE is selected or not
@@ -1244,6 +1210,7 @@ void nfa_dm_start_rf_discover(void) {
           /* host can listen ISO-DEP based on AID routing */
           listen_mask |= (nfa_dm_cb.disc_cb.entry[xx].requested_disc_mask &
                           NFA_DM_DISC_MASK_LA_ISO_DEP);
+          /* host can listen NFC-DEP based on protocol routing */
           listen_mask |= (nfa_dm_cb.disc_cb.entry[xx].requested_disc_mask &
                             NFA_DM_DISC_MASK_LA_NFC_DEP);
           if (NFC_GetNCIVersion() == NCI_VERSION_2_0) {
@@ -1354,19 +1321,19 @@ void nfa_dm_start_rf_discover(void) {
                        p2pListenMask);
     }
     tech_list = nfa_ee_get_supported_tech_list(nfa_dm_cb.selected_uicc_id);
+    bool isFwdFuncValid =
+        (fwdEnable == 0x01) && ((hostListenMask & NFA_TECHNOLOGY_MASK_A) &&
+                                (hostListenMask & NFA_TECHNOLOGY_MASK_B));
 
-    if ((fwdEnable == 0x00) || (hostListenMask == 0x00)) {
-      if (tech_list == NFA_TECHNOLOGY_MASK_B) {
-         DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-            "TypeB only sim handling in case of no FWD functionality");
-        dm_disc_mask &=
-            ~(NFA_DM_DISC_MASK_LA_ISO_DEP | NFA_DM_DISC_MASK_LA_NFC_DEP);
-      } else if (tech_list == NFA_TECHNOLOGY_MASK_A) {
-         DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-            "TypeA only sim handling in case of no FWD functionality");
-        dm_disc_mask &= ~(NFA_DM_DISC_MASK_LB_ISO_DEP);
-      }
-    }
+    bool isTypeAReq =
+        ((hostListenMask | eseListenMask) & NFA_TECHNOLOGY_MASK_A) ||
+        isFwdFuncValid || (tech_list & NFA_TECHNOLOGY_MASK_A);
+    if (!isTypeAReq) dm_disc_mask &= ~(NFA_DM_DISC_MASK_LA_ISO_DEP);
+
+    bool isTypeBReq =
+        ((hostListenMask | eseListenMask) & NFA_TECHNOLOGY_MASK_B) ||
+        isFwdFuncValid || (tech_list & NFA_TECHNOLOGY_MASK_B);
+    if (!isTypeBReq) dm_disc_mask &= ~(NFA_DM_DISC_MASK_LB_ISO_DEP);
 #endif
 
     /* Let P2P set GEN bytes for LLCP to NFCC */
@@ -2083,7 +2050,7 @@ static void nfa_dm_disc_data_cback(__attribute__((unused)) uint8_t conn_id,
 
   /* if selection failed */
   if (event == NFC_ERROR_CEVT) {
-    nfa_dm_disc_sm_execute(NFA_DM_CORE_INTF_ERROR_NTF, NULL);
+    nfa_dm_disc_sm_execute(NFA_DM_CORE_INTF_ERROR_NTF, nullptr);
   } else if (event == NFC_DATA_CEVT) {
     GKI_freebuf(p_data->data.p_data);
   }
@@ -2700,7 +2667,7 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
 
               /* Notify NFA RW sub-systems because NFA_DM_RF_DEACTIVATE_RSP will
                * not call this function */
-              nfa_rw_proc_disc_evt(NFA_DM_RF_DISC_DEACTIVATED_EVT, NULL, true);
+              nfa_rw_proc_disc_evt(NFA_DM_RF_DISC_DEACTIVATED_EVT, nullptr, true);
             } else {
               /* Successfully went to sleep mode for sleep wakeup */
               /* Now wake up the tag to complete the operation */
@@ -2826,6 +2793,10 @@ static void nfa_dm_disc_sm_listen_active(tNFA_DM_RF_DISC_SM_EVENT event,
         } else if (p_data->nfc_discover.deactivate.type ==
                    NFC_DEACTIVATE_TYPE_DISCOVERY) {
           /* Discovery */
+          if (nfa_dm_cb.pending_power_state != SCREEN_STATE_INVALID) {
+            NFC_SetPowerSubState(nfa_dm_cb.pending_power_state);
+            nfa_dm_cb.pending_power_state = SCREEN_STATE_INVALID;
+          }
           nfa_dm_disc_new_state(NFA_DM_RFST_DISCOVERY);
           if (nfa_dm_cb.disc_cb.disc_flags & NFA_DM_DISC_FLAGS_STOPPING) {
             /* stop discovery */
@@ -3137,7 +3108,7 @@ void nfa_dm_start_excl_discovery(tNFA_TECHNOLOGY_MASK poll_tech_mask,
   memcpy(&nfa_dm_cb.disc_cb.excl_listen_config, p_listen_cfg,
          sizeof(tNFA_LISTEN_CFG));
 
-  nfa_dm_disc_sm_execute(NFA_DM_RF_DISCOVER_CMD, NULL);
+  nfa_dm_disc_sm_execute(NFA_DM_RF_DISCOVER_CMD, nullptr);
 }
 
 /*******************************************************************************
@@ -3153,7 +3124,7 @@ void nfa_dm_stop_excl_discovery(void) {
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_dm_stop_excl_discovery ()");
 
   nfa_dm_cb.disc_cb.excl_disc_entry.in_use = false;
-  nfa_dm_cb.disc_cb.excl_disc_entry.p_disc_cback = NULL;
+  nfa_dm_cb.disc_cb.excl_disc_entry.p_disc_cback = nullptr;
 }
 
 /*******************************************************************************
@@ -3434,7 +3405,10 @@ bool nfa_dm_p2p_prio_logic(uint8_t event, uint8_t* p, uint8_t event_type) {
        DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
           "nfa_dm_p2p_prio_logic listen mode activated reset all the "
           "nfa_dm_p2p_prio_logic variables ");
-       nfc_stop_quick_timer(&p2p_prio_logic_data.timer_list);
+       if (p2p_prio_logic_data.timer_list.in_use){
+         DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Stop quick timer");
+         nfc_stop_quick_timer(&p2p_prio_logic_data.timer_list);
+       }
        nfa_dm_p2p_prio_logic_cleanup();
     }
 

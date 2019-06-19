@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -464,6 +464,9 @@ typedef uint8_t tT3T_POLL_RC;
 #define T4T_DES_EV1_NFC_APP_ID 0x010000
 #define T4T_DES_EV0_NFC_APP_ID 0x10EEEE
 
+/*  Mifare Classic Tag Definitions */
+#define MFC_UID_LEN 4
+
 /*
  **
  **  ISO 15693 Tag Definitions
@@ -550,6 +553,8 @@ typedef uint8_t tT3T_POLL_RC;
 #define I93_INFO_FLAG_AFI 0x02
 /* VICC memory size field is present             */
 #define I93_INFO_FLAG_MEM_SIZE 0x04
+/* 16bit num of blocks info length */
+#define I93_INFO_16BIT_NUM_BLOCK_LEN 0x02
 /* IC reference field is present                 */
 #define I93_INFO_FLAG_IC_REF 0x08
 /* Memory coded in 2 bytes address               */

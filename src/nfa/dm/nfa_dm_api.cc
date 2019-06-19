@@ -44,16 +44,12 @@
 
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
-
+#include <log/log.h>
 #include "nfa_api.h"
 #include "nfa_ce_int.h"
 #include "ndef_utils.h"
 #if (NXP_EXTNS == TRUE)
-#ifdef ENABLE_ESE_CLIENT
-#include "hal_nxpese.h"
-#endif
 #include "nfa_sys_int.h"
-#include "nfc_int.h"
 
 uint32_t gFelicaReaderMode;
 tHAL_NFC_CONTEXT hal_Initcntxt;
@@ -149,7 +145,7 @@ tNFA_STATUS NFA_Enable(tNFA_DM_CBACK* p_dm_cback,
   }
 
   p_msg = (tNFA_DM_API_ENABLE*)GKI_getbuf(sizeof(tNFA_DM_API_ENABLE));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_ENABLE_EVT;
     p_msg->p_dm_cback = p_dm_cback;
     p_msg->p_conn_cback = p_conn_cback;
@@ -188,7 +184,7 @@ tNFA_STATUS NFA_Disable(bool graceful) {
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_Disable (graceful=%i)", graceful);
 
   p_msg = (tNFA_DM_API_DISABLE*)GKI_getbuf(sizeof(tNFA_DM_API_DISABLE));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_DISABLE_EVT;
     p_msg->graceful = graceful;
 
@@ -218,7 +214,7 @@ tNFA_STATUS NFA_SetPowerSubStateForScreenState(uint8_t screenState) {
   tNFA_DM_API_SET_POWER_SUB_STATE* p_msg =
       (tNFA_DM_API_SET_POWER_SUB_STATE*)GKI_getbuf(buf_size);
 
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_SET_POWER_SUB_STATE_EVT;
     switch (screenState) {
       case NFA_SCREEN_STATE_ON_UNLOCKED:
@@ -271,7 +267,7 @@ tNFA_STATUS NFA_SetConfig(tNFA_PMID param_id, uint8_t length, uint8_t* p_data) {
 
   p_msg = (tNFA_DM_API_SET_CONFIG*)GKI_getbuf(
       (uint16_t)(sizeof(tNFA_DM_API_SET_CONFIG) + length));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_SET_CONFIG_EVT;
 
     p_msg->param_id = param_id;
@@ -330,7 +326,7 @@ tNFA_STATUS NFA_GetConfig(uint8_t num_ids, tNFA_PMID* p_param_ids) {
   p_msg = (tNFA_DM_API_GET_CONFIG*)GKI_getbuf(
       (uint16_t)(sizeof(tNFA_DM_API_GET_CONFIG) + num_ids));
 #endif
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_GET_CONFIG_EVT;
 
     p_msg->num_ids = num_ids;
@@ -365,13 +361,18 @@ tNFA_STATUS NFA_GetConfig(uint8_t num_ids, tNFA_PMID* p_param_ids) {
 *******************************************************************************/
 tNFA_STATUS NFA_SetTransitConfig(std::string config) {
   tNFA_DM_API_SET_TRANSIT_CONFIG* p_msg;
+  uint16_t strsize = strlen(config.c_str());
+  if (strsize == 0) {
+    LOG(ERROR) << StringPrintf("Selecting Default Config");
+  }
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s ", __func__);
   p_msg = (tNFA_DM_API_SET_TRANSIT_CONFIG*)GKI_getbuf(
-      sizeof(tNFA_DM_API_SET_TRANSIT_CONFIG));
+      sizeof(tNFA_DM_API_SET_TRANSIT_CONFIG) + strsize + 1);
 
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_SET_TRANSIT_CONFIG;
-    p_msg->transitConfig = (char*)config.c_str();
+    p_msg->transitConfig = (char*)(p_msg + 1);
+    memcpy(p_msg->transitConfig, config.c_str(), strsize + 1);
 
     nfa_sys_sendmsg(p_msg);
     return (NFA_STATUS_OK);
@@ -428,7 +429,7 @@ tNFA_STATUS NFA_RequestExclusiveRfControl(tNFA_TECHNOLOGY_MASK poll_mask,
 
   p_msg = (tNFA_DM_API_REQ_EXCL_RF_CTRL*)GKI_getbuf(
       sizeof(tNFA_DM_API_REQ_EXCL_RF_CTRL));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_REQUEST_EXCL_RF_CTRL_EVT;
     p_msg->poll_mask = poll_mask;
     p_msg->p_conn_cback = p_conn_cback;
@@ -471,7 +472,7 @@ tNFA_STATUS NFA_ReleaseExclusiveRfControl(void) {
   }
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_RELEASE_EXCL_RF_CTRL_EVT;
     nfa_sys_sendmsg(p_msg);
     return (NFA_STATUS_OK);
@@ -521,7 +522,7 @@ tNFA_STATUS NFA_EnablePolling(tNFA_TECHNOLOGY_MASK poll_mask) {
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_EnablePolling () 0x%X", poll_mask);
 
   p_msg = (tNFA_DM_API_ENABLE_POLL*)GKI_getbuf(sizeof(tNFA_DM_API_ENABLE_POLL));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_ENABLE_POLLING_EVT;
     p_msg->poll_mask = poll_mask;
 
@@ -555,7 +556,7 @@ tNFA_STATUS NFA_DisablePolling(void) {
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_DISABLE_POLLING_EVT;
 
     nfa_sys_sendmsg(p_msg);
@@ -595,7 +596,7 @@ tNFA_STATUS NFA_EnableListening(void) {
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_ENABLE_LISTENING_EVT;
 
     nfa_sys_sendmsg(p_msg);
@@ -629,7 +630,7 @@ tNFA_STATUS NFA_DisableListening(void) {
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_DISABLE_LISTENING_EVT;
 
     nfa_sys_sendmsg(p_msg);
@@ -670,7 +671,7 @@ tNFA_STATUS NFA_DisablePassiveListening(void) {
 
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
-  if ((p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR))) != NULL) {
+  if ((p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR))) != nullptr) {
     p_msg->event = NFA_DM_API_DISABLE_PASSIVE_LISTENING_EVT;
 
     nfa_sys_sendmsg(p_msg);
@@ -729,7 +730,7 @@ tNFA_STATUS NFA_PauseP2p(void) {
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_PAUSE_P2P_EVT;
 
     nfa_sys_sendmsg(p_msg);
@@ -762,7 +763,7 @@ tNFA_STATUS NFA_ResumeP2p(void) {
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_RESUME_P2P_EVT;
 
     nfa_sys_sendmsg(p_msg);
@@ -800,7 +801,7 @@ tNFA_STATUS NFA_SetP2pListenTech(tNFA_TECHNOLOGY_MASK tech_mask) {
 
   p_msg = (tNFA_DM_API_SET_P2P_LISTEN_TECH*)GKI_getbuf(
       sizeof(tNFA_DM_API_SET_P2P_LISTEN_TECH));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_SET_P2P_LISTEN_TECH_EVT;
     p_msg->tech_mask = tech_mask;
 
@@ -832,7 +833,7 @@ tNFA_STATUS NFA_StartRfDiscovery(void) {
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_START_RF_DISCOVERY_EVT;
 
     nfa_sys_sendmsg(p_msg);
@@ -862,7 +863,7 @@ tNFA_STATUS NFA_StopRfDiscovery(void) {
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_STOP_RF_DISCOVERY_EVT;
 
     nfa_sys_sendmsg(p_msg);
@@ -902,7 +903,7 @@ tNFA_STATUS NFA_SetRfDiscoveryDuration(uint16_t discovery_period_ms) {
 
   /* Post the API message */
   p_msg = (tNFA_DM_API_SET_RF_DISC_DUR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_SET_RF_DISC_DURATION_EVT;
 
     /* Set discovery duration */
@@ -952,7 +953,7 @@ tNFA_STATUS NFA_Select(uint8_t rf_disc_id, tNFA_NFC_PROTOCOL protocol,
 
   p_msg =
       (tNFA_DM_API_SELECT*)GKI_getbuf((uint16_t)(sizeof(tNFA_DM_API_SELECT)));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_SELECT_EVT;
     p_msg->rf_disc_id = rf_disc_id;
     p_msg->protocol = protocol;
@@ -987,7 +988,7 @@ tNFA_STATUS NFA_UpdateRFCommParams(tNFA_RF_COMM_PARAMS* p_params) {
 
   p_msg = (tNFA_DM_API_UPDATE_RF_PARAMS*)GKI_getbuf(
       (uint16_t)(sizeof(tNFA_DM_API_UPDATE_RF_PARAMS)));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_UPDATE_RF_PARAMS_EVT;
     memcpy(&p_msg->params, p_params, sizeof(tNFA_RF_COMM_PARAMS));
 
@@ -1037,7 +1038,7 @@ extern tNFA_STATUS NFA_Deactivate(bool sleep_mode) {
 
   p_msg = (tNFA_DM_API_DEACTIVATE*)GKI_getbuf(
       (uint16_t)(sizeof(tNFA_DM_API_DEACTIVATE)));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_DEACTIVATE_EVT;
     p_msg->sleep_mode = sleep_mode;
 
@@ -1073,15 +1074,12 @@ tNFA_STATUS NFA_SendRawFrame(uint8_t* p_raw_data, uint16_t data_len,
   NFC_HDR* p_msg;
   uint16_t size;
   uint8_t* p;
-#if (NXP_EXTNS == TRUE)
-  tNFC_CONN_CB* p_cb = &nfc_cb.conn_cb[NFC_RF_CONN_ID];
-#endif
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_SendRawFrame () data_len:%d", data_len);
 
 /* Validate parameters */
   if (nfcFL.nfccFL._NXP_NFCC_EMPTY_DATA_PACKET) {
-      if(((data_len == 0) || (p_raw_data == NULL)) &&
+      if(((data_len == 0) || (p_raw_data == nullptr)) &&
               (!(nfa_dm_cb.disc_cb.disc_state == NFA_DM_RFST_LISTEN_ACTIVE &&
                       nfa_dm_cb.disc_cb.activated_protocol ==
                               NFA_PROTOCOL_T3T))){
@@ -1089,47 +1087,32 @@ tNFA_STATUS NFA_SendRawFrame(uint8_t* p_raw_data, uint16_t data_len,
       } else {
           //Do Nothing.
       }
-  }else if((data_len == 0) || (p_raw_data == NULL)) {
+  }else if((data_len == 0) || (p_raw_data == nullptr)) {
       return (NFA_STATUS_INVALID_PARAM);
   }
 
-#if (NXP_EXTNS == TRUE)
-  if(data_len > p_cb->buff_size){
-    if(nfa_dm_get_extended_cmd_buf((tNFC_EXT_HDR **)&p_msg, NFA_DM_API_RAW_FRAME_EVT, p_raw_data, data_len)){
-      LOG(ERROR) << StringPrintf("NFA_SendRawFrame () memory allocation for extended length is un-successfull");
-      return NFA_STATUS_FAILED;
-    }else{
-      /*Do nothing*/
-    }
-  }else{
-    size = NFC_HDR_SIZE + NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE + data_len;
-    p_msg = (NFC_HDR*)GKI_getbuf(size);
+  size = NFC_HDR_SIZE + NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE + data_len;  /* Check for integer overflow */
+  if (size < data_len) {
+    android_errorWriteLog(0x534e4554, "120664978");
+    return NFA_STATUS_INVALID_PARAM;
   }
-#else
-  size = NFC_HDR_SIZE + NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE + data_len;
   p_msg = (NFC_HDR*)GKI_getbuf(size);
-#endif
 
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_RAW_FRAME_EVT;
     p_msg->layer_specific = presence_check_start_delay;
     p_msg->offset = NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE;
     p_msg->len = data_len;
-#if (NXP_EXTNS == TRUE)
-    if(data_len <= p_cb->buff_size) {
-#endif
-      p = (uint8_t*)(p_msg + 1) + p_msg->offset;
-      if (nfcFL.nfccFL._NXP_NFCC_EMPTY_DATA_PACKET) {
-        if (p_raw_data != NULL) {
-            memcpy(p, p_raw_data, data_len);
-        }
-      }
-      else {
+
+    p = (uint8_t*)(p_msg + 1) + p_msg->offset;
+
+    if (nfcFL.nfccFL._NXP_NFCC_EMPTY_DATA_PACKET) {
+      if (p_raw_data != nullptr) {
         memcpy(p, p_raw_data, data_len);
       }
-#if (NXP_EXTNS == TRUE)
+    } else {
+      memcpy(p, p_raw_data, data_len);
     }
-#endif
 
     nfa_sys_sendmsg(p_msg);
 
@@ -1186,7 +1169,7 @@ tNFA_STATUS NFA_RegisterNDefTypeHandler(bool handle_whole_message, tNFA_TNF tnf,
 
   p_msg = (tNFA_DM_API_REG_NDEF_HDLR*)GKI_getbuf(
       (uint16_t)(sizeof(tNFA_DM_API_REG_NDEF_HDLR) + type_name_len));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_REG_NDEF_HDLR_EVT;
 
     p_msg->flags =
@@ -1246,7 +1229,7 @@ extern tNFA_STATUS NFA_RegisterNDefUriHandler(bool handle_whole_message,
 
   p_msg = (tNFA_DM_API_REG_NDEF_HDLR*)GKI_getbuf(
       (uint16_t)(sizeof(tNFA_DM_API_REG_NDEF_HDLR) + uri_id_len));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_REG_NDEF_HDLR_EVT;
 
     p_msg->flags = NFA_NDEF_FLAGS_WKT_URI;
@@ -1292,7 +1275,7 @@ extern tNFA_STATUS NFA_DeregisterNDefTypeHandler(tNFA_HANDLE ndef_type_handle) {
 
   p_msg = (tNFA_DM_API_DEREG_NDEF_HDLR*)GKI_getbuf(
       (uint16_t)(sizeof(tNFA_DM_API_DEREG_NDEF_HDLR)));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_DEREG_NDEF_HDLR_EVT;
     p_msg->ndef_type_handle = ndef_type_handle;
 
@@ -1332,7 +1315,7 @@ tNFA_STATUS NFA_PowerOffSleepMode(bool start_stop) {
   }
 
   p_msg = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->event = NFA_DM_API_POWER_OFF_SLEEP_EVT;
     p_msg->layer_specific = start_stop;
 
@@ -1361,13 +1344,13 @@ tNFC_STATUS NFA_RegVSCback(bool is_register, tNFA_VSC_CBACK* p_cback) {
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_RegVSCback() is_register=%d", is_register);
 
-  if (p_cback == NULL) {
+  if (p_cback == nullptr) {
     LOG(ERROR) << StringPrintf("NFA_RegVSCback() requires a valid callback function");
     return (NFA_STATUS_FAILED);
   }
 
   p_msg = (tNFA_DM_API_REG_VSC*)GKI_getbuf(sizeof(tNFA_DM_API_REG_VSC));
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_REG_VSC_EVT;
     p_msg->is_register = is_register;
     p_msg->p_cback = p_cback;
@@ -1405,7 +1388,7 @@ tNFA_STATUS NFA_SendVsCommand(uint8_t oid, uint8_t cmd_params_len,
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_SendVsCommand() oid=0x%x", oid);
 
   p_msg = (tNFA_DM_API_SEND_VSC*)GKI_getbuf(size);
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_SEND_VSC_EVT;
     p_msg->oid = oid;
     p_msg->p_cback = p_cback;
@@ -1415,7 +1398,7 @@ tNFA_STATUS NFA_SendVsCommand(uint8_t oid, uint8_t cmd_params_len,
       memcpy(p_msg->p_cmd_params, p_cmd_params, cmd_params_len);
     } else {
       p_msg->cmd_params_len = 0;
-      p_msg->p_cmd_params = NULL;
+      p_msg->p_cmd_params = nullptr;
     }
 
     nfa_sys_sendmsg(p_msg);
@@ -1444,13 +1427,13 @@ tNFA_STATUS NFA_SendVsCommand(uint8_t oid, uint8_t cmd_params_len,
 *******************************************************************************/
 tNFA_STATUS NFA_SendRawVsCommand(uint8_t cmd_params_len, uint8_t* p_cmd_params,
                                  tNFA_VSC_CBACK* p_cback) {
-  if (cmd_params_len == 0x00 || p_cmd_params == NULL || p_cback == NULL) {
+  if (cmd_params_len == 0x00 || p_cmd_params == nullptr || p_cback == nullptr) {
     return NFA_STATUS_INVALID_PARAM;
   }
   uint16_t size = sizeof(tNFA_DM_API_SEND_VSC) + cmd_params_len;
   tNFA_DM_API_SEND_VSC* p_msg = (tNFA_DM_API_SEND_VSC*)GKI_getbuf(size);
 
-  if (p_msg != NULL) {
+  if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_SEND_RAW_VS_EVT;
     p_msg->p_cback = p_cback;
     if (cmd_params_len && p_cmd_params) {
@@ -1541,6 +1524,7 @@ void NFA_SetReaderMode(bool ReaderModeFlag, uint32_t Technologies) {
 void NFA_SetBootMode(uint8_t boot_mode) { hal_Initcntxt.boot_mode = boot_mode; }
 tNFA_MW_VERSION NFA_GetMwVersion() {
   tNFA_MW_VERSION mwVer;
+  mwVer.cust_id = NFC_NXP_MW_CUSTOMER_ID;
   mwVer.validation =
       (NXP_EN_PN547C2 | (NXP_EN_PN65T << 1) | (NXP_EN_PN548C2 << 2) |
        (NXP_EN_PN66T << 3) | (NXP_EN_PN551 << 4) | (NXP_EN_PN67T << 5) |
@@ -1621,7 +1605,7 @@ void NFA_EE_HCI_Control(bool flagEnable) {
     nfa_sys_cb.graceful_disable = true;
     for (i = 0; i < 2; i++) {
       if (nfa_sys_cb.is_reg[id[i]]) {
-        if (nfa_sys_cb.reg[id[i]]->disable != NULL) {
+        if (nfa_sys_cb.reg[id[i]]->disable != nullptr) {
           (*nfa_sys_cb.reg[id[i]]->disable)();
         } else {
           nfa_sys_deregister(id[i]);
@@ -1636,7 +1620,7 @@ void NFA_EE_HCI_Control(bool flagEnable) {
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_EE_HCI_Control (); Enable system");
     for (i = 0; i < 2; i++) {
       if (nfa_sys_cb.is_reg[id[i]]) {
-        if (nfa_sys_cb.reg[id[i]]->enable != NULL) {
+        if (nfa_sys_cb.reg[id[i]]->enable != nullptr) {
           (*nfa_sys_cb.reg[id[i]]->enable)();
         } else {
           nfa_sys_cback_notify_enable_complete(id[i]);

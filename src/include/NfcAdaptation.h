@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -45,7 +45,9 @@
 #include <android/hardware/nfc/1.0/INfc.h>
 #include <android/hardware/nfc/1.0/INfcClientCallback.h>
 #include <android/hardware/nfc/1.0/types.h>
+#include <vendor/nxp/hardware/nfc/1.0/INqNfc.h>
 
+using vendor::nxp::hardware::nfc::V1_0::INqNfc;
 using ::android::sp;
 
 namespace android {
@@ -94,7 +96,7 @@ class ThreadMutex {
   virtual ~ThreadMutex();
   void lock();
   void unlock();
-  operator pthread_mutex_t*() { return &mMutex; }
+  explicit operator pthread_mutex_t*() { return &mMutex; }
 
  private:
   pthread_mutex_t mMutex;
@@ -106,7 +108,8 @@ class ThreadCondVar : public ThreadMutex {
   virtual ~ThreadCondVar();
   void signal();
   void wait();
-  operator pthread_cond_t*() { return &mCondVar; }
+  explicit operator pthread_cond_t*() { return &mCondVar; }
+  // NOLINTNEXTLINE(google-explicit-constructor)
   operator pthread_mutex_t*() {
     return ThreadMutex::operator pthread_mutex_t*();
   }
@@ -117,10 +120,10 @@ class ThreadCondVar : public ThreadMutex {
 
 class AutoThreadMutex {
  public:
-  AutoThreadMutex(ThreadMutex& m);
+  explicit AutoThreadMutex(ThreadMutex& m);
   virtual ~AutoThreadMutex();
-  operator ThreadMutex&() { return mm; }
-  operator pthread_mutex_t*() { return (pthread_mutex_t*)mm; }
+  explicit operator ThreadMutex&() { return mm; }
+  explicit operator pthread_mutex_t*() { return (pthread_mutex_t*)mm; }
 
  private:
   ThreadMutex& mm;
@@ -137,7 +140,7 @@ class NfcAdaptation {
   void DeviceShutdown();
   static NfcAdaptation& GetInstance();
   tHAL_NFC_ENTRY* GetHalEntryFuncs();
-  void DownloadFirmware();
+  bool DownloadFirmware();
   void GetNxpConfigs(std::map<std::string, ConfigValue>& configMap);
   void GetVendorConfigs(std::map<std::string, ConfigValue>& configMap);
   void Dump(int fd);
@@ -152,7 +155,6 @@ class NfcAdaptation {
   void signal();
   static NfcAdaptation* mpInstance;
   static ThreadMutex sLock;
-  static ThreadMutex sIoctlLock;
   ThreadCondVar mCondVar;
   tHAL_NFC_ENTRY mHalEntryFuncs;  // function pointers for HAL entry points
   static tHAL_NFC_CBACK* mHalCallback;

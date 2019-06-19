@@ -50,7 +50,6 @@
 #include "nfa_dm_int.h"
 #if (NXP_EXTNS == TRUE)
 #include "nfc_int.h"
-#include "nfa_p2p_int.h"
 #endif
 
 using android::base::StringPrintf;
@@ -135,6 +134,7 @@ void nfa_dm_init(void) {
   nfa_dm_cb.poll_disc_handle = NFA_HANDLE_INVALID;
   nfa_dm_cb.disc_cb.disc_duration = NFA_DM_DISC_DURATION_POLL;
   nfa_dm_cb.nfcc_pwr_mode = NFA_DM_PWR_MODE_FULL;
+  nfa_dm_cb.pending_power_state = SCREEN_STATE_INVALID;
 #if (NXP_EXTNS == TRUE)
   nfa_dm_cb.selected_uicc_id = UICC1_HOST;
 #endif
@@ -214,7 +214,8 @@ bool nfa_dm_is_protocol_supported(tNFC_PROTOCOL protocol, uint8_t sel_res) {
            (sel_res == NFC_SEL_RES_NFC_FORUM_T2T)) ||
           (protocol == NFC_PROTOCOL_T3T) ||
           (protocol == NFC_PROTOCOL_ISO_DEP) ||
-          (protocol == NFC_PROTOCOL_NFC_DEP) || (protocol == NFC_PROTOCOL_T5T)
+          (protocol == NFC_PROTOCOL_NFC_DEP) ||
+          (protocol == NFC_PROTOCOL_T5T) || (protocol == NFC_PROTOCOL_MIFARE)
 #if (NXP_EXTNS == TRUE)
           || (protocol == NFC_PROTOCOL_T3BT)
 #endif
@@ -254,7 +255,7 @@ bool nfa_dm_is_active(void) {
 tNFA_STATUS nfa_dm_check_set_config(uint8_t tlv_list_len, uint8_t* p_tlv_list,
                                     bool app_init) {
 #if (NXP_EXTNS == TRUE)
-  uint8_t type, len, *p_value, * p_stored = NULL, max_len = 0;
+  uint8_t type, len, *p_value, * p_stored = nullptr, max_len = 0;
 #else
   uint8_t type, len, *p_value, *p_stored, max_len;
 #endif
@@ -279,7 +280,7 @@ tNFA_STATUS nfa_dm_check_set_config(uint8_t tlv_list_len, uint8_t* p_tlv_list,
     type = *(p_tlv_list + xx);
     len = *(p_tlv_list + xx + 1);
     p_value = p_tlv_list + xx + 2;
-    p_cur_len = NULL;
+    p_cur_len = nullptr;
 
     switch (type) {
       /*
@@ -410,7 +411,7 @@ tNFA_STATUS nfa_dm_check_set_config(uint8_t tlv_list_len, uint8_t* p_tlv_list,
         } else {
           /* we don't stored this config items */
           update = true;
-          p_stored = NULL;
+          p_stored = nullptr;
         }
         break;
     }
@@ -530,44 +531,6 @@ void nfa_dm_init_cfgs(phNxpNci_getCfg_info_t* mGetCfg_info) {
   memcpy(&nfa_dm_cb.params.wt, mGetCfg_info->pmid_wt,
          mGetCfg_info->pmid_wt_len);
 }
-
-/*******************************************************************************
-**
-** Function         nfa_dm_get_extended_cmd_buf
-**
-** Description      Initializes command buffer
-**
-** Returns          NFA_STATUS_FAILED, If memory allocation is not successfull.
-                    NFA_STATUS_OK, If memory allocation and pointer initialization is successfull
-**
-*******************************************************************************/
-tNFA_STATUS nfa_dm_get_extended_cmd_buf(tNFC_EXT_HDR **p_msg, uint32_t event,
-                                         uint8_t* p_data,
-                                         __attribute__((unused)) uint16_t data_len) {
-  uint16_t size = 0;
-  tNFA_STATUS status = NFA_STATUS_FAILED;
-
-  if(p_data)
-  {
-    if(event == NFA_DM_API_RAW_FRAME_EVT) {
-        size = NFC_EXT_HDR_SIZE + NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE;
-    }else if(event == NFA_P2P_API_SEND_UI_EVT || event == NFA_P2P_API_SEND_DATA_EVT) {
-        size = NFC_EXT_HDR_SIZE + LLCP_MIN_OFFSET;
-    }
-    if((*p_msg = (tNFC_EXT_HDR *)GKI_getbuf(size)) != NULL) {
-      memset(*p_msg, 0, sizeof(tNFC_EXT_HDR));
-      (*p_msg)->p_data_buf = p_data;
-      status = NFA_STATUS_OK;
-    }else{
-      status = NFA_STATUS_FAILED;
-    }
-  }else{
-    status = NFA_STATUS_FAILED;
-  }
-
-  return status;
-}
-
 #endif
 /*******************************************************************************
 **
