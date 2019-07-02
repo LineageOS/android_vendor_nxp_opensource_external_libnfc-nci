@@ -57,7 +57,7 @@
 #define NXP_EN_SN100U    1
 #define NXP_ANDROID_VER (10U)        /* NXP android version */
 #define NFC_NXP_MW_VERSION_MAJ (0x00) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN (0x06) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MIN (0x08) /* MW Minor Version */
 #define NFC_NXP_MW_CUSTOMER_ID (0x00) /* MW Customer Id */
 #define NFC_NXP_MW_RC_VERSION  (0x01) /* MW RC Version */
 #define NFC_EE_DISC_OP_REMOVE 1
@@ -587,6 +587,12 @@ typedef struct {
 /* Application initiation    */
 #define NFC_EE_TRIG_APP_INIT NCI_EE_TRIG_APP_INIT
 typedef uint8_t tNFC_EE_TRIGGER;
+#if(NXP_EXTNS == TRUE)
+typedef struct {
+  uint8_t len_data;                  /* len of application data  */
+  uint8_t data[NFC_MAX_APP_DATA_LEN]; /* application data    */
+} tNFC_EE_ACTION_DATA;
+#endif
 typedef struct {
   tNFC_EE_TRIGGER trigger; /* the trigger of this event        */
   union {
@@ -595,6 +601,9 @@ typedef struct {
     tNFC_AID aid;
     tNFC_APP_INIT app_init;
   } param; /* Discovery Type specific parameters */
+#if(NXP_EXTNS == TRUE)
+  tNFC_EE_ACTION_DATA nfc_act_data;
+#endif
 } tNFC_ACTION_DATA;
 
 /* the data type associated with NFC_EE_ACTION_REVT */

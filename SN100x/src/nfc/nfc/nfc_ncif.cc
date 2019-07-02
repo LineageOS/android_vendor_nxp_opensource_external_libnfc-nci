@@ -815,6 +815,14 @@ Available after Technology Detection
     STREAM_TO_ARRAY(p_param->param.pk.uid, p, p_param->param.pk.uid_len);
   } else if (NCI_DISCOVERY_TYPE_POLL_ACTIVE == p_param->mode) {
     acm_p = &p_param->param.acm_p;
+#if (NXP_EXTNS == TRUE)
+    if(len == 0) {
+      /*No RF Technology specific parameters, skipping next 3 bytes
+       * Byte 1         Byte 2 Byte 3  Byte 4
+       * Tech and Mode  BST    BRT     offset*/
+      p = p + 4;
+    }
+#endif
     acm_p->atr_res_len = *p++;
     if (acm_p->atr_res_len > 0) {
       if (acm_p->atr_res_len > NFC_MAX_ATS_LEN)
@@ -1232,6 +1240,12 @@ void nfc_ncif_proc_ee_action(uint8_t* p, uint16_t plen) {
     evt_data.status = NFC_STATUS_OK;
     evt_data.nfcee_id = *p++;
     evt_data.act_data.trigger = *p++;
+#if(NXP_EXTNS == TRUE)
+    if ((plen != 0) && (p != NULL)){
+       STREAM_TO_ARRAY(&evt_data.act_data.nfc_act_data.data, p, plen-2);
+       evt_data.act_data.nfc_act_data.len_data = plen-2;
+    }
+#endif
     data_len = *p++;
     if (plen >= 3) plen -= 3;
     if (data_len > plen) data_len = (uint8_t)plen;
