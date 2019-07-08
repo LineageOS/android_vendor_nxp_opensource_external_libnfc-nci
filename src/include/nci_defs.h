@@ -294,12 +294,6 @@
 #define NCI_RF_PARAM_ID_B_DATA_EX_PARAM \
   0x03 /* B Data Exchange config param  \
           */
-/****************************************************
- * NCI NFCEE status
- ****************************************************/
-#define NCI_NFCEE_STS_UNRECOVERABLE_ERROR 0x00
-#define NCI_NFCEE_STS_INIT_STARTED        0x01
-#define NCI_NFCEE_STS_INIT_COMPLETED      0x02
 
 #define NCI_NFCEE_INTERFACE_APDU 0x00
 #define NCI_NFCEE_INTERFACE_HCI_ACCESS 0x01
@@ -310,6 +304,7 @@
 /****************************************************
  * NCI NFCEE INterface specific status Codes
  ****************************************************/
+#define NCI_NFCEE_STS_UNRECOVERABLE_ERROR 0x00
 #define NCI_NFCEE_STS_INTF_ACTIVATION_FAILED 0xC0
 #define NCI_NFCEE_STS_TRANSMISSION_ERROR     0xC1
 #define NCI_NFCEE_STS_PROTOCOL_ERROR         0xC2
@@ -421,6 +416,9 @@ typedef uint8_t tNCI_INTF_TYPE;
 #define NCI_DISCOVERY_TYPE_LISTEN_ACTIVE 0x83
 #define NCI_DISCOVERY_TYPE_LISTEN_F_ACTIVE 0x85
 #define NCI_DISCOVERY_TYPE_LISTEN_ISO15693 0x86
+#if (NXP_EXTNS == TRUE)
+#define NCI_DISCOVERY_TYPE_FIELD_DETECT 0xFF
+#endif
 
 typedef uint8_t tNCI_DISCOVERY_TYPE;
 

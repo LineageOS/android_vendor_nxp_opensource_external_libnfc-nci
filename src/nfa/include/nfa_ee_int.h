@@ -100,9 +100,9 @@ enum {
   NFA_EE_ROUT_TIMEOUT_EVT,
   NFA_EE_DISCV_TIMEOUT_EVT,
   NFA_EE_CFG_TO_NFCC_EVT,
+  NFA_EE_NCI_NFCEE_STATUS_NTF_EVT,
   NFA_EE_API_ADD_APDU_EVT,
   NFA_EE_API_REMOVE_APDU_EVT,
-  NFA_EE_NCI_NFCEE_STATUS_NTF_EVT,
   NFA_EE_MAX_EVT
 };
 
@@ -639,10 +639,13 @@ typedef uint8_t tNFA_EE_FLAGS;
 #define NFA_EE_DISC_STS_REQ 0x02
 /* received NFA_EE_MODE_SET_COMPLETE  */
 #define NFA_EE_MODE_SET_COMPLETE 0x03
+/* initialize EE_RECOVERY             */
+#define NFA_EE_RECOVERY_INIT 0x04
+/* update ee config during EE_RECOVERY */
+#define NFA_EE_RECOVERY_REDISCOVERED 0x05
 #if (NXP_EXTNS == TRUE)
 /* received NFCEE_MODE_SET NTF  */
-#define NFA_EE_MODE_SET_NTF 0x04
-#define NFA_EE_RECOVERY 0x05
+#define NFA_EE_MODE_SET_NTF 0x06
 #endif
 
 typedef uint8_t tNFA_EE_DISC_STS;
@@ -677,6 +680,7 @@ typedef struct {
   uint8_t nfcee_id;
   uint8_t mode;
   uint8_t route_block_control; /* controls route block feature   */
+  bool isDiscoveryStopped;     /* discovery status               */
 } tNFA_EE_CB;
 
 /* Order of Routing entries in Routing Table */
@@ -749,6 +753,7 @@ void nfa_ee_report_disc_done(bool notify_sys);
 void nfa_ee_nci_disc_rsp(tNFA_EE_MSG* p_data);
 void nfa_ee_nci_disc_ntf(tNFA_EE_MSG* p_data);
 void nfa_ee_nci_mode_set_rsp(tNFA_EE_MSG* p_data);
+void nfa_ee_nci_nfcee_status_ntf(tNFA_EE_MSG* p_data);
 tNFA_STATUS nfa_ee_get_num_nfcee_configured(tNFA_VSC_CBACK* p_cback);
  void nfa_ee_read_num_nfcee_config_cb(uint8_t event, uint16_t param_len,
          uint8_t* p_param);
@@ -758,7 +763,6 @@ extern void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
 void nfa_ee_nci_set_mode_info(tNFA_EE_MSG* p_data);
 void nfa_ee_nci_pwr_link_ctrl_rsp(tNFA_EE_MSG* p_data);
 #endif
-void nfa_ee_nci_nfcee_status_ntf(tNFA_EE_MSG* p_data);
 void nfa_ee_nci_wait_rsp(tNFA_EE_MSG* p_data);
 void nfa_ee_nci_conn(tNFA_EE_MSG* p_data);
 void nfa_ee_nci_action_ntf(tNFA_EE_MSG* p_data);

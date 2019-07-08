@@ -36,9 +36,7 @@
 #include "nfa_dm_int.h"
 #include "nfa_ee_int.h"
 #include "nci_hmsgs.h"
-#if (NXP_EXTNS == TRUE)
 #include "nfa_hci_int.h"
-#endif
 #include <nfc_config.h>
 
 #include <statslog.h>
@@ -1404,12 +1402,12 @@ void nfa_ee_api_set_tech_cfg(tNFA_EE_MSG* p_data) {
     nfa_ee_report_event(p_cb->p_ee_cback, NFA_EE_SET_TECH_CFG_EVT, &evt_data);
     return;
   }
-  p_cb->tech_switch_on = p_data->set_tech.technologies_switch_on;
-  p_cb->tech_switch_off = p_data->set_tech.technologies_switch_off;
-  p_cb->tech_battery_off = p_data->set_tech.technologies_battery_off;
-  p_cb->tech_screen_lock = p_data->set_tech.technologies_screen_lock;
-  p_cb->tech_screen_off = p_data->set_tech.technologies_screen_off;
-  p_cb->tech_screen_off_lock = p_data->set_tech.technologies_screen_off_lock;
+  p_cb->tech_switch_on |= p_data->set_tech.technologies_switch_on;
+  p_cb->tech_switch_off |= p_data->set_tech.technologies_switch_off;
+  p_cb->tech_battery_off |= p_data->set_tech.technologies_battery_off;
+  p_cb->tech_screen_lock |= p_data->set_tech.technologies_screen_lock;
+  p_cb->tech_screen_off |= p_data->set_tech.technologies_screen_off;
+  p_cb->tech_screen_off_lock |= p_data->set_tech.technologies_screen_off_lock;
   nfa_ee_update_route_size(p_cb);
   if (nfa_ee_total_lmrt_size() > NFC_GetLmrtSize()) {
     LOG(ERROR) << StringPrintf("nfa_ee_api_set_tech_cfg Exceed LMRT size");
@@ -1515,12 +1513,12 @@ void nfa_ee_api_set_proto_cfg(tNFA_EE_MSG* p_data) {
     nfa_ee_report_event(p_cb->p_ee_cback, NFA_EE_SET_PROTO_CFG_EVT, &evt_data);
     return;
   }
-  p_cb->proto_switch_on = p_data->set_proto.protocols_switch_on;
-  p_cb->proto_switch_off = p_data->set_proto.protocols_switch_off;
-  p_cb->proto_battery_off = p_data->set_proto.protocols_battery_off;
-  p_cb->proto_screen_lock = p_data->set_proto.protocols_screen_lock;
-  p_cb->proto_screen_off = p_data->set_proto.protocols_screen_off;
-  p_cb->proto_screen_off_lock = p_data->set_proto.protocols_screen_off_lock;
+  p_cb->proto_switch_on |= p_data->set_proto.protocols_switch_on;
+  p_cb->proto_switch_off |= p_data->set_proto.protocols_switch_off;
+  p_cb->proto_battery_off |= p_data->set_proto.protocols_battery_off;
+  p_cb->proto_screen_lock |= p_data->set_proto.protocols_screen_lock;
+  p_cb->proto_screen_off |= p_data->set_proto.protocols_screen_off;
+  p_cb->proto_screen_off_lock |= p_data->set_proto.protocols_screen_off_lock;
   nfa_ee_update_route_size(p_cb);
   if (nfa_ee_total_lmrt_size() > NFC_GetLmrtSize()) {
     LOG(ERROR) << StringPrintf("nfa_ee_api_set_proto_cfg Exceed LMRT size");
@@ -2189,7 +2187,7 @@ void nfa_ee_api_add_sys_code(tNFA_EE_MSG* p_data) {
       if (new_size > NFC_GetLmrtSize()) {
         LOG(ERROR) << StringPrintf("Exceeded LMRT size:%d", new_size);
         evt_data.status = NFA_STATUS_BUFFER_FULL;
-      } else {
+      } else if (p_add->power_state) {
         /* add SC entry*/
         uint32_t p_cb_sc_len = nfa_ee_find_total_sys_code_len(p_cb, 0);
         p_cb->sys_code_pwr_cfg[p_cb->sys_code_cfg_entries] = p_add->power_state;
@@ -2506,9 +2504,10 @@ void nfa_ee_report_disc_done(bool notify_enable_done) {
                        evt_data.ee_discover.ee_info);
       nfa_ee_report_event(nullptr, NFA_EE_DISCOVER_EVT, &evt_data);
     }
-    if (nfa_ee_cb.p_enable_cback)
-                (*nfa_ee_cb.p_enable_cback) (NFA_EE_MODE_SET_COMPLETE);
 #endif
+    if ((nfa_hci_cb.hci_state == NFA_HCI_STATE_EE_RECOVERY) &&
+        nfa_ee_cb.p_enable_cback)
+      (*nfa_ee_cb.p_enable_cback)(NFA_EE_RECOVERY_REDISCOVERED);
   }
 }
 
@@ -2849,16 +2848,15 @@ void nfa_ee_nci_disc_ntf(tNFA_EE_MSG* p_data) {
 **
 *******************************************************************************/
 void nfa_ee_nci_nfcee_status_ntf(tNFA_EE_MSG* p_data) {
-  tNFC_NFCEE_STATUS_REVT* p_ee = p_data->nfcee_status_ntf.p_data;
-
-   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-      "nfa_ee_nci_nfcee_status_ntf() em_state:%d, nfcee_id:%d nfcee_status:%d",
-      nfa_ee_cb.em_state, p_ee->nfcee_id, p_ee->nfcee_status);
-  tNFA_EE_ECB* p_cb = nfa_ee_find_ecb(p_ee->nfcee_id);
-  if(p_ee->nfcee_status == NFC_NFCEE_STS_UNRECOVERABLE_ERROR) {
-    if(p_cb != nullptr) {
-        if (nfa_ee_cb.p_enable_cback)
-                    (*nfa_ee_cb.p_enable_cback) (NFA_EE_RECOVERY);
+  if (p_data != NULL) {
+    tNFC_NFCEE_STATUS_REVT* p_ee_data = p_data->nfcee_status_ntf.p_data;
+    if ((NFA_GetNCIVersion() == NCI_VERSION_2_0) &&
+        (p_ee_data->nfcee_status == NFC_NFCEE_STATUS_UNRECOVERABLE_ERROR)) {
+      tNFA_EE_ECB* p_cb = nfa_ee_find_ecb(p_ee_data->nfcee_id);
+      if (p_cb && nfa_ee_cb.p_enable_cback) {
+        (*nfa_ee_cb.p_enable_cback)(NFA_EE_RECOVERY_INIT);
+        NFC_NfceeDiscover(true);
+      }
     }
   }
 }
@@ -3050,8 +3048,11 @@ void nfa_ee_nci_mode_set_rsp(tNFA_EE_MSG* p_data) {
 #if (NXP_EXTNS == TRUE)
 /* Do not update routing table on secure element enable/disable. */
 #else
-  /* update routing table and vs on mode change */
-  nfa_ee_start_timer();
+  /* Do not update routing table in EE_RECOVERY state */
+  if (nfa_hci_cb.hci_state != NFA_HCI_STATE_EE_RECOVERY) {
+    /* Start routing table update debounce timer */
+    nfa_ee_start_timer();
+  }
 #endif
   if (p_rsp->status == NFA_STATUS_OK) {
     if (p_rsp->mode == NFA_EE_MD_ACTIVATE) {

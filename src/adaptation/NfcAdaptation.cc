@@ -272,8 +272,6 @@ void NfcAdaptation::GetNxpConfigs(
   configMap.emplace(
       NAME_OS_DOWNLOAD_TIMEOUT_VALUE,
       ConfigValue(inpOutData.out.data.nxpConfigs.osDownloadTimeoutValue));
-  configMap.emplace(NAME_NXP_DEFAULT_SE,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.nxpDefaultSe));
   configMap.emplace(
       NAME_DEFAULT_AID_ROUTE,
       ConfigValue(inpOutData.out.data.nxpConfigs.defaultAidRoute));
@@ -281,7 +279,7 @@ void NfcAdaptation::GetNxpConfigs(
       NAME_DEFAULT_AID_PWR_STATE,
       ConfigValue(inpOutData.out.data.nxpConfigs.defaultAidPwrState));
   configMap.emplace(
-      NAME_DEFAULT_ROUTE_PWR_STATE,
+      NAME_DEFAULT_ISODEP_PWR_STATE,
       ConfigValue(inpOutData.out.data.nxpConfigs.defaultRoutePwrState));
   configMap.emplace(
       NAME_DEFAULT_OFFHOST_PWR_STATE,
@@ -303,7 +301,7 @@ void NfcAdaptation::GetNxpConfigs(
   configMap.emplace(NAME_NXP_AGC_DEBUG_ENABLE,
                     ConfigValue(inpOutData.out.data.nxpConfigs.agcDebugEnable));
   configMap.emplace(
-      NAME_DEFAULT_FELICA_CLT_PWR_STATE,
+      NAME_DEFAULT_NFCF_PWR_STATE,
       ConfigValue(inpOutData.out.data.nxpConfigs.felicaCltPowerState));
   configMap.emplace(
       NAME_NXP_HCEF_CMD_RSP_TIMEOUT_VALUE,
