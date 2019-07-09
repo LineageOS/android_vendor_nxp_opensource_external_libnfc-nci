@@ -553,7 +553,7 @@ static void ce_t4t_data_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   NFC_HDR* p_c_apdu;
   uint8_t* p_cmd = nullptr;
   uint8_t cla = 0, instruct = 0, select_type = 0, length = 0;
-  uint16_t offset, max_file_size;
+  uint16_t offset = 0, max_file_size;
   tCE_DATA ce_data;
 
   if (event == NFC_DEACTIVATE_CEVT) {
@@ -598,7 +598,7 @@ static void ce_t4t_data_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   }
 
   /*CLA+INS+P1+P2 = 4 bytes*/
-  if (p_c_apdu->len >= T4T_CMD_MIN_HDR_SIZE) {
+  if (p_c_apdu->len >= T4T_CMD_MIN_HDR_SIZE && p_cmd) {
     /* Instruction Byte */
     BE_STREAM_TO_UINT8(instruct, p_cmd);
 
@@ -652,7 +652,7 @@ static void ce_t4t_data_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   } else if (ce_cb.mem.t4t.status & CE_T4T_STATUS_T4T_APP_SELECTED) {
     if (instruct == T4T_CMD_INS_SELECT) {
       /* P1 Byte is already parsed */
-      if (select_type == T4T_CMD_P1_SELECT_BY_FILE_ID) {
+      if (select_type == T4T_CMD_P1_SELECT_BY_FILE_ID && p_cmd) {
         ce_t4t_process_select_file_cmd(p_cmd);
       } else {
         LOG(ERROR) << StringPrintf("CET4T: Bad P1 byte (0x%02X)", select_type);

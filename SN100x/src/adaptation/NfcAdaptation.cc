@@ -797,6 +797,7 @@ int NfcAdaptation::HalIoctlIntf(long arg, void* p_data) {
 void NfcAdaptation::GetNxpConfigs(
     std::map<std::string, ConfigValue>& configMap) {
   nfc_nci_IoctlInOutData_t inpOutData;
+  memset(&inpOutData, 0, sizeof(nfc_nci_IoctlInOutData_t));
   std::string config;
   int ret = HalIoctlIntf(HAL_NFC_IOCTL_GET_NXP_CONFIG, &inpOutData);
   DLOG_IF(INFO, nfc_debug_enabled)
