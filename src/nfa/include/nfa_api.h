@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -276,6 +276,7 @@ typedef enum power_substate {
   SCREEN_STATE_OFF_UNLOCKED,
   SCREEN_STATE_ON_LOCKED,
   SCREEN_STATE_OFF_LOCKED,
+  SCREEN_STATE_INVALID = 0xFF
 } epower_substate_t;
 
 #define NFA_SCREEN_STATE_MASK 0x0F
@@ -332,6 +333,7 @@ typedef struct {
   uint8_t android_version; /* Nxp's android version */
   uint8_t major_version;   /* Major Version of MW*/
   uint8_t minor_version;   /* Minor Version of Mw */
+  uint8_t cust_id;         /*Customer id*/
 } tNFA_MW_VERSION;
 #endif
 
@@ -1586,6 +1588,27 @@ extern tNFA_STATUS NFA_ResetNfcc();
 *******************************************************************************/
 extern void NFA_SetPreferredUiccId(uint8_t uicc_id);
 
+/*******************************************************************************
+**
+** Function         NFA_setFieldDetectMode
+**
+** Description      Updates field detect mode true/false
+**
+** Returns          void
+**
+*******************************************************************************/
+extern void NFA_SetFieldDetectMode(bool mode);
+
+/*******************************************************************************
+**
+** Function         NFA_IsFieldDetectEnabled
+**
+** Description      Returns current status of field detect mode
+**
+** Returns          true/false
+**
+*******************************************************************************/
+extern bool NFA_IsFieldDetectEnabled();
 #endif
 
 /*******************************************************************************

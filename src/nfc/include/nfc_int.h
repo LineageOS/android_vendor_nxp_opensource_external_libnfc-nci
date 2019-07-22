@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@
 #include "gki.h"
 #include "nci_defs.h"
 #include "nfc_api.h"
+#include <SyncEvent.h>
 
 /****************************************************************************
  ** Internal NFC constants and definitions
@@ -95,6 +96,7 @@
 #define NFC_TTYPE_LISTEN_ACTIVATION 111
 #define NFC_TTYPE_P2P_PRIO_LOGIC_DEACT_NTF_TIMEOUT 113
 #endif
+#define NFC_TTYPE_RW_MFC_RESPONSE 114
 /* time out for modeSet notification */
 #define NFC_SETMODE_NTF_TIMEOUT     2
 #if (NXP_EXTNS == TRUE)
@@ -214,6 +216,7 @@ typedef struct {
 #endif
 typedef struct {
   bool bPwrLinkCmdRequested;
+  tNFC_INTF_REQ_SRC reqSrc;
   uint16_t param;
 } tNFC_PWRLINK_CMD;
 
@@ -315,6 +318,7 @@ typedef struct {
   bool bBlkPwrlinkAndModeSetCmd;
   NFC_HDR* temp_data;
   bool isLowRam;
+  SyncEvent hciEvt;
 #endif
   uint8_t nci_version;     /* NCI version used for NCI communication*/
 

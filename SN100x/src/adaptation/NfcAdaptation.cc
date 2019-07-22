@@ -550,7 +550,7 @@ void NfcAdaptation::InitializeHalDeviceContext() {
   mHalEntryFuncs.core_initialized = HalCoreInitialized;
   mHalEntryFuncs.write = HalWrite;
  #if (NXP_EXTNS == TRUE)
-  mHalEntryFuncs.ioctl = HalIoctl;
+  mHalEntryFuncs.ioctl = HalIoctlIntf;
 #endif
   mHalEntryFuncs.prediscover = HalPrediscover;
   mHalEntryFuncs.control_granted = HalControlGranted;
@@ -770,6 +770,21 @@ int NfcAdaptation::HalIoctl(long arg, void* p_data) {
   return (pInpOutData->out.result);
 }
 
+/*******************************************************************************
+**
+** Function:    NfcAdaptation::HalIoctlIntf
+**
+** Description: Calls ioctl to the Nfc driver.
+**                           updated to p_data.
+**
+** Returns:     -1 or 0.
+**
+*******************************************************************************/
+
+int NfcAdaptation::HalIoctlIntf(long arg, void* p_data) {
+    return HalIoctl(arg, p_data);
+}
+
 /******************************************************************************
  * Function         phNxpNciHal_getNxpConfig
  *
@@ -782,7 +797,9 @@ int NfcAdaptation::HalIoctl(long arg, void* p_data) {
 void NfcAdaptation::GetNxpConfigs(
     std::map<std::string, ConfigValue>& configMap) {
   nfc_nci_IoctlInOutData_t inpOutData;
-  int ret = HalIoctl(HAL_NFC_IOCTL_GET_NXP_CONFIG, &inpOutData);
+  memset(&inpOutData, 0, sizeof(nfc_nci_IoctlInOutData_t));
+  std::string config;
+  int ret = HalIoctlIntf(HAL_NFC_IOCTL_GET_NXP_CONFIG, &inpOutData);
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("HAL_NFC_IOCTL_GET_NXP_CONFIG ioctl return value = %d", ret);
   configMap.emplace(
@@ -866,6 +883,32 @@ void NfcAdaptation::GetNxpConfigs(
   configMap.emplace(
       NAME_NXP_POLL_FOR_EFD_TIMEDELAY,
       ConfigValue(inpOutData.out.data.nxpConfigs.pollEfdDelay));
+  configMap.emplace(
+      NAME_NXP_NFCC_MERGE_SAK_ENABLE,
+      ConfigValue(inpOutData.out.data.nxpConfigs.mergeSakEnable));
+  configMap.emplace(
+      NAME_NXP_STAG_TIMEOUT_CFG,
+      ConfigValue(inpOutData.out.data.nxpConfigs.stagTimeoutCfg));
+  if(inpOutData.out.data.nxpConfigs.rfStorage.len){
+    config.assign(inpOutData.out.data.nxpConfigs.rfStorage.path,
+              inpOutData.out.data.nxpConfigs.rfStorage.len);
+    configMap.emplace(NAME_RF_STORAGE,ConfigValue(config));
+  }
+  if(inpOutData.out.data.nxpConfigs.fwStorage.len){
+    config.assign(inpOutData.out.data.nxpConfigs.fwStorage.path,
+            inpOutData.out.data.nxpConfigs.fwStorage.len);
+    configMap.emplace(NAME_FW_STORAGE, ConfigValue(config));
+  }
+  if(inpOutData.out.data.nxpConfigs.coreConf.len){
+    std::vector coreConf(inpOutData.out.data.nxpConfigs.coreConf.cmd,
+            inpOutData.out.data.nxpConfigs.coreConf.cmd + inpOutData.out.data.nxpConfigs.coreConf.len);
+    configMap.emplace(NAME_NXP_CORE_CONF,ConfigValue(coreConf));
+  }
+  if(inpOutData.out.data.nxpConfigs.rfFileVersInfo.len){
+    std::vector rfFileVersInfo(inpOutData.out.data.nxpConfigs.rfFileVersInfo.ver,
+            inpOutData.out.data.nxpConfigs.rfFileVersInfo.ver + inpOutData.out.data.nxpConfigs.rfFileVersInfo.len);
+    configMap.emplace(NAME_NXP_RF_FILE_VERSION_INFO,ConfigValue(rfFileVersInfo));
+  }
 }
 #endif
 /*******************************************************************************

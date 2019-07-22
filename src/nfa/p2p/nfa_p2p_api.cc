@@ -47,9 +47,6 @@
 
 #include "nfa_p2p_api.h"
 #include "nfa_p2p_int.h"
-#if (NXP_EXTNS == TRUE)
-#include "nfc_int.h"
-#endif
 
 using android::base::StringPrintf;
 
@@ -110,7 +107,7 @@ tNFA_STATUS NFA_P2pRegisterServer(uint8_t server_sap,
   }
 
   if ((p_msg = (tNFA_P2P_API_REG_SERVER*)GKI_getbuf(
-           sizeof(tNFA_P2P_API_REG_SERVER))) != NULL) {
+           sizeof(tNFA_P2P_API_REG_SERVER))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_REG_SERVER_EVT;
 
     p_msg->server_sap = server_sap;
@@ -160,7 +157,7 @@ tNFA_STATUS NFA_P2pRegisterClient(tNFA_P2P_LINK_TYPE link_type,
   }
 
   if ((p_msg = (tNFA_P2P_API_REG_CLIENT*)GKI_getbuf(
-           sizeof(tNFA_P2P_API_REG_CLIENT))) != NULL) {
+           sizeof(tNFA_P2P_API_REG_CLIENT))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_REG_CLIENT_EVT;
 
     p_msg->p_cback = p_cback;
@@ -199,14 +196,14 @@ tNFA_STATUS NFA_P2pDeregister(tNFA_HANDLE handle) {
 
   xx = handle & NFA_HANDLE_MASK;
 
-  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == NULL)) {
+  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == nullptr)) {
     LOG(ERROR) << StringPrintf(
         "NFA_P2pDeregister (): Handle is invalid or not registered");
     return (NFA_STATUS_BAD_HANDLE);
   }
 
   if ((p_msg = (tNFA_P2P_API_DEREG*)GKI_getbuf(sizeof(tNFA_P2P_API_DEREG))) !=
-      NULL) {
+      nullptr) {
     p_msg->hdr.event = NFA_P2P_API_DEREG_EVT;
 
     p_msg->handle = handle;
@@ -257,7 +254,7 @@ tNFA_STATUS NFA_P2pAcceptConn(tNFA_HANDLE handle, uint16_t miu, uint8_t rw) {
     LOG(ERROR) << StringPrintf("NFA_P2pAcceptConn (): MIU(%d) must be between %d and %d",
                      miu, LLCP_DEFAULT_MIU, nfa_p2p_cb.local_link_miu);
   } else if ((p_msg = (tNFA_P2P_API_ACCEPT_CONN*)GKI_getbuf(
-                  sizeof(tNFA_P2P_API_ACCEPT_CONN))) != NULL) {
+                  sizeof(tNFA_P2P_API_ACCEPT_CONN))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_ACCEPT_CONN_EVT;
 
     p_msg->conn_handle = handle;
@@ -306,7 +303,7 @@ tNFA_STATUS NFA_P2pRejectConn(tNFA_HANDLE handle) {
   }
 
   if ((p_msg = (tNFA_P2P_API_REJECT_CONN*)GKI_getbuf(
-           sizeof(tNFA_P2P_API_REJECT_CONN))) != NULL) {
+           sizeof(tNFA_P2P_API_REJECT_CONN))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_REJECT_CONN_EVT;
 
     p_msg->conn_handle = handle;
@@ -359,7 +356,7 @@ tNFA_STATUS NFA_P2pDisconnect(tNFA_HANDLE handle, bool flush) {
   }
 
   if ((p_msg = (tNFA_P2P_API_DISCONNECT*)GKI_getbuf(
-           sizeof(tNFA_P2P_API_DISCONNECT))) != NULL) {
+           sizeof(tNFA_P2P_API_DISCONNECT))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_DISCONNECT_EVT;
 
     p_msg->conn_handle = handle;
@@ -399,7 +396,7 @@ tNFA_STATUS NFA_P2pConnectByName(tNFA_HANDLE client_handle,
 
   xx = client_handle & NFA_HANDLE_MASK;
 
-  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == NULL)) {
+  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == nullptr)) {
     LOG(ERROR) << StringPrintf("NFA_P2pConnectByName (): Client Handle is not valid");
     return (NFA_STATUS_BAD_HANDLE);
   }
@@ -412,7 +409,7 @@ tNFA_STATUS NFA_P2pConnectByName(tNFA_HANDLE client_handle,
         "link is not activated",
         miu, LLCP_DEFAULT_MIU, nfa_p2p_cb.local_link_miu);
   } else if ((p_msg = (tNFA_P2P_API_CONNECT*)GKI_getbuf(
-                  sizeof(tNFA_P2P_API_CONNECT))) != NULL) {
+                  sizeof(tNFA_P2P_API_CONNECT))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_CONNECT_EVT;
 
         NQ_STRLCPY_S (p_msg->service_name, sizeof (p_msg->service_name), p_service_name, LLCP_MAX_SN_LEN);
@@ -456,7 +453,7 @@ tNFA_STATUS NFA_P2pConnectBySap(tNFA_HANDLE client_handle, uint8_t dsap,
 
   xx = client_handle & NFA_HANDLE_MASK;
 
-  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == NULL)) {
+  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == nullptr)) {
     LOG(ERROR) << StringPrintf("NFA_P2pConnectBySap (): Client Handle is not valid");
     return (NFA_STATUS_BAD_HANDLE);
   }
@@ -469,7 +466,7 @@ tNFA_STATUS NFA_P2pConnectBySap(tNFA_HANDLE client_handle, uint8_t dsap,
         "link is not activated",
         miu, LLCP_DEFAULT_MIU, nfa_p2p_cb.local_link_miu);
   } else if ((p_msg = (tNFA_P2P_API_CONNECT*)GKI_getbuf(
-                  sizeof(tNFA_P2P_API_CONNECT))) != NULL) {
+                  sizeof(tNFA_P2P_API_CONNECT))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_CONNECT_EVT;
 
     p_msg->service_name[LLCP_MAX_SN_LEN] = 0;
@@ -507,9 +504,6 @@ tNFA_STATUS NFA_P2pSendUI(tNFA_HANDLE handle, uint8_t dsap, uint16_t length,
   tNFA_P2P_API_SEND_UI* p_msg;
   tNFA_STATUS ret_status = NFA_STATUS_FAILED;
   tNFA_HANDLE xx;
-#if (NXP_EXTNS == TRUE)
-  tNFC_CONN_CB* p_cb = &nfc_cb.conn_cb[NFC_RF_CONN_ID];
-#endif
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_P2pSendUI (): handle:0x%X, DSAP:0x%02X, length:%d",
                  handle, dsap, length);
@@ -518,7 +512,7 @@ tNFA_STATUS NFA_P2pSendUI(tNFA_HANDLE handle, uint8_t dsap, uint16_t length,
 
   xx = handle & NFA_HANDLE_MASK;
 
-  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == NULL)) {
+  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == nullptr)) {
     LOG(ERROR) << StringPrintf("NFA_P2pSendUI (): Handle (0x%X) is not valid", handle);
     ret_status = NFA_STATUS_BAD_HANDLE;
   } else if (length > nfa_p2p_cb.remote_link_miu) {
@@ -542,38 +536,19 @@ tNFA_STATUS NFA_P2pSendUI(tNFA_HANDLE handle, uint8_t dsap, uint16_t length,
         "NFA_P2pSendUI(): handle:0x%X, logical data link is congested", handle);
     ret_status = NFA_STATUS_CONGESTED;
   } else if ((p_msg = (tNFA_P2P_API_SEND_UI*)GKI_getbuf(
-                  sizeof(tNFA_P2P_API_SEND_UI))) != NULL) {
+                  sizeof(tNFA_P2P_API_SEND_UI))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_SEND_UI_EVT;
 
     p_msg->handle = handle;
     p_msg->dsap = dsap;
 
-#if (NXP_EXTNS == TRUE)
-    if((length + LLCP_PDU_HEADER_SIZE) > p_cb->buff_size){
-      if(nfa_dm_get_extended_cmd_buf((tNFC_EXT_HDR **)&p_msg->p_msg, NFA_P2P_API_SEND_UI_EVT, p_data, length)){
-        LOG(ERROR) << StringPrintf("NFA_P2pSendUI () memory allocation for extended length is un-successfull");
-        return NFA_STATUS_FAILED;
-      }else{
-        /*Do nothing*/
-      }
-    }else{
-      p_msg->p_msg = (NFC_HDR*)GKI_getpoolbuf(LLCP_POOL_ID);
-    }
-#else
     p_msg->p_msg = (NFC_HDR*)GKI_getpoolbuf(LLCP_POOL_ID);
-#endif
-    if (p_msg->p_msg != NULL) {
+
+    if (p_msg->p_msg != nullptr) {
       p_msg->p_msg->len = length;
       p_msg->p_msg->offset = LLCP_MIN_OFFSET;
-#if (NXP_EXTNS == TRUE)
-      if((length + LLCP_PDU_HEADER_SIZE) <= p_cb->buff_size){
-#endif
-        memcpy(((uint8_t*)(p_msg->p_msg + 1) + p_msg->p_msg->offset), p_data,
+      memcpy(((uint8_t*)(p_msg->p_msg + 1) + p_msg->p_msg->offset), p_data,
              length);
-
-#if (NXP_EXTNS == TRUE)
-      }
-#endif
       /* increase number of tx UI PDU which is not processed by NFA for
        * congestion control */
       nfa_p2p_cb.sap_cb[xx].num_pending_ui_pdu++;
@@ -625,7 +600,7 @@ tNFA_STATUS NFA_P2pReadUI(tNFA_HANDLE handle, uint32_t max_data_len,
 
   xx = handle & NFA_HANDLE_MASK;
 
-  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == NULL)) {
+  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == nullptr)) {
     LOG(ERROR) << StringPrintf("NFA_P2pReadUI (): Handle (0x%X) is not valid", handle);
     ret_status = NFA_STATUS_BAD_HANDLE;
   } else {
@@ -660,7 +635,7 @@ tNFA_STATUS NFA_P2pFlushUI(tNFA_HANDLE handle, uint32_t* p_length) {
 
   xx = handle & NFA_HANDLE_MASK;
 
-  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == NULL)) {
+  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == nullptr)) {
     LOG(ERROR) << StringPrintf("NFA_P2pFlushUI (): Handle (0x%X) is not valid", handle);
     ret_status = NFA_STATUS_BAD_HANDLE;
     *p_length = 0;
@@ -693,9 +668,6 @@ tNFA_STATUS NFA_P2pSendData(tNFA_HANDLE handle, uint16_t length,
   tNFA_P2P_API_SEND_DATA* p_msg;
   tNFA_STATUS ret_status = NFA_STATUS_FAILED;
   tNFA_HANDLE xx;
-#if (NXP_EXTNS == TRUE)
-  tNFC_CONN_CB* p_cb = &nfc_cb.conn_cb[NFC_RF_CONN_ID];
-#endif
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFA_P2pSendData (): handle:0x%X, length:%d", handle, length);
 
@@ -736,38 +708,18 @@ tNFA_STATUS NFA_P2pSendData(tNFA_HANDLE handle, uint16_t length,
         handle);
     ret_status = NFA_STATUS_CONGESTED;
   } else if ((p_msg = (tNFA_P2P_API_SEND_DATA*)GKI_getbuf(
-                  sizeof(tNFA_P2P_API_SEND_DATA))) != NULL) {
+                  sizeof(tNFA_P2P_API_SEND_DATA))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_SEND_DATA_EVT;
 
     p_msg->conn_handle = handle;
 
-#if (NXP_EXTNS == TRUE)
-    if((length + LLCP_PDU_HEADER_SIZE) > p_cb->buff_size){
-      if(nfa_dm_get_extended_cmd_buf((tNFC_EXT_HDR **)&p_msg->p_msg, NFA_P2P_API_SEND_DATA_EVT, p_data, length)){
-        LOG(ERROR) << StringPrintf("NFA_P2pSendData () memory allocation for extended length is un-successfull");
-        return NFA_STATUS_FAILED;
-      }else{
-        /*Do nothing*/
-      }
-    }else{
-      p_msg->p_msg = (NFC_HDR*)GKI_getpoolbuf(LLCP_POOL_ID);
-    }
-#else
     p_msg->p_msg = (NFC_HDR*)GKI_getpoolbuf(LLCP_POOL_ID);
-#endif
 
-    if (p_msg->p_msg != NULL) {
+    if (p_msg->p_msg != nullptr) {
       p_msg->p_msg->len = length;
       p_msg->p_msg->offset = LLCP_MIN_OFFSET;
-#if (NXP_EXTNS == TRUE)
-      if((length + LLCP_PDU_HEADER_SIZE) <= p_cb->buff_size){
-#endif
-        memcpy(((uint8_t*)(p_msg->p_msg + 1) + p_msg->p_msg->offset), p_data,
+      memcpy(((uint8_t*)(p_msg->p_msg + 1) + p_msg->p_msg->offset), p_data,
              length);
-
-#if (NXP_EXTNS == TRUE)
-      }
-#endif
       /* increase number of tx I PDU which is not processed by NFA for
        * congestion control */
       nfa_p2p_cb.conn_cb[xx].num_pending_i_pdu++;
@@ -905,7 +857,7 @@ tNFA_STATUS NFA_P2pSetLocalBusy(tNFA_HANDLE conn_handle, bool is_busy) {
   }
 
   if ((p_msg = (tNFA_P2P_API_SET_LOCAL_BUSY*)GKI_getbuf(
-           sizeof(tNFA_P2P_API_SET_LOCAL_BUSY))) != NULL) {
+           sizeof(tNFA_P2P_API_SET_LOCAL_BUSY))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_SET_LOCAL_BUSY_EVT;
 
     p_msg->conn_handle = conn_handle;
@@ -945,14 +897,14 @@ tNFA_STATUS NFA_P2pGetLinkInfo(tNFA_HANDLE handle) {
 
   xx = handle & NFA_HANDLE_MASK;
 
-  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == NULL)) {
+  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == nullptr)) {
     LOG(ERROR) << StringPrintf(
         "NFA_P2pGetLinkInfo (): Handle is invalid or not registered");
     return (NFA_STATUS_BAD_HANDLE);
   }
 
   if ((p_msg = (tNFA_P2P_API_GET_LINK_INFO*)GKI_getbuf(
-           sizeof(tNFA_P2P_API_GET_LINK_INFO))) != NULL) {
+           sizeof(tNFA_P2P_API_GET_LINK_INFO))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_GET_LINK_INFO_EVT;
 
     p_msg->handle = handle;
@@ -992,14 +944,14 @@ tNFA_STATUS NFA_P2pGetRemoteSap(tNFA_HANDLE handle, char* p_service_name) {
 
   xx = handle & NFA_HANDLE_MASK;
 
-  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == NULL)) {
+  if ((xx >= NFA_P2P_NUM_SAP) || (nfa_p2p_cb.sap_cb[xx].p_cback == nullptr)) {
     LOG(ERROR) << StringPrintf(
         "NFA_P2pGetRemoteSap (): Handle is invalid or not registered");
     return (NFA_STATUS_BAD_HANDLE);
   }
 
   if ((p_msg = (tNFA_P2P_API_GET_REMOTE_SAP*)GKI_getbuf(
-           sizeof(tNFA_P2P_API_GET_REMOTE_SAP))) != NULL) {
+           sizeof(tNFA_P2P_API_GET_REMOTE_SAP))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_GET_REMOTE_SAP_EVT;
 
     p_msg->handle = handle;
@@ -1066,7 +1018,7 @@ tNFA_STATUS NFA_P2pSetLLCPConfig(uint16_t link_miu, uint8_t opt, uint8_t wt,
   }
 
   if ((p_msg = (tNFA_P2P_API_SET_LLCP_CFG*)GKI_getbuf(
-           sizeof(tNFA_P2P_API_SET_LLCP_CFG))) != NULL) {
+           sizeof(tNFA_P2P_API_SET_LLCP_CFG))) != nullptr) {
     p_msg->hdr.event = NFA_P2P_API_SET_LLCP_CFG_EVT;
 
     p_msg->link_miu = link_miu;
