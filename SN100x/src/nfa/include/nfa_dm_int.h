@@ -601,6 +601,7 @@ typedef struct {
   tNFA_TECHNOLOGY_MASK        pollTech;
   tNFA_TECHNOLOGY_MASK        listenTech;
   uint8_t selected_uicc_id; /* Current selected UICC ID */
+  bool isFieldDetectEnabled; /*Field Detect Enable status*/
 #endif
 } tNFA_DM_CB;
 
@@ -656,9 +657,15 @@ void nfa_snep_init(bool is_dta_mode);
 #if (NFC_NFCEE_INCLUDED == TRUE)
 void nfa_ee_init(void);
 void nfa_hci_init(void);
+#if (NXP_EXTNS == TRUE)
+void nfa_scr_init(void);
+#endif
 #else
 #define nfa_ee_init()
 #define nfa_hci_init()
+#if (NXP_EXTNS == TRUE)
+#define nfa_scr_init()
+#endif
 #endif
 
 /* Action function prototypes */

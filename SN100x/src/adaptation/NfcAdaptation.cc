@@ -287,7 +287,7 @@ void NfcAdaptation::GetVendorConfigs(
 *******************************************************************************/
 void NfcAdaptation::Initialize() {
   const char* func = "NfcAdaptation::Initialize";
-  const char* argv[] = {"libnfc_nci"};
+  const base::CommandLine::CharType* argv[] = {"libnfc_nci"};
   // Init log tag
   base::CommandLine::Init(1, argv);
 
@@ -364,6 +364,8 @@ void NfcAdaptation::Initialize() {
         << StringPrintf("%s: MAX_WTX_COUNT to wait for HCI response %d",
                         func, nfa_hci_cfg.max_wtx_count);
   }
+  /* initialize FW status update callback handle*/
+  p_fwupdate_status_cback = NULL;
 #endif
   verify_stack_non_volatile_store();
   if (NfcConfig::hasKey(NAME_PRESERVE_STORAGE) &&
@@ -549,9 +551,6 @@ void NfcAdaptation::InitializeHalDeviceContext() {
   mHalEntryFuncs.close = HalClose;
   mHalEntryFuncs.core_initialized = HalCoreInitialized;
   mHalEntryFuncs.write = HalWrite;
- #if (NXP_EXTNS == TRUE)
-  mHalEntryFuncs.ioctl = HalIoctlIntf;
-#endif
   mHalEntryFuncs.prediscover = HalPrediscover;
   mHalEntryFuncs.control_granted = HalControlGranted;
   mHalEntryFuncs.power_cycle = HalPowerCycle;
@@ -568,6 +567,7 @@ void NfcAdaptation::InitializeHalDeviceContext() {
   LOG(INFO) << StringPrintf("%s: INfc::getService() returned %p (%s)", func,
                             mHal.get(),
                             (mHal->isRemote() ? "remote" : "local"));
+#if (NXP_EXTNS == TRUE)
   LOG(INFO) << StringPrintf("%s: Try INqNfcV1_1::getService()", func);
   mNqHal = mNqHal_1_1 = INqNfcV1_1::getService();
   if (mNqHal_1_1 == nullptr) {
@@ -581,7 +581,9 @@ void NfcAdaptation::InitializeHalDeviceContext() {
                         mNqHal.get(),
                         (mNqHal->isRemote() ? "remote" : "local"));
   }
+  mHalEntryFuncs.ioctl = HalIoctlIntf;
   nfcBootMode = NFA_NORMAL_BOOT_MODE;
+#endif
 }
 
 /*******************************************************************************
@@ -887,8 +889,13 @@ void NfcAdaptation::GetNxpConfigs(
       NAME_NXP_NFCC_MERGE_SAK_ENABLE,
       ConfigValue(inpOutData.out.data.nxpConfigs.mergeSakEnable));
   configMap.emplace(
+      NAME_DEFAULT_T4TNFCEE_AID_POWER_STATE,
+      ConfigValue(inpOutData.out.data.nxpConfigs.t4tNfceePwrState));
+  configMap.emplace(
       NAME_NXP_STAG_TIMEOUT_CFG,
       ConfigValue(inpOutData.out.data.nxpConfigs.stagTimeoutCfg));
+  configMap.emplace( NAME_NFA_CONFIG_FORMAT,
+      ConfigValue(inpOutData.out.data.nxpConfigs.scrCfgFormat));
   if(inpOutData.out.data.nxpConfigs.rfStorage.len){
     config.assign(inpOutData.out.data.nxpConfigs.rfStorage.path,
               inpOutData.out.data.nxpConfigs.rfStorage.len);
@@ -908,6 +915,11 @@ void NfcAdaptation::GetNxpConfigs(
     std::vector rfFileVersInfo(inpOutData.out.data.nxpConfigs.rfFileVersInfo.ver,
             inpOutData.out.data.nxpConfigs.rfFileVersInfo.ver + inpOutData.out.data.nxpConfigs.rfFileVersInfo.len);
     configMap.emplace(NAME_NXP_RF_FILE_VERSION_INFO,ConfigValue(rfFileVersInfo));
+  }
+  if(inpOutData.out.data.nxpConfigs.scrResetEmvco.len){
+    std::vector scrResetEmvcoCmd(inpOutData.out.data.nxpConfigs.scrResetEmvco.cmd,
+            inpOutData.out.data.nxpConfigs.scrResetEmvco.cmd + inpOutData.out.data.nxpConfigs.scrResetEmvco.len);
+    configMap.emplace(NAME_NXP_PROP_RESET_EMVCO_CMD,ConfigValue(scrResetEmvcoCmd));
   }
 }
 #endif
@@ -1008,13 +1020,26 @@ uint8_t NfcAdaptation::HalGetMaxNfcee() {
 **
 ** Description: Download firmware patch files.
 **
+** Parameters: p_cback- callback from JNI to update the FW download status
+**             isNfcOn- NFC_ON:true, NFC_OFF:false
 ** Returns:     True/False
 **
 *******************************************************************************/
+#if (NXP_EXTNS == TRUE)
+bool NfcAdaptation::DownloadFirmware(tNFC_JNI_FWSTATUS_CBACK* p_cback,
+                                     bool isNfcOn) {
+#else
 bool NfcAdaptation::DownloadFirmware() {
+#endif
   const char* func = "NfcAdaptation::DownloadFirmware";
   isDownloadFirmwareCompleted = false;
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: enter", func);
+#if (NXP_EXTNS == TRUE)
+  p_fwupdate_status_cback = p_cback;
+  if (isNfcOn) {
+    return true;
+  }
+#endif
   HalInitialize();
   mHalOpenCompletedEvent.lock();
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: try open HAL", func);
@@ -1062,6 +1087,14 @@ void NfcAdaptation::HalDownloadFirmwareCallback(nfc_event_t event,
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("%s: event=0x%X", func, event);
   switch (event) {
+#if (NXP_EXTNS == TRUE)
+    case HAL_NFC_FW_UPDATE_STATUS_EVT:
+      /* Notify app of FW Update status*/
+      if (NfcAdaptation::GetInstance().p_fwupdate_status_cback) {
+        (*NfcAdaptation::GetInstance().p_fwupdate_status_cback)(event_status);
+      }
+      break;
+#endif
     case HAL_NFC_OPEN_CPLT_EVT: {
       DLOG_IF(INFO, nfc_debug_enabled)
           << StringPrintf("%s: HAL_NFC_OPEN_CPLT_EVT", func);

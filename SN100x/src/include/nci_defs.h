@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018 NXP
+ *  Copyright 2018-2019 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -115,6 +115,8 @@
 #if (NXP_EXTNS == TRUE)
 /*NCI packet Status Byte*/
 #define NCI_MSG_STATUS_BYTE 0x03
+#define NCI_DEST_TYPE_T4T_NFCEE 5 /* T4T NFCEE */
+
 #endif
 
 /* builds byte0 of NCI Command and Notification packet */
@@ -428,6 +430,10 @@ typedef uint8_t tNCI_INTF_TYPE;
 #define NCI_DISCOVERY_TYPE_LISTEN_ACTIVE 0x83
 #define NCI_DISCOVERY_TYPE_LISTEN_F_ACTIVE 0x85
 #define NCI_DISCOVERY_TYPE_LISTEN_ISO15693 0x86
+
+#if (NXP_EXTNS == TRUE)
+#define NCI_DISCOVERY_TYPE_FIELD_DETECT 0xFF
+#endif
 
 typedef uint8_t tNCI_DISCOVERY_TYPE;
 
