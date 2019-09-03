@@ -120,8 +120,8 @@
 #define NXP_EN_PN557     1
 #define NXP_EN_PN81T     1
 #define NXP_ANDROID_VER (10U)        /* NXP android version */
-#define NFC_NXP_MW_VERSION_MAJ (0x01) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN (0x01) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MAJ (0x03) /* MW Major Version */
+#define NFC_NXP_MW_VERSION_MIN (0x00) /* MW Minor Version */
 #define NFC_NXP_MW_CUSTOMER_ID (0x00) /* MW Customer Id */
 #endif
 /* 0xE0 ~0xFF are proprietary status codes */
@@ -306,13 +306,6 @@ enum {
   NFC_CMD_TYPE_TYPE_NONE     = 0xFF
 };
 
-enum NFCCSELFTESTTYPE {
-  TEST_TYPE_RF_ON = 0x00,
-  TEST_TYPE_RF_OFF,
-  TEST_TYPE_TRANSAC_A,
-  TEST_TYPE_TRANSAC_B,
-  TEST_TYPE_NONE = 0xFF
-};
 #endif
 /* the events reported on tNFC_RESPONSE_CBACK */
 enum {
