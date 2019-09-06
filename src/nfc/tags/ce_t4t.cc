@@ -580,7 +580,8 @@ static void ce_t4t_data_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   p_cmd = (uint8_t*)(p_c_apdu + 1) + p_c_apdu->offset;
 
   /* Class Byte */
-   BE_STREAM_TO_UINT8(cla, p_cmd);
+  if (p_cmd)
+    BE_STREAM_TO_UINT8(cla, p_cmd);
 
   /* Don't check class if registered AID has been selected */
   if ((cla != T4T_CMD_CLASS) &&

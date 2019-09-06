@@ -633,7 +633,7 @@ static void rw_mfc_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
                               tNFC_CONN* p_data) {
   tRW_MFC_CB* p_mfc = &rw_cb.tcb.mfc;
   tRW_READ_DATA evt_data;
-  NFC_HDR* mfc_data = {};
+  NFC_HDR* mfc_data = NULL;
   tRW_DATA rw_data;
 
   if (!p_data) {
@@ -699,6 +699,10 @@ static void rw_mfc_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   }
 
   /* Assume the data is just the response byte sequence */
+  if (mfc_data == NULL) {
+    LOG(ERROR) << __func__ << " mfc_data found NULL";
+    return;
+  }
 
   switch (p_mfc->state) {
     case RW_MFC_STATE_IDLE:
