@@ -58,7 +58,9 @@
 using android::base::StringPrintf;
 
 extern bool nfc_debug_enabled;
-
+#if (NXP_EXTNS == TRUE)
+extern void nfa_t4tnfcee_init();
+#endif
 /*****************************************************************************
 **  Constants
 *****************************************************************************/
@@ -94,6 +96,10 @@ void NFA_Init(tHAL_NFC_ENTRY* p_hal_entry_tbl) {
   nfa_ee_init();
   if (nfa_ee_max_ee_cfg != 0) {
     nfa_dm_cb.get_max_ee = p_hal_entry_tbl->get_max_ee;
+    #if (NXP_EXTNS == TRUE)
+    nfa_t4tnfcee_init();
+    nfa_scr_init();
+    #endif
     nfa_hci_init();
   }
 #if (NXP_EXTNS == TRUE)
@@ -369,13 +375,13 @@ tNFA_STATUS NFA_GetConfig(uint8_t num_ids, tNFA_PMID* p_param_ids) {
 *******************************************************************************/
 tNFA_STATUS NFA_SetTransitConfig(std::string config) {
   tNFA_DM_API_SET_TRANSIT_CONFIG* p_msg;
-  uint16_t strsize = strlen(config.c_str());
-  if (strsize == 0) {
-    LOG(ERROR) << StringPrintf("Selecting Default Config");
+  uint16_t strsize = strlen(config.c_str()) + 1; /* size including the null char */
+  if (strsize == 1) {
+    LOG(INFO) << StringPrintf("Selecting Default Config");
   }
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s ", __func__);
   p_msg = (tNFA_DM_API_SET_TRANSIT_CONFIG*)GKI_getbuf(
-      sizeof(tNFA_DM_API_SET_TRANSIT_CONFIG)+ strsize);
+      sizeof(tNFA_DM_API_SET_TRANSIT_CONFIG) + strsize);
 
   if (p_msg != nullptr) {
     p_msg->hdr.event = NFA_DM_API_SET_TRANSIT_CONFIG_EVT;
@@ -385,6 +391,38 @@ tNFA_STATUS NFA_SetTransitConfig(std::string config) {
     return (NFA_STATUS_OK);
   }
   return (NFA_STATUS_FAILED);
+}
+
+/*******************************************************************************
+**
+** Function         NFA_setFieldDetectMode
+**
+** Description      Updates field detect mode true/false
+**
+** Returns          void
+**
+*******************************************************************************/
+void NFA_SetFieldDetectMode(bool mode) {
+  nfa_dm_cb.isFieldDetectEnabled = mode;
+  DLOG_IF(INFO, nfc_debug_enabled)
+      << StringPrintf("%s fieldDetectMode = 0x%s", __func__,
+                      (nfa_dm_cb.isFieldDetectEnabled) ? "ENABLE" : "DISABLE");
+}
+
+/*******************************************************************************
+**
+** Function         NFA_IsFieldDetectEnabled
+**
+** Description      Returns current status of field detect mode
+**
+** Returns          true/false
+**
+*******************************************************************************/
+bool NFA_IsFieldDetectEnabled() {
+  DLOG_IF(INFO, nfc_debug_enabled)
+      << StringPrintf("%s Current fieldDetectMode = 0x%s", __func__,
+                      (nfa_dm_cb.isFieldDetectEnabled) ? "ENABLE" : "DISABLE");
+  return nfa_dm_cb.isFieldDetectEnabled;
 }
 #endif
 /*******************************************************************************

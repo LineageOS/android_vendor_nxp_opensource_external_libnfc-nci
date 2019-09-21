@@ -634,8 +634,12 @@ static void rw_mfc_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   tRW_MFC_CB* p_mfc = &rw_cb.tcb.mfc;
   tRW_READ_DATA evt_data;
   NFC_HDR* mfc_data = NULL;
-  uint8_t* p;
   tRW_DATA rw_data;
+
+  if (!p_data) {
+    LOG(ERROR) << __func__ << "Invalid p_data";
+    return;
+  }
 
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("%s conn_id=%i, evt=0x%x", __func__, conn_id, event);
@@ -695,20 +699,17 @@ static void rw_mfc_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   }
 
   /* Assume the data is just the response byte sequence */
-  if(mfc_data == NULL) {
-      LOG(ERROR) << __func__ << " mfc_data found NULL";
-      return;
+  if (mfc_data == NULL) {
+    LOG(ERROR) << __func__ << " mfc_data found NULL";
+    return;
   }
-  p = (uint8_t*)(mfc_data + 1) + mfc_data->offset;
 
   switch (p_mfc->state) {
     case RW_MFC_STATE_IDLE:
       /* Unexpected R-APDU, it should be raw frame response */
       /* forward to upper layer without parsing */
       if (rw_cb.p_cback) {
-        if(p_data) {
-            rw_data.raw_frame.status = p_data->data.status;
-        }
+        rw_data.raw_frame.status = p_data->data.status;
         rw_data.raw_frame.p_data = mfc_data;
         (*(rw_cb.p_cback))(RW_MFC_RAW_FRAME_EVT, &rw_data);
         mfc_data = NULL;

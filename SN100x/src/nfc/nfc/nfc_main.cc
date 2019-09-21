@@ -69,8 +69,13 @@
 
 /* NFC mandates support for at least one logical connection;
  * Update max_conn to the NFCC capability on InitRsp */
+#if (NXP_EXTNS == TRUE)
+#define NFC_SET_MAX_CONN_DEFAULT() \
+  { nfc_cb.max_conn = 2; }
+#else
 #define NFC_SET_MAX_CONN_DEFAULT() \
   { nfc_cb.max_conn = 1; }
+#endif
 
 #else /* NFC_RW_ONLY */
 #define ce_init()
@@ -192,6 +197,10 @@ static std::string nfc_hal_event_name(uint8_t event) {
       return "HAL_NFC_ERROR_EVT";
     case (uint32_t)NfcEvent::HCI_NETWORK_RESET:
       return "HCI_NETWORK_RESET";
+#if (NXP_EXTNS == TRUE)
+    case HAL_NFC_FW_UPDATE_STATUS_EVT:
+      return "HAL_NFC_FW_UPDATE_STATUS_EVT";
+#endif
     default:
       return "???? UNKNOWN EVENT";
   }
@@ -689,7 +698,13 @@ static void nfc_main_hal_cback(uint8_t event, tHAL_NFC_STATUS status) {
     case (uint32_t)NfcEvent::HCI_NETWORK_RESET:
       nfc_main_post_hal_evt(event, status);
       break;
-
+#if (NXP_EXTNS == TRUE)
+    case HAL_NFC_FW_UPDATE_STATUS_EVT:
+      if (NfcAdaptation::GetInstance().p_fwupdate_status_cback) {
+        (*NfcAdaptation::GetInstance().p_fwupdate_status_cback)(status);
+      }
+      break;
+#endif
     default:
       DLOG_IF(INFO, nfc_debug_enabled)
           << StringPrintf("nfc_main_hal_cback unhandled event %x", event);
@@ -1142,7 +1157,32 @@ void NFC_SetStaticRfCback(tNFC_CONN_CBACK* p_cback) {
    * check if there's any data event to report on this connection id */
   nfc_data_event(p_cb);
 }
-
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFC_SetStaticT4tNfceeCback
+**
+** Description      This function is called to update the data callback function
+**                  to receive the data for the given connection id.
+**
+** Parameters       p_cback - the connection callback function
+**
+** Returns          Nothing
+**
+*******************************************************************************/
+void NFC_SetStaticT4tNfceeCback(tNFC_CONN_CBACK* p_cback) {
+  // tNFC_CONN_CB * p_cb = &nfc_cb.conn_cb[];
+  tNFC_CONN_CB* p_cb = nfc_find_conn_cb_by_conn_id(NFC_T4TNFCEE_CONN_ID);
+  if (p_cb != NULL) {
+    p_cb->p_cback = p_cback;
+    /* just in case DH has received NCI data before the data callback is set
+     * check if there's any data event to report on this connection id */
+    nfc_data_event(p_cb);
+    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+        "%s = %p, p_cb->p_cback = %p", __func__, p_cb, p_cb->p_cback);
+  }
+}
+#endif
 /*******************************************************************************
 **
 ** Function         NFC_SetReassemblyFlag
