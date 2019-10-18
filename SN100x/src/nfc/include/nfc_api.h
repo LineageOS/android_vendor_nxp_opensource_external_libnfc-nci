@@ -57,7 +57,7 @@
 #define NXP_EN_SN100U    1
 #define NXP_ANDROID_VER (10U)        /* NXP android version */
 #define NFC_NXP_MW_VERSION_MAJ (0x00) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN (0x08) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MIN (0x0A) /* MW Minor Version */
 #define NFC_NXP_MW_CUSTOMER_ID (0x00) /* MW Customer Id */
 #define NFC_NXP_MW_RC_VERSION  (0x01) /* MW RC Version */
 #define NFC_EE_DISC_OP_REMOVE 1
@@ -522,6 +522,9 @@ typedef uint8_t tNFC_PROTOCOL;
 #define NFC_DISCOVERY_TYPE_LISTEN_ACTIVE NCI_DISCOVERY_TYPE_LISTEN_ACTIVE
 #define NFC_DISCOVERY_TYPE_LISTEN_ISO15693 NCI_DISCOVERY_TYPE_LISTEN_ISO15693
 #define NFC_DISCOVERY_TYPE_LISTEN_B_PRIME NCI_DISCOVERY_TYPE_LISTEN_B_PRIME
+#if (NXP_EXTNS == TRUE)
+#define NFC_DISCOVERY_TYPE_FIELD_DETECT NCI_DISCOVERY_TYPE_FIELD_DETECT
+#endif
 typedef uint8_t tNFC_DISCOVERY_TYPE;
 typedef uint8_t tNFC_RF_TECH_N_MODE;
 
@@ -940,6 +943,7 @@ typedef void(tNFC_CONN_CBACK)(uint8_t conn_id, tNFC_CONN_EVT event,
 #define NFC_HCI_CONN_ID 1
 #if (NXP_EXTNS == TRUE)
 #define NFC_NFCEE_CONN_ID 0x03 /* the connection ID for NFCEE */
+#define NFC_T4TNFCEE_CONN_ID 0x05
 #endif
 
 /*****************************************************************************
@@ -1183,6 +1187,22 @@ extern tNFC_STATUS NFC_ConnClose(uint8_t conn_id);
 **
 *******************************************************************************/
 extern void NFC_SetStaticRfCback(tNFC_CONN_CBACK* p_cback);
+
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFC_SetStaticT4tNfceeCback
+**
+** Description      This function is called to update the data callback function
+**                  to receive the data for the given connection id.
+**
+** Parameters       p_cback - the connection callback function
+**
+** Returns          Nothing
+**
+*******************************************************************************/
+void NFC_SetStaticT4tNfceeCback(tNFC_CONN_CBACK* p_cback);
+#endif
 
 /*******************************************************************************
 **

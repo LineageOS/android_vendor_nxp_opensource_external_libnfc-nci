@@ -58,6 +58,10 @@
 #include "nfc_int.h"
 #endif
 
+#if (NXP_EXTNS == TRUE)
+#include "nfa_scr_int.h"
+#endif
+
 #if (NFA_SNEP_INCLUDED == true)
 #include "nfa_snep_int.h"
 #endif
@@ -330,6 +334,9 @@ DLOG_IF(INFO, nfc_debug_enabled)
         dm_cback_data.set_config.num_param_id = p_data->set_config.num_param_id;
         memcpy(dm_cback_data.set_config.param_ids, p_data->set_config.param_ids,
                p_data->set_config.num_param_id);
+#if (NXP_EXTNS == TRUE)
+        NFA_SCR_PROCESS_EVT(NFA_DM_SET_CONFIG_EVT, p_data->set_config.status);
+#endif
         (*nfa_dm_cb.p_dm_cback)(NFA_DM_SET_CONFIG_EVT, &dm_cback_data);
       }
 
@@ -459,11 +466,6 @@ DLOG_IF(INFO, nfc_debug_enabled)
         if (p_data->status == NFC_STATUS_FAILED) {
             dm_cback_data.status = p_data->status;
             (*nfa_dm_cb.p_dm_cback)(NFA_DM_NFCC_TIMEOUT_EVT, &dm_cback_data);
-        }
-        else if (nfcFL.nfcNxpEse &&
-                nfcFL.eseFL._ESE_ETSI_READER_ENABLE) {
-            conn_evt.status = p_data->status;
-            nfa_dm_conn_cback_event_notify(NFA_RECOVERY_EVT, &conn_evt);
         }
 #endif
         break;
@@ -710,6 +712,10 @@ bool nfa_dm_set_power_sub_state(tNFA_DM_MSG* p_data) {
 **
 *******************************************************************************/
 void nfa_dm_conn_cback_event_notify(uint8_t event, tNFA_CONN_EVT_DATA* p_data) {
+#if (NXP_EXTNS == TRUE)
+   if (p_data)
+     NFA_SCR_PROCESS_EVT(event, p_data->status);
+#endif
   if (nfa_dm_cb.flags & NFA_DM_FLAGS_EXCL_RF_ACTIVE) {
     /* Use exclusive RF mode callback */
     if (nfa_dm_cb.p_excl_conn_cback)

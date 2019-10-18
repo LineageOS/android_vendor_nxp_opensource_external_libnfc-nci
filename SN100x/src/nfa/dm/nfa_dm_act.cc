@@ -58,6 +58,9 @@
 #ifdef ENABLE_ESE_CLIENT
 #include "hal_nxpese.h"
 #endif
+#if (NXP_EXTNS == TRUE)
+#include "nfa_scr_int.h"
+#endif
 #endif
 
 #if (NFA_SNEP_INCLUDED == TRUE)
@@ -67,7 +70,9 @@
 using android::base::StringPrintf;
 
 extern bool nfc_debug_enabled;
-
+#if (NXP_EXTNS == TRUE)
+extern void nfa_t4tnfcee_deinit(void);
+#endif
 /* This is the timeout value to guarantee disable is performed within reasonable
  * amount of time */
 #ifndef NFA_DM_DISABLE_TIMEOUT_VAL
@@ -327,6 +332,9 @@ static void nfa_dm_nfc_response_cback(tNFC_RESPONSE_EVT event,
         dm_cback_data.set_config.num_param_id = p_data->set_config.num_param_id;
         memcpy(dm_cback_data.set_config.param_ids, p_data->set_config.param_ids,
                p_data->set_config.num_param_id);
+#if(NXP_EXTNS == TRUE)
+        NFA_SCR_PROCESS_EVT(NFA_DM_SET_CONFIG_EVT, p_data->set_config.status);
+#endif
         (*nfa_dm_cb.p_dm_cback)(NFA_DM_SET_CONFIG_EVT, &dm_cback_data);
       }
 
@@ -463,7 +471,6 @@ static void nfa_dm_nfc_response_cback(tNFC_RESPONSE_EVT event,
       conn_evt.status = p_data->status;
       nfa_dm_conn_cback_event_notify(NFA_UPDATE_RF_PARAM_RESULT_EVT, &conn_evt);
       break;
-
     default:
       break;
   }
@@ -546,7 +553,9 @@ bool nfa_dm_disable(tNFA_DM_MSG* p_data) {
     nfa_sys_start_timer(&nfa_dm_cb.tle, NFA_DM_TIMEOUT_DISABLE_EVT,
                         NFA_DM_DISABLE_TIMEOUT_VAL);
   }
-
+#if (NXP_EXTNS == TRUE)
+  nfa_t4tnfcee_deinit();
+#endif
   /* Disable all subsystems other than DM (DM will be disabled after all  */
   /* the other subsystem have been disabled)                              */
   nfa_sys_disable_subsystems(p_data->disable.graceful);
@@ -677,6 +686,11 @@ bool nfa_dm_set_power_sub_state(tNFA_DM_MSG* p_data) {
 **
 *******************************************************************************/
 void nfa_dm_conn_cback_event_notify(uint8_t event, tNFA_CONN_EVT_DATA* p_data) {
+
+#if(NXP_EXTNS == TRUE)
+  if (p_data)
+    NFA_SCR_PROCESS_EVT(event, p_data->status);
+#endif
   if (nfa_dm_cb.flags & NFA_DM_FLAGS_EXCL_RF_ACTIVE) {
     /* Use exclusive RF mode callback */
     if (nfa_dm_cb.p_excl_conn_cback)
@@ -1207,8 +1221,9 @@ bool nfa_dm_set_transit_config(tNFA_DM_MSG* p_data) {
 
   inpOutData.inp.data.transitConfig.val =
       p_data->transit_config.transitConfig;
+  /* size including the null char */
   inpOutData.inp.data.transitConfig.len =
-      strlen(p_data->transit_config.transitConfig);
+      strlen(p_data->transit_config.transitConfig) + 1;
   nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_SET_TRANSIT_CONFIG, (void*)&inpOutData);
   (*nfa_dm_cb.p_dm_cback)(NFA_DM_SET_TRANSIT_CONFIG_EVT, &dm_cback_data);
 

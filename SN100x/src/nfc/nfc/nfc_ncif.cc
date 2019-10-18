@@ -85,6 +85,10 @@ extern bool nfc_debug_enabled;
           && !(NCI_GID_CORE == gid && NCI_MSG_CORE_SET_POWER_SUB_STATE == oid)     \
           && !(NCI_GID_RF_MANAGE == gid && NCI_MSG_RF_ISO_DEP_NAK_PRESENCE == oid) \
           && !(NCI_GID_PROP == gid && NCI_MSG_GET_RFSTATUS == oid))
+/* LR: Length Reduction Payload size
+ * MP: Max Data Packet Payload size*/
+#define NCI_MAX_BUFFER_SIZE(LR, MP) \
+  MP = (((LR - NCI_DATA_HDR_SIZE) <= MP) ? (LR - NCI_DATA_HDR_SIZE) : MP)
 // Global Structure varibale for FW Version
 static tNFC_FW_VERSION nfc_fw_version;
 uint8_t nfcc_dh_conn_id = 0xFF;
@@ -425,8 +429,13 @@ bool nfc_ncif_process_event(NFC_HDR* p_msg) {
 
   if (nfc_cb.rawVsCbflag == true &&
       nfc_ncif_proc_proprietary_rsp(mt, gid, oid) == true) {
-    nci_proc_prop_raw_vs_rsp(p_msg);
-    nfc_cb.rawVsCbflag = false;
+#if (NXP_EXTNS == TRUE)
+    if (mt == NCI_MT_RSP)
+      nci_proc_prop_raw_vs_rsp(p_msg);
+#else
+      nci_proc_prop_raw_vs_rsp(p_msg);
+      nfc_cb.rawVsCbflag = false;
+#endif
     return free;
   }
 
@@ -1071,6 +1080,13 @@ void nfc_ncif_proc_activate(uint8_t* p, uint8_t len) {
   }
 #if (NFC_RW_ONLY == FALSE)
   else if (evt_data.activate.intf_param.type == NCI_INTERFACE_NFC_DEP) {
+#if (NXP_EXTNS == TRUE)
+    if ((NFC_GetNCIVersion() == NCI_VERSION_2_0)) {
+      tNFC_RF_ACM_P_PARAMS* acm_p =
+          &evt_data.activate.rf_tech_param.param.acm_p;
+      NCI_MAX_BUFFER_SIZE(acm_p->max_payload_size, buff_size);
+    } else
+#endif
     /* Make max payload of NCI aligned to max payload of NFC-DEP for better
      * performance */
     if (buff_size > NCI_NFC_DEP_MAX_DATA) buff_size = NCI_NFC_DEP_MAX_DATA;
@@ -1131,6 +1147,11 @@ void nfc_ncif_proc_activate(uint8_t* p, uint8_t len) {
 
       mpl = ((p_pa_nfc->atr_res[mpl_idx]) >> 4) & 0x03;
       p_pa_nfc->max_payload_size = nfc_mpl_code_to_size[mpl];
+#if (NXP_EXTNS == TRUE)
+      if ((NFC_GetNCIVersion() == NCI_VERSION_2_0)) {
+        NCI_MAX_BUFFER_SIZE(p_pa_nfc->max_payload_size, buff_size);
+      }
+#endif
       if (p_pa_nfc->atr_res_len > gb_idx) {
         p_pa_nfc->gen_bytes_len = p_pa_nfc->atr_res_len - gb_idx;
         if (p_pa_nfc->gen_bytes_len > NFC_MAX_GEN_BYTES_LEN)
@@ -1234,12 +1255,10 @@ void nfc_ncif_proc_ee_action(uint8_t* p, uint16_t plen) {
   tNFC_RESPONSE_CBACK* p_cback = nfc_cb.p_resp_cback;
   uint8_t data_len, ulen, tag, *p_data;
   uint8_t max_len;
-
-  if(p == NULL) {
-      LOG(ERROR) << StringPrintf("nfc_ncif_proc_ee_action: NULL data received");
-      return;
+  if (!p) {
+    LOG(ERROR) << StringPrintf("%s: Invalid p value\n", __func__);
+    return;
   }
-
   if (p_cback) {
     memset(&evt_data.act_data, 0, sizeof(tNFC_ACTION_DATA));
     evt_data.status = NFC_STATUS_OK;
@@ -1570,6 +1589,7 @@ void nfc_ncif_proc_init_rsp(NFC_HDR* p_msg) {
       nfc_set_state(NFC_STATE_W4_POST_INIT_CPLT);
 
       nfc_cb.p_nci_init_rsp = p_msg;
+      check_nfcee_session_and_reset();
       nfc_cb.p_hal->core_initialized(p_msg->len, p);
     }
   } else {
@@ -1824,6 +1844,7 @@ void nfc_ncif_proc_data(NFC_HDR* p_msg) {
 *******************************************************************************/
 bool nfc_ncif_proc_proprietary_rsp(uint8_t mt, uint8_t gid, uint8_t oid) {
   bool stat = FALSE;
+  bool isRstRsp = FALSE;
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("%s: mt=%u, gid=%u, oid=%u", __func__, mt, gid, oid);
 
@@ -1833,11 +1854,31 @@ bool nfc_ncif_proc_proprietary_rsp(uint8_t mt, uint8_t gid, uint8_t oid) {
       if (gid != 0x03 && oid != 0x00) stat = TRUE;
       break;
 
+#if (NXP_EXTNS == TRUE)
+    case NCI_MT_RSP:
+      switch (gid) {
+      case NCI_GID_CORE:
+        stat = TRUE;
+        if (oid == 0x00)
+          isRstRsp = TRUE;
+        break;
+      default:
+        stat = TRUE;
+        break;
+      }
+      break;
+#endif
+
     case NCI_MT_NTF:
       switch (gid) {
         case NCI_GID_CORE:
           /* check for CORE_RESET_NTF or CORE_CONN_CREDITS_NTF */
+#if (NXP_EXTNS == TRUE)
+          if (oid != 0x06) stat = TRUE;
+          if (oid == 0x00) nfc_cb.rawVsCbflag = false;
+#else
           if (oid != 0x00 && oid != 0x06) stat = TRUE;
+#endif
           break;
         case NCI_GID_RF_MANAGE:
           /* check for CORE_CONN_CREDITS_NTF or NFA_EE_ACTION_NTF or
@@ -1845,7 +1886,7 @@ bool nfc_ncif_proc_proprietary_rsp(uint8_t mt, uint8_t gid, uint8_t oid) {
           if (oid != 0x06 && oid != 0x09 && oid != 0x0A) stat = TRUE;
           break;
         case NCI_GID_EE_MANAGE:
-          if (oid != 0x00) stat = TRUE;
+          if (oid != 0x00 && oid != 0x01 && oid != 0x02) stat = TRUE;
           break;
 #if (NXP_EXTNS == TRUE)
         case NCI_GID_PROP:
@@ -1862,8 +1903,13 @@ bool nfc_ncif_proc_proprietary_rsp(uint8_t mt, uint8_t gid, uint8_t oid) {
       stat = TRUE;
       break;
   }
+#if (NXP_EXTNS == TRUE)
+  if(stat && !isRstRsp) {
+    nfc_cb.rawVsCbflag = false;
+  }
+#endif
   DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("%s: exit status=%u", __func__, stat);
+      << StringPrintf("%s: exit status=%u rawVsCbflag=%u", __func__, stat, nfc_cb.rawVsCbflag);
   return stat;
 }
 
