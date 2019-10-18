@@ -204,7 +204,7 @@ NfcAdaptation::NfcAdaptation() {
 ** Returns:     none
 **
 *******************************************************************************/
-NfcAdaptation::~NfcAdaptation() {}
+NfcAdaptation::~NfcAdaptation() { mpInstance = nullptr; }
 
 /*******************************************************************************
 **
@@ -344,6 +344,18 @@ void NfcAdaptation::GetNxpConfigs(
   configMap.emplace(
       NAME_NXPLOG_NCIR_LOGLEVEL,
       ConfigValue(inpOutData.out.data.nxpConfigs.nxpLogNcirLogLevel));
+  configMap.emplace(NAME_NFA_CONFIG_FORMAT,
+                    ConfigValue(inpOutData.out.data.nxpConfigs.scrCfgFormat));
+  configMap.emplace(NAME_ETSI_READER_ENABLE,
+                    ConfigValue(inpOutData.out.data.nxpConfigs.etsiReaderEnable));
+  if (inpOutData.out.data.nxpConfigs.scrResetEmvco.len) {
+    std::vector scrResetEmvcoCmd(
+        inpOutData.out.data.nxpConfigs.scrResetEmvco.cmd,
+        inpOutData.out.data.nxpConfigs.scrResetEmvco.cmd +
+            inpOutData.out.data.nxpConfigs.scrResetEmvco.len);
+    configMap.emplace(NAME_NXP_PROP_RESET_EMVCO_CMD,
+                      ConfigValue(scrResetEmvcoCmd));
+  }
 }
 
 void NfcAdaptation::GetVendorConfigs(
@@ -590,9 +602,8 @@ void NfcAdaptation::Finalize() {
 
   mCallback = nullptr;
   memset(&mHalEntryFuncs, 0, sizeof(mHalEntryFuncs));
-
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: exit", func);
-  mpInstance = nullptr;
+  delete this;
 }
 
 /*******************************************************************************
