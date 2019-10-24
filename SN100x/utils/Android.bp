@@ -29,6 +29,9 @@ cc_library_static {
     shared_libs: [
         "libbase",
     ],
+    sanitize: {
+        cfi: true,
+    },
 }
 
 cc_test {

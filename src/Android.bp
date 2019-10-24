@@ -72,4 +72,7 @@ cc_library_shared {
             ],
         },
     },
+    sanitize: {
+        cfi: true,
+    },
 }
