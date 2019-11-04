@@ -31,6 +31,8 @@ cc_library_static {
     ],
     sanitize: {
         cfi: true,
+        misc_undefined: ["signed-integer-overflow",
+                         "unsigned-integer-overflow"],
     },
 }
 
