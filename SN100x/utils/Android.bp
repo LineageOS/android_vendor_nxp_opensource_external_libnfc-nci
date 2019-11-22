@@ -29,6 +29,11 @@ cc_library_static {
     shared_libs: [
         "libbase",
     ],
+    sanitize: {
+        cfi: true,
+        misc_undefined: ["signed-integer-overflow",
+                         "unsigned-integer-overflow"],
+    },
 }
 
 cc_test {
