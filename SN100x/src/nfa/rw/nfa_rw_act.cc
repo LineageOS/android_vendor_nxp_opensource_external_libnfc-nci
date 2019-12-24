@@ -40,6 +40,7 @@
  *  This file contains the action functions the NFA_RW state machine.
  *
  ******************************************************************************/
+#include <log/log.h>
 #include <string.h>
 
 #include <android-base/stringprintf.h>
@@ -106,10 +107,16 @@ static void nfa_rw_store_ndef_rx_buf(tRW_DATA* p_rw_data) {
 
   p = (uint8_t*)(p_rw_data->data.p_data + 1) + p_rw_data->data.p_data->offset;
 
-  /* Save data into buffer */
-  memcpy(&nfa_rw_cb.p_ndef_buf[nfa_rw_cb.ndef_rd_offset], p,
-         p_rw_data->data.p_data->len);
-  nfa_rw_cb.ndef_rd_offset += p_rw_data->data.p_data->len;
+  if ((nfa_rw_cb.ndef_rd_offset + p_rw_data->data.p_data->len) <=
+      nfa_rw_cb.ndef_cur_size) {
+    /* Save data into buffer */
+    memcpy(&nfa_rw_cb.p_ndef_buf[nfa_rw_cb.ndef_rd_offset], p,
+           p_rw_data->data.p_data->len);
+    nfa_rw_cb.ndef_rd_offset += p_rw_data->data.p_data->len;
+  } else {
+    LOG(ERROR) << StringPrintf("Exceed ndef_cur_size error");
+    android_errorWriteLog(0x534e4554, "123583388");
+  }
 
   GKI_freebuf(p_rw_data->data.p_data);
   p_rw_data->data.p_data = nullptr;
@@ -1525,6 +1532,20 @@ static void nfa_rw_handle_mfc_evt(tRW_EVENT event, tRW_DATA* p_rw_data) {
       nfa_dm_act_conn_cback_notify(NFA_RW_INTF_ERROR_EVT, &conn_evt_data);
       break;
 
+    case RW_MFC_NDEF_FORMAT_CPLT_EVT:
+      /* Command complete - perform cleanup, notify the app */
+      nfa_rw_command_complete();
+      nfa_dm_act_conn_cback_notify(NFA_FORMAT_CPLT_EVT, &conn_evt_data);
+      break;
+
+    /* NDEF write completed or failed*/
+    case RW_MFC_NDEF_WRITE_CPLT_EVT:
+    case RW_MFC_NDEF_WRITE_FAIL_EVT:
+      /* Command complete - perform cleanup, notify the app */
+      nfa_rw_command_complete();
+      nfa_dm_act_conn_cback_notify(NFA_WRITE_CPLT_EVT, &conn_evt_data);
+      break;
+
     default:
       DLOG_IF(INFO, nfc_debug_enabled)
           << StringPrintf("; Unhandled RW event 0x%X", event);
@@ -1761,6 +1782,10 @@ static tNFC_STATUS nfa_rw_start_ndef_write(void) {
       /* ISO 15693 */
       status = RW_I93UpdateNDef((uint16_t)nfa_rw_cb.ndef_wr_len,
                                 nfa_rw_cb.p_ndef_wr_buf);
+    } else if (NFC_PROTOCOL_MIFARE == protocol) {
+      /* Mifare Tag */
+      status = RW_MfcWriteNDef((uint16_t)nfa_rw_cb.ndef_wr_len,
+                               nfa_rw_cb.p_ndef_wr_buf);
     }
   }
 
@@ -1951,8 +1976,13 @@ void nfa_rw_presence_check(tNFA_RW_MSG* p_data) {
   if (status != NFC_STATUS_OK)
     nfa_rw_handle_presence_check_rsp(NFC_STATUS_FAILED);
   else if (!unsupported) {
-    nfa_sys_start_timer(&nfa_rw_cb.tle, NFA_RW_PRESENCE_CHECK_TIMEOUT_EVT,
-                        p_nfa_dm_cfg->presence_check_timeout);
+#if (NXP_EXTNS == TRUE)
+    if (protocol == NFC_PROTOCOL_T5T)
+      p_nfa_dm_cfg->presence_check_timeout =
+        NFA_DM_MAX_PRESENCE_CHECK_TIMEOUT + RW_I93_MAX_RSP_TIMEOUT;
+#endif
+      nfa_sys_start_timer(&nfa_rw_cb.tle, NFA_RW_PRESENCE_CHECK_TIMEOUT_EVT,
+                          p_nfa_dm_cfg->presence_check_timeout);
   }
 }
 
@@ -2018,6 +2048,8 @@ static void nfa_rw_format_tag() {
     status = RW_I93FormatNDef();
   } else if (protocol == NFC_PROTOCOL_ISO_DEP) {
     status = RW_T4tFormatNDef();
+  } else if (protocol == NFC_PROTOCOL_MIFARE) {
+    status = RW_MfcFormatNDef();
   }
 
   /* If unable to format NDEF, notify the app */

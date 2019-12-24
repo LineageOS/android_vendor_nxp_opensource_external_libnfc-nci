@@ -55,9 +55,6 @@
 #if (NFC_NFCEE_INCLUDED == TRUE)
 #include "nfa_ee_int.h"
 #include "nfc_int.h"
-#ifdef ENABLE_ESE_CLIENT
-#include "hal_nxpese.h"
-#endif
 #if (NXP_EXTNS == TRUE)
 #include "nfa_scr_int.h"
 #endif
@@ -427,6 +424,9 @@ static void nfa_dm_nfc_response_cback(tNFC_RESPONSE_EVT event,
       break;
 
     case NFC_GEN_ERROR_REVT: /* generic error command or notification */
+#if(NXP_EXTNS == TRUE)
+      if(p_data) NFA_SCR_PROCESS_EVT(NFA_SCR_MULTIPLE_TARGET_DETECTED_EVT, p_data->status);
+#endif
       break;
 
     case NFC_NFCC_RESTART_REVT: /* NFCC has been re-initialized */
@@ -554,7 +554,7 @@ bool nfa_dm_disable(tNFA_DM_MSG* p_data) {
                         NFA_DM_DISABLE_TIMEOUT_VAL);
   }
 #if (NXP_EXTNS == TRUE)
-  nfa_t4tnfcee_deinit();
+    nfa_t4tnfcee_deinit();
 #endif
   /* Disable all subsystems other than DM (DM will be disabled after all  */
   /* the other subsystem have been disabled)                              */
@@ -688,8 +688,7 @@ bool nfa_dm_set_power_sub_state(tNFA_DM_MSG* p_data) {
 void nfa_dm_conn_cback_event_notify(uint8_t event, tNFA_CONN_EVT_DATA* p_data) {
 
 #if(NXP_EXTNS == TRUE)
-  if (p_data)
-    NFA_SCR_PROCESS_EVT(event, p_data->status);
+  if (p_data) NFA_SCR_PROCESS_EVT(event, p_data->status);
 #endif
   if (nfa_dm_cb.flags & NFA_DM_FLAGS_EXCL_RF_ACTIVE) {
     /* Use exclusive RF mode callback */

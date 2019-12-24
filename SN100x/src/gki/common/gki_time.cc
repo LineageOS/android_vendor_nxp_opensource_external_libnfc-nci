@@ -2,6 +2,8 @@
  *
  *  Copyright (C) 1999-2012 Broadcom Corporation
  *
+ *  Copyright 2019 NXP
+ *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at:
@@ -713,7 +715,11 @@ uint32_t GKI_get_remaining_ticks(TIMER_LIST_Q* p_timer_listq,
     }
 
     /* if found target entry */
+#if (NXP_EXTNS == TRUE)
     if (p_tle != NULL && p_tle == p_target_tle) {
+#else
+    if (p_tle == p_target_tle) {
+#endif
       rem_ticks += p_tle->ticks;
     } else {
       LOG(ERROR) << StringPrintf(

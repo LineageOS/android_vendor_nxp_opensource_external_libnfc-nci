@@ -147,11 +147,16 @@ enum {
   RW_MFC_NDEF_DETECT_EVT =
       RW_MFC_FIRST_EVT,      /* Result of NDEF detection procedure       */
                              /* Mandatory NDEF file is selected          */
-  RW_MFC_NDEF_READ_EVT,      /* Segment of data received from type 4 tag */
+  RW_MFC_NDEF_READ_EVT,      /* Segment of data received from mifare tag */
   RW_MFC_NDEF_READ_CPLT_EVT, /* Read operation completed                 */
   RW_MFC_NDEF_READ_FAIL_EVT, /* Read operation failed                    */
-  RW_MFC_RAW_FRAME_EVT,      /* Response of raw frame sent               */
-  RW_MFC_INTF_ERROR_EVT,     /* RF Interface error event                 */
+
+  RW_MFC_NDEF_WRITE_CPLT_EVT,  /* Write operation completed               */
+  RW_MFC_NDEF_WRITE_FAIL_EVT,  /* Write operation failed                  */
+  RW_MFC_NDEF_FORMAT_CPLT_EVT, /* Format operation completed              */
+
+  RW_MFC_RAW_FRAME_EVT,  /* Response of raw frame sent               */
+  RW_MFC_INTF_ERROR_EVT, /* RF Interface error event                 */
   RW_MFC_MAX_EVT
 #if (NXP_EXTNS == TRUE)
   ,
@@ -159,7 +164,9 @@ enum {
   RW_T3BT_MAX_EVT              /* Max Evt Number for T3BT tag*/
 #endif
 };
-
+#if (NXP_EXTNS == TRUE)
+#define RW_I93_MAX_RSP_TIMEOUT 1000
+#endif
 #define RW_RAW_FRAME_EVT 0xFF
 
 typedef uint8_t tRW_EVENT;
@@ -1424,6 +1431,17 @@ extern tNFC_STATUS RW_T4tNfceeSelectApplication(void);
 
 /*******************************************************************************
 **
+** Function         RW_T4tNfceeUpdateCC
+**
+** Description      Updates the T4T data structures with CC info
+**
+** Returns          None
+**
+*******************************************************************************/
+void RW_T4tNfceeUpdateCC(uint8_t *ccInfo);
+
+/*******************************************************************************
+**
 ** Function         RW_T4tNfceeSelectFile
 **
 ** Description      Selects T4T Nfcee File
@@ -1532,5 +1550,36 @@ extern tNFC_STATUS RW_T4tNfceeUpdateNlen(uint16_t len);
 *******************************************************************************/
 extern tNFC_STATUS RW_SetT4tNfceeInfo(tRW_CBACK* p_cback, uint8_t conn_id);
 #endif
+
+/*****************************************************************************
+**
+** Function         RW_MfcFormatNDef
+**
+** Description
+**      Format Tag content
+**
+** Returns
+**      NFC_STATUS_OK, Command sent to format Tag
+**      NFC_STATUS_REJECTED: cannot format the tag
+**      NFC_STATUS_FAILED: other error
+**
+*****************************************************************************/
+extern tNFC_STATUS RW_MfcFormatNDef(void);
+
+/*******************************************************************************
+**
+** Function         RW_MfcWriteNDef
+**
+** Description      This function can be called to write an NDEF message to the
+**                  tag.
+**
+** Parameters:      buf_len:    The length of the buffer
+**                  p_buffer:   The NDEF message to write
+**
+** Returns          NCI_STATUS_OK, if write was started. Otherwise, error
+**                  status.
+**
+*******************************************************************************/
+extern tNFC_STATUS RW_MfcWriteNDef(uint16_t buf_len, uint8_t* p_buffer);
 
 #endif /* RW_API_H */

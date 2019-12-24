@@ -105,7 +105,6 @@ typedef struct nfa_dm_p2p_prio_logic {
 
 static nfa_dm_p2p_prio_logic_t p2p_prio_logic_data;
 
-static void nfa_dm_send_tag_deselect_cmd(tNFA_NFC_PROTOCOL protocol);
 
 /*******************************************************************************
 **
@@ -260,13 +259,9 @@ static uint8_t nfa_dm_get_rf_discover_config(
   } else {
 #endif
     /* Check listening A */
-    if (
-#if (NXP_EXTNS == TRUE)
-        (nfa_t4tnfcee_is_enabled()) ||
-#endif
-        dm_disc_mask &
-            (NFA_DM_DISC_MASK_LA_T1T | NFA_DM_DISC_MASK_LA_T2T |
-             NFA_DM_DISC_MASK_LA_ISO_DEP | NFA_DM_DISC_MASK_LA_NFC_DEP)) {
+    if (dm_disc_mask &
+        (NFA_DM_DISC_MASK_LA_T1T | NFA_DM_DISC_MASK_LA_T2T |
+         NFA_DM_DISC_MASK_LA_ISO_DEP | NFA_DM_DISC_MASK_LA_NFC_DEP)) {
       disc_params[num_params].type = NFC_DISCOVERY_TYPE_LISTEN_A;
       disc_params[num_params].frequency = 1;
       num_params++;
@@ -275,11 +270,7 @@ static uint8_t nfa_dm_get_rf_discover_config(
     }
 
     /* Check listening B */
-    if (
-#if (NXP_EXTNS == TRUE)
-        (nfa_t4tnfcee_is_enabled()) ||
-#endif
-        dm_disc_mask & NFA_DM_DISC_MASK_LB_ISO_DEP) {
+    if (dm_disc_mask & NFA_DM_DISC_MASK_LB_ISO_DEP) {
       disc_params[num_params].type = NFC_DISCOVERY_TYPE_LISTEN_B;
       disc_params[num_params].frequency = 1;
       num_params++;
@@ -807,7 +798,10 @@ static tNFA_DM_DISC_TECH_PROTO_MASK nfa_dm_disc_get_disc_mask(
 static void nfa_dm_disc_discovery_cback(tNFC_DISCOVER_EVT event,
                                         tNFC_DISCOVER* p_data) {
   tNFA_DM_RF_DISC_SM_EVENT dm_disc_event = NFA_DM_DISC_SM_MAX_EVENT;
-
+  if (!p_data) {
+    LOG(ERROR) << StringPrintf("NULL returning...");
+    return;
+  }
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("event:0x%X", event);
 
   switch (event) {
@@ -843,7 +837,7 @@ static void nfa_dm_disc_discovery_cback(tNFC_DISCOVER_EVT event,
   nfa_dm_rf_disc_data.nfc_discover = *p_data;
   nfa_dm_disc_sm_execute(dm_disc_event, &nfa_dm_rf_disc_data);
 #if(NXP_EXTNS == TRUE)
-  NFA_SCR_PROCESS_EVT(dm_disc_event, p_data->status);
+  if(p_data) NFA_SCR_PROCESS_EVT(dm_disc_event, p_data->status);
 #endif
 }
 
@@ -2402,14 +2396,6 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
 
   switch (event) {
     case NFA_DM_RF_DEACTIVATE_CMD:
-      if (NFC_GetNCIVersion() == NCI_VERSION_2_0) {
-        if ((nfa_dm_cb.disc_cb.activated_rf_interface == NFC_INTERFACE_FRAME) &&
-            (p_data->deactivate_type == NFC_DEACTIVATE_TYPE_SLEEP)) {
-          /* NCI 2.0- DH is responsible for sending deactivation commands before
-           * RF_DEACTIVATE_CMD */
-          nfa_dm_send_tag_deselect_cmd(nfa_dm_cb.disc_cb.activated_protocol);
-        }
-      }
 
       if (nfa_dm_cb.disc_cb.activated_protocol == NCI_PROTOCOL_MIFARE) {
         nfa_dm_cb.disc_cb.deact_pending = true;
@@ -2476,6 +2462,18 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
           /* count for number of times deactivate cmd sent */
           nfa_dm_cb.deactivate_cmd_retry_count = 0;
           nfa_dm_disc_new_state(NFA_DM_RFST_W4_HOST_SELECT);
+#if (NXP_EXTNS == TRUE)
+          if (nfa_dm_cb.disc_cb.disc_flags & NFA_DM_DISC_FLAGS_STOPPING) {
+              /* Take care of  deact_pending request during presence check*/
+              nfa_dm_cb.disc_cb.deact_pending = false;
+              /* Avoid back to back RF_DEACTIVATE_CMD */
+              nfa_dm_cb.disc_cb.disc_flags |= NFA_DM_DISC_FLAGS_W4_RSP;
+              /* stop discovery */
+              NFC_Deactivate(NFA_DEACTIVATE_TYPE_IDLE);
+              /* Shall not proceed with SELCT_CMD as RF_DEACTIVATE is requested */
+              break;
+          }
+#endif
         }
         if (old_sleep_wakeup_flag) {
           sleep_wakeup_event_processed = true;
@@ -2532,6 +2530,12 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
                  NFC_DEACTIVATE_TYPE_DISCOVERY) {
         nfa_dm_disc_new_state(NFA_DM_RFST_DISCOVERY);
         if (nfa_dm_cb.disc_cb.disc_flags & NFA_DM_DISC_FLAGS_STOPPING) {
+#if (NXP_EXTNS == TRUE)
+          /* Take care of  deact_pending request during presence check*/
+          nfa_dm_cb.disc_cb.deact_pending = false;
+          /* Avoid back to back RF_DEACTIVATE_CMD */
+          nfa_dm_cb.disc_cb.disc_flags |= NFA_DM_DISC_FLAGS_W4_RSP;
+#endif
           /* stop discovery */
           NFC_Deactivate(NFA_DEACTIVATE_TYPE_IDLE);
         }
@@ -2543,6 +2547,9 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
       if ((!old_sleep_wakeup_flag) || (!nfa_dm_cb.disc_cb.deact_pending)) {
         nfa_dm_send_deactivate_cmd(NFA_DEACTIVATE_TYPE_DISCOVERY);
       }
+#if(NXP_EXTNS == TRUE)
+      nfa_dm_act_conn_cback_notify(NFA_RW_INTF_ERROR_EVT, NULL);
+#endif
       break;
 
     default:
@@ -3330,7 +3337,11 @@ void nfa_dm_p2p_timer_event() {
   if (p2p_prio_logic_data.isodep_detected == true) {
     DLOG_IF(INFO, nfc_debug_enabled)
         << StringPrintf("Deactivate and Restart RF discovery");
+#if(NXP_EXTNS ==TRUE)
+    nfa_dm_rf_deactivate(NFC_DEACTIVATE_TYPE_IDLE);
+#else
     nci_snd_deactivate_cmd(NFC_DEACTIVATE_TYPE_IDLE);
+#endif
   }
 }
 
@@ -3347,40 +3358,3 @@ void nfa_dm_p2p_prio_logic_cleanup() {
   memset(&p2p_prio_logic_data, 0x00, sizeof(nfa_dm_p2p_prio_logic_t));
 }
 
-/*******************************************************************************
-**
-** Function         nfa_dm_send_tag_deselect_cmd
-**
-** Description      Send command to send tag in sleep state
-**
-** Returns          void
-**
-*******************************************************************************/
-static void nfa_dm_send_tag_deselect_cmd(tNFA_NFC_PROTOCOL protocol) {
-  NFC_HDR* p_msg;
-  uint8_t* p;
-
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("nfa_dm_send_tag_deselect_cmd");
-  p_msg = (NFC_HDR*)GKI_getpoolbuf(NFC_RW_POOL_ID);
-
-  if (p_msg) {
-    if (protocol == NFC_PROTOCOL_ISO_DEP) {
-      /* send one byte of 0xc2 as as deselect command to Tag */
-      p_msg->len = 1;
-      p_msg->offset = NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE;
-      p = (uint8_t*)(p_msg + 1) + p_msg->offset;
-      *p = NFA_RW_TAG_DESELECT_CMD;
-    } else if (protocol == NFC_PROTOCOL_T2T) {
-      p_msg->len = NFA_RW_TAG_SLP_REQ_LEN;
-      p_msg->offset = NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE;
-      p = (uint8_t*)(p_msg + 1) + p_msg->offset;
-      memcpy((uint8_t*)(p_msg + 1) + p_msg->offset, NFA_RW_TAG_SLP_REQ,
-             p_msg->len);
-    } else {
-      GKI_freebuf(p_msg);
-      return;
-    }
-    NFC_SendData(NFC_RF_CONN_ID, p_msg);
-  }
-}

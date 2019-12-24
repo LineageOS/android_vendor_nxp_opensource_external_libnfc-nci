@@ -51,6 +51,7 @@
 #if (NXP_EXTNS == TRUE)
 #include "nfa_ee_int.h"
 #include "nfa_nv_co.h"
+#include "nfa_scr_int.h"
 #endif
 using android::base::StringPrintf;
 
@@ -1417,6 +1418,9 @@ void nfa_hci_handle_admin_gate_cmd(uint8_t* p_data) {
         return;
       } else {
 #if(NXP_EXTNS == TRUE)
+          if(source_host == NFA_HCI_FIRST_PROP_HOST) {
+            NFA_SCR_PROCESS_EVT(NFA_SCR_ESE_RECOVERY_START_EVT, NFA_STATUS_OK);
+          }
           nfa_hciu_send_msg(NFA_HCI_ADMIN_PIPE, NFA_HCI_RESPONSE_TYPE, response,
               rsp_len, &data);
           /* If starting up, handle events here */
@@ -1517,7 +1521,9 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
           if (NFA_GetNCIVersion() == NCI_VERSION_2_0) {
             nfa_hci_cb.hci_state = NFA_HCI_STATE_WAIT_NETWK_ENABLE;
             NFA_EeGetInfo(&nfa_hci_cb.num_nfcee, nfa_hci_cb.ee_info);
-            nfa_hci_enable_one_nfcee();
+            if (nfa_hci_enable_one_nfcee() == false) {
+              DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_hci_enable_one_nfcee() failed");
+            }
           }
         }
         break;
@@ -2441,7 +2447,7 @@ static void nfa_hci_get_pipe_state_cb(__attribute__((unused))uint8_t event, __at
         num_param_id--;
     }
     /*If pipes are already available*/
-    if(apdu_status == NFA_HCI_PIPE_OPENED)
+    if(apdu_status == NFA_HCI_PIPE_OPENED && nfa_hci_cb.se_apdu_gate_support)
     {
       nfa_hciu_send_get_param_cmd (NFA_HCI_APDUESE_PIPE, NFA_HCI_MAX_C_APDU_SIZE_INDEX);
     }
@@ -2449,7 +2455,8 @@ static void nfa_hci_get_pipe_state_cb(__attribute__((unused))uint8_t event, __at
     {
       DLOG_IF(INFO, nfc_debug_enabled)
         << StringPrintf("nfa_hci_get_pipe_state_cb APDU pipe not available");
-      if(nfa_hci_check_nfcee_init_complete(NFA_HCI_FIRST_PROP_HOST) || conn_status)
+      if((nfa_hci_check_nfcee_init_complete(NFA_HCI_FIRST_PROP_HOST) || conn_status) &&
+              nfa_hci_cb.se_apdu_gate_support)
       {
         nfa_hciu_send_create_pipe_cmd (NFA_HCI_APDU_APP_GATE,
             NFA_HCI_FIRST_PROP_HOST, NFA_HCI_APDU_GATE);
@@ -2461,7 +2468,7 @@ static void nfa_hci_get_pipe_state_cb(__attribute__((unused))uint8_t event, __at
         {
           if (!nfa_hci_enable_one_nfcee ())
             nfa_hci_startup_complete (NFA_STATUS_OK);
-       }
+        }
       }
     }
 }
@@ -2555,6 +2562,7 @@ static bool nfa_hci_set_apdu_pipe_ready_for_host (uint8_t host_id)
     uint8_t             gate_id;
     tNFA_HCI_DYN_PIPE *p_id_mgmnt_pipe;
     tNFA_HCI_DYN_PIPE *p_apdu_pipe;
+    tNFA_HCI_DYN_PIPE *p_conn_pipe;
 
     if ((p_id_mgmnt_pipe = nfa_hciu_find_id_pipe_for_host (host_id)) == nullptr)
     {
@@ -2575,7 +2583,8 @@ static bool nfa_hci_set_apdu_pipe_ready_for_host (uint8_t host_id)
         else
         {
             /* ID Management Pipe in open state */
-            if ((p_apdu_pipe = nfa_hciu_find_dyn_apdu_pipe_for_host (host_id)) == nullptr)
+            if ((p_apdu_pipe = nfa_hciu_find_dyn_apdu_pipe_for_host (host_id)) == nullptr ||
+                    (p_conn_pipe = nfa_hciu_find_dyn_conn_pipe_for_host (host_id)) == nullptr)
             {
                 /* No APDU Pipe, Check if APDU gate or General Purpose APDU gate exist */
                 gate_id = nfa_hciu_find_server_apdu_gate_for_host (host_id);
@@ -2585,11 +2594,7 @@ static bool nfa_hci_set_apdu_pipe_ready_for_host (uint8_t host_id)
                     nfa_hci_cb.app_in_use = NFA_HCI_APP_HANDLE_NONE;
                     if(host_id == NFA_HCI_FIRST_PROP_HOST)
                     {
-                      if(nfa_hci_cb.se_apdu_gate_support)
-                        nfa_hci_getApduAndConnectivity_PipeStatus();
-                      else {
-                        nfa_hci_startup_complete (NFA_STATUS_OK);
-                      }
+                      nfa_hci_getApduAndConnectivity_PipeStatus();
                     }
                     else
                     {
@@ -2923,6 +2928,7 @@ static void nfa_hci_handle_apdu_app_gate_hcp_msg_data (uint8_t *p_data, uint16_t
                     if (!nfa_hci_enable_one_nfcee ())
                     {
                         nfa_hci_startup_complete (NFA_STATUS_OK);
+                        NFA_SCR_PROCESS_EVT(NFA_SCR_ESE_RECOVERY_COMPLETE_EVT, NFA_STATUS_OK);
                     }
                 }
             }

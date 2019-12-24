@@ -136,9 +136,11 @@ class NfcAdaptation {
 #endif
   void GetVendorConfigs(std::map<std::string, ConfigValue>& configMap);
 #if (NXP_EXTNS == TRUE)
-  void GetNxpConfigs(std::map<std::string, ConfigValue>& configMap);
   void NFA_SetBootMode(uint8_t boot_mode);
   uint8_t NFA_GetBootMode();
+  string HalGetProperty(string key);
+  bool HalSetProperty(string key, string value);
+  string propVal;
 #endif
   void Dump(int fd);
 #if (NXP_EXTNS == TRUE)
@@ -165,6 +167,9 @@ class NfcAdaptation {
   static tHAL_NFC_CBACK* mHalCallback;
   static tHAL_NFC_DATA_CBACK* mHalDataCallback;
   static ThreadCondVar mHalOpenCompletedEvent;
+#if (NXP_EXTNS == TRUE)
+  static ThreadCondVar mHalDataCallbackEvent;
+#endif
   static ThreadCondVar mHalCloseCompletedEvent;
   static android::sp<NfcDeathRecipient> mDeathRecipient;
 
@@ -186,6 +191,7 @@ class NfcAdaptation {
 #if (NXP_EXTNS == TRUE)
   static int HalIoctl(long arg, void* p_data);
   static int HalIoctlIntf(long arg, void* p_data);
+  static void HalWriteIntf(uint16_t data_len, uint8_t* p_data);
 #endif
   static bool HalPrediscover();
   static void HalControlGranted();

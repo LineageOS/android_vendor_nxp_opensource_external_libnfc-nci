@@ -41,6 +41,7 @@
  *  mode.
  *
  ******************************************************************************/
+#include <log/log.h>
 #include <string.h>
 
 #include <android-base/stringprintf.h>
@@ -264,6 +265,12 @@ static bool rw_t4t_update_version_details(NFC_HDR* p_r_apdu) {
   tRW_T4T_CB* p_t4t = &rw_cb.tcb.t4t;
   uint8_t* p;
   uint16_t major_version, minor_version;
+
+  if (p_r_apdu->len < T4T_DES_GET_VERSION_LEN) {
+    LOG(ERROR) << StringPrintf("%s incorrect p_r_apdu length", __func__);
+    android_errorWriteLog(0x534e4554, "120865977");
+    return false;
+  }
 
   p = (uint8_t*)(p_r_apdu + 1) + p_r_apdu->offset;
   major_version = *(p + 3);
@@ -1084,6 +1091,8 @@ static void rw_t4t_handle_error(tNFC_STATUS status, uint8_t sw1, uint8_t sw2) {
 
     rw_data.t4t_sw.sw1 = sw1;
     rw_data.t4t_sw.sw2 = sw2;
+    rw_data.ndef.cur_size = 0;
+    rw_data.ndef.max_size = 0;
 
     switch (p_t4t->state) {
       case RW_T4T_STATE_DETECT_NDEF:
@@ -1929,18 +1938,28 @@ static void rw_t4t_data_cback(__attribute__((unused)) uint8_t conn_id,
       "RW T4T state: <%s (%d)>", rw_t4t_get_state_name(p_t4t->state).c_str(),
       p_t4t->state);
 
+  if (p_t4t->state != RW_T4T_STATE_IDLE &&
+      p_t4t->state != RW_T4T_STATE_PRESENCE_CHECK &&
+      p_r_apdu->len < T4T_RSP_STATUS_WORDS_SIZE) {
+    LOG(ERROR) << StringPrintf("%s incorrect p_r_apdu length", __func__);
+    android_errorWriteLog(0x534e4554, "120865977");
+    rw_t4t_handle_error(NFC_STATUS_FAILED, 0, 0);
+    GKI_freebuf(p_r_apdu);
+    return;
+  }
+
   switch (p_t4t->state) {
     case RW_T4T_STATE_IDLE:
-/* Unexpected R-APDU, it should be raw frame response */
-/* forward to upper layer without parsing */
-DLOG_IF(INFO, nfc_debug_enabled)
-    << StringPrintf("RW T4T Raw Frame: Len [0x%X] Status [%s]", p_r_apdu->len,
-                    NFC_GetStatusName(p_data->data.status).c_str());
-if (rw_cb.p_cback) {
-  rw_data.raw_frame.status = p_data->data.status;
-  rw_data.raw_frame.p_data = p_r_apdu;
-  (*(rw_cb.p_cback))(RW_T4T_RAW_FRAME_EVT, &rw_data);
-  p_r_apdu = nullptr;
+      /* Unexpected R-APDU, it should be raw frame response */
+      /* forward to upper layer without parsing */
+      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+          "RW T4T Raw Frame: Len [0x%X] Status [%s]", p_r_apdu->len,
+          NFC_GetStatusName(p_data->data.status).c_str());
+      if (rw_cb.p_cback) {
+        rw_data.raw_frame.status = p_data->data.status;
+        rw_data.raw_frame.p_data = p_r_apdu;
+        (*(rw_cb.p_cback))(RW_T4T_RAW_FRAME_EVT, &rw_data);
+        p_r_apdu = nullptr;
       } else {
         GKI_freebuf(p_r_apdu);
       }
@@ -2020,6 +2039,51 @@ tNFC_STATUS RW_T4tNfceeInitCb(void) {
   p_t4t->max_update_size = RW_T4TNFCEE_DATA_PER_WRITE;
 
   return NFC_STATUS_OK;
+}
+
+/*******************************************************************************
+**
+** Function         RW_T4tNfceeUpdateCC
+**
+** Description      Updates the T4T data structures with CC info
+**
+** Returns          None
+**
+*******************************************************************************/
+void RW_T4tNfceeUpdateCC(uint8_t *ccInfo) {
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Enter", __func__);
+  tRW_T4T_CB* p_t4t = &rw_cb.tcb.t4t;
+  BE_STREAM_TO_UINT16(p_t4t->cc_file.max_le, ccInfo);
+  BE_STREAM_TO_UINT16(p_t4t->cc_file.max_lc, ccInfo);
+
+  /* Get max bytes to read per command */
+  if (p_t4t->cc_file.max_le >= RW_T4T_MAX_DATA_PER_READ) {
+      p_t4t->max_read_size = RW_T4T_MAX_DATA_PER_READ;
+  } else {
+    p_t4t->max_read_size = p_t4t->cc_file.max_le;
+  }
+
+  /* Le: valid range is 0x01 to 0xFF */
+  if (p_t4t->max_read_size >= T4T_MAX_LENGTH_LE) {
+      p_t4t->max_read_size = T4T_MAX_LENGTH_LE;
+  }
+
+  /* Get max bytes to update per command */
+  if (p_t4t->cc_file.max_lc >= RW_T4T_MAX_DATA_PER_WRITE) {
+    p_t4t->max_update_size = RW_T4T_MAX_DATA_PER_WRITE;
+  } else {
+    p_t4t->max_update_size = p_t4t->cc_file.max_lc;
+  }
+  /* Lc: valid range is 0x01 to 0xFF */
+  if (p_t4t->max_update_size >= T4T_MAX_LENGTH_LC) {
+    p_t4t->max_update_size = T4T_MAX_LENGTH_LC;
+  }
+
+
+  DLOG_IF(INFO, nfc_debug_enabled)
+      << StringPrintf("%s le %d  lc: %d  max_read_size: %d max_update_size: %d", __func__,
+         p_t4t->cc_file.max_le, p_t4t->cc_file.max_lc, p_t4t->max_read_size, p_t4t->max_update_size);
+
 }
 
 /*******************************************************************************
