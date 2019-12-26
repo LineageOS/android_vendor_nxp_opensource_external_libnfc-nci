@@ -46,7 +46,7 @@ cc_test {
         "test/ringbuffer_test.cc",
     ],
     static_libs: [
-        "libnqnfcutils",
+        "libsn100nfcutils",
         "libgmock",
     ],
     shared_libs: [

@@ -21,8 +21,7 @@
 #include <android-base/stringprintf.h>
 #include <android/hardware/nfc/1.1/INfc.h>
 #include <android/hardware/nfc/1.2/INfc.h>
-#include <vendor/nxp/hardware/nfc/1.0/INqNfc.h>
-#include <vendor/nxp/hardware/nfc/1.1/INqNfc.h>
+#include <vendor/nxp/hardware/nfc/2.0/INqNfc.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <cutils/properties.h>
@@ -50,8 +49,7 @@ using INfcV1_1 = android::hardware::nfc::V1_1::INfc;
 using INfcV1_2 = android::hardware::nfc::V1_2::INfc;
 using NfcVendorConfigV1_1 = android::hardware::nfc::V1_1::NfcConfig;
 using NfcVendorConfigV1_2 = android::hardware::nfc::V1_2::NfcConfig;
-using vendor::nxp::hardware::nfc::V1_0::INqNfc;
-using INqNfcV1_1 = vendor::nxp::hardware::nfc::V1_1::INqNfc;
+using vendor::nxp::hardware::nfc::V2_0::INqNfc;
 using android::hardware::nfc::V1_1::INfcClientCallback;
 using android::hardware::hidl_vec;
 using android::hardware::hidl_death_recipient;
@@ -79,8 +77,7 @@ sp<INfc> NfcAdaptation::mHal;
 sp<INfcV1_1> NfcAdaptation::mHal_1_1;
 sp<INfcV1_2> NfcAdaptation::mHal_1_2;
 INfcClientCallback* NfcAdaptation::mCallback;
-sp<INqNfc> NfcAdaptation::mNqHal;
-sp<INqNfcV1_1> NfcAdaptation::mNqHal_1_1;
+sp<INqNfc> NfcAdaptation::mNqHal_2_0;
 sp<NfcDeathRecipient> NfcAdaptation::mDeathRecipient = nullptr;
 
 bool nfc_debug_enabled = false;
@@ -571,18 +568,14 @@ void NfcAdaptation::InitializeHalDeviceContext() {
                             mHal.get(),
                             (mHal->isRemote() ? "remote" : "local"));
 #if (NXP_EXTNS == TRUE)
-  LOG(INFO) << StringPrintf("%s: Try INqNfcV1_1::getService()", func);
-  mNqHal = mNqHal_1_1 = INqNfcV1_1::getService();
-  if (mNqHal_1_1 == nullptr) {
-    LOG(INFO) << StringPrintf("%s: Failure in INqNfcV1_1 getService. Try INqNfc::getService()", func);
-    mNqHal = INqNfc::getService();
-  }
-  if(mNqHal == nullptr) {
+  LOG(INFO) << StringPrintf("%s: Trying INqNfc V2_0::getService()", func);
+  mNqHal_2_0 = INqNfc::getService();
+  if(mNqHal_2_0 == nullptr) {
       LOG(INFO) << StringPrintf ("Failed to retrieve the vendor NFC HAL!");
   } else {
       LOG(INFO) << StringPrintf("%s: INqNfc::getService() returned %p (%s)", func,
-                        mNqHal.get(),
-                        (mNqHal->isRemote() ? "remote" : "local"));
+                        mNqHal_2_0.get(),
+                        (mNqHal_2_0->isRemote() ? "remote" : "local"));
   }
   mHalEntryFuncs.ioctl = HalIoctlIntf;
   nfcBootMode = NFA_NORMAL_BOOT_MODE;
@@ -769,8 +762,8 @@ int NfcAdaptation::HalIoctl(long arg, void* p_data) {
             (pInpOutData->inp.data.transitConfig.len));
     data = tempStdVec;
   }
-  if(mNqHal != nullptr)
-      mNqHal->ioctl(arg, data, IoctlCallback);
+  if(mNqHal_2_0 != nullptr)
+      mNqHal_2_0->ioctl(arg, data, IoctlCallback);
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Ioctl Completed for Type=%llu", func, (unsigned long long)pInpOutData->out.ioctlType);
   return (pInpOutData->out.result);
 }
@@ -828,15 +821,15 @@ string NfcAdaptation::HalGetProperty(string key) {
   string value;
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("%s: enter key %s", __func__, key.c_str());
-  if (mHalNxpNfc != NULL) {
+  if (mNqHal_2_0 != NULL) {
     /* Synchronous HIDL call, will be returned only after
      * HalGetProperty_cb() is called from HAL*/
-    mHalNxpNfc->getSystemProperty(key, HalGetProperty_cb);
+    mNqHal_2_0->getSystemProperty(key, HalGetProperty_cb);
     value = propVal;    /* Copy the string received from HAL */
     propVal.assign(""); /* Clear the global string variable  */
   } else {
     DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("%s: mHalNxpNfc is NULL", __func__);
+        << StringPrintf("%s: mNqHal_2_0 is NULL", __func__);
   }
 
   return value;
@@ -855,11 +848,11 @@ string NfcAdaptation::HalGetProperty(string key) {
  *******************************************************************************/
 bool NfcAdaptation::HalSetProperty(string key, string value) {
   bool status = false;
-  if (mHalNxpNfc != NULL) {
-    status = mHalNxpNfc->setSystemProperty(key, value);
+  if (mNqHal_2_0 != NULL) {
+    status = mNqHal_2_0->setSystemProperty(key, value);
   } else {
     DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("%s: mHalNxpNfc is NULL", __func__);
+        << StringPrintf("%s: mNqHal_2_0 is NULL", __func__);
   }
   return status;
 }

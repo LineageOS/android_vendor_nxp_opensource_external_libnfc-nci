@@ -67,17 +67,10 @@ namespace vendor {
 namespace nxp {
 namespace hardware {
 namespace nfc {
-namespace V1_0 {
+namespace V2_0 {
 struct INqNfc;
 } } } } }
 
-namespace vendor {
-namespace nxp {
-namespace hardware {
-namespace nfc {
-namespace V1_1 {
-struct INqNfc;
-} } } } }
 typedef void(tNFC_JNI_FWSTATUS_CBACK)(uint8_t status);
 #endif
 class NfcDeathRecipient;
@@ -161,8 +154,7 @@ class NfcAdaptation {
   static android::sp<android::hardware::nfc::V1_0::INfc> mHal;
   static android::sp<android::hardware::nfc::V1_1::INfc> mHal_1_1;
   static android::sp<android::hardware::nfc::V1_2::INfc> mHal_1_2;
-  static android::sp<vendor::nxp::hardware::nfc::V1_0::INqNfc> mNqHal;
-  static android::sp<vendor::nxp::hardware::nfc::V1_1::INqNfc> mNqHal_1_1;
+  static android::sp<vendor::nxp::hardware::nfc::V2_0::INqNfc> mNqHal_2_0;
   static android::hardware::nfc::V1_1::INfcClientCallback* mCallback;
   static tHAL_NFC_CBACK* mHalCallback;
   static tHAL_NFC_DATA_CBACK* mHalDataCallback;
