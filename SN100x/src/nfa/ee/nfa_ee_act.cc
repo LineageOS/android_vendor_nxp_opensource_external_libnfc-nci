@@ -161,7 +161,7 @@ static void nfa_ee_trace_aid(std::string p_str, uint8_t id, uint8_t aid_len,
     len = NFA_MAX_AID_LEN;
   }
   for (xx = 0; xx < len; xx++) {
-    yy += sprintf(&buff[yy], "%02x ", *p);
+    yy += snprintf(&buff[yy], sizeof(char), "%02x ", *p);
     p++;
   }
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
@@ -200,14 +200,14 @@ static void nfa_ee_trace_apdu(std::string p_str, tNFA_EE_API_ADD_APDU* p_apdu) {
 
   p =  p_apdu->p_apdu;
   for (xx = 0; xx < apdu_len; xx++) {
-    yy += sprintf(&apdu[yy], "%02x ", *p);
+    yy += snprintf(&apdu[yy], sizeof(char), "%02x ", *p);
     p++;
   }
 
   p =  p_apdu->p_mask;
   yy = 0;
   for (xx = 0; xx < mask_len; xx++) {
-    yy += sprintf(&mask[yy], "%02x ", *p);
+    yy += snprintf(&mask[yy], sizeof(char), "%02x ", *p);
     p++;
   }
    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s id:0x%x apdu_len=%d apdu:%s mask_len=%d mask:%s",
