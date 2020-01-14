@@ -198,7 +198,7 @@ static std::string nfc_hal_event_name(uint8_t event) {
     case (uint32_t)NfcEvent::HCI_NETWORK_RESET:
       return "HCI_NETWORK_RESET";
 #if (NXP_EXTNS == TRUE)
-    case HAL_NFC_FW_UPDATE_STATUS_EVT:
+    case (uint8_t)NfcEvent3::HAL_NFC_FW_UPDATE_STATUS_EVT:
       return "HAL_NFC_FW_UPDATE_STATUS_EVT";
 #endif
     default:
@@ -674,13 +674,13 @@ static void nfc_main_hal_cback(uint8_t event, tHAL_NFC_STATUS status) {
 #endif
       }
 #if (NXP_EXTNS == TRUE)
-      else if(status == HAL_NFC_STATUS_RESTART)
+      else if(status == (uint8_t)NxpNfcHalStatus::HAL_NFC_STATUS_RESTART)
       {
         DLOG_IF(INFO, nfc_debug_enabled)
           << StringPrintf("ESE Update complete : Restart NFC service");
         abort();
       }
-      else if(status == HAL_NFC_HCI_NV_RESET)
+      else if(status == (uint8_t)NxpNfcHalStatus::HAL_NFC_HCI_NV_RESET)
       {
         DLOG_IF(INFO, nfc_debug_enabled)
           << StringPrintf("Jcop Update complete : Reset HCI NV info");
@@ -699,7 +699,7 @@ static void nfc_main_hal_cback(uint8_t event, tHAL_NFC_STATUS status) {
       nfc_main_post_hal_evt(event, status);
       break;
 #if (NXP_EXTNS == TRUE)
-    case HAL_NFC_FW_UPDATE_STATUS_EVT:
+    case (uint8_t)NfcEvent3::HAL_NFC_FW_UPDATE_STATUS_EVT:
       if (NfcAdaptation::GetInstance().p_fwupdate_status_cback) {
         (*NfcAdaptation::GetInstance().p_fwupdate_status_cback)(status);
       }

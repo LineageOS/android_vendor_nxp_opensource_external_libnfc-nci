@@ -1218,12 +1218,11 @@ bool nfa_dm_set_transit_config(tNFA_DM_MSG* p_data) {
   tNFA_DM_CBACK_DATA dm_cback_data;
   dm_cback_data.set_transit_config.status = NFA_STATUS_OK;
 
-  inpOutData.inp.data.transitConfig.val =
-      p_data->transit_config.transitConfig;
   /* size including the null char */
-  inpOutData.inp.data.transitConfig.len =
+  inpOutData.inp.data.transitConfig().len =
       strlen(p_data->transit_config.transitConfig) + 1;
-  nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_SET_TRANSIT_CONFIG, (void*)&inpOutData);
+  memcpy(&(inpOutData.inp.data.transitConfig().val), p_data->transit_config.transitConfig, inpOutData.inp.data.transitConfig().len);
+  nfc_cb.p_hal->ioctl((long)NfcEvent2::HAL_NFC_IOCTL_SET_TRANSIT_CONFIG, (void*)&inpOutData);
   (*nfa_dm_cb.p_dm_cback)(NFA_DM_SET_TRANSIT_CONFIG_EVT, &dm_cback_data);
 
   return true;

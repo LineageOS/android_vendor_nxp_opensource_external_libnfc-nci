@@ -1964,12 +1964,12 @@ uint8_t nfc_hal_nfcc_reset(void) {
       << StringPrintf("Inside nfc_hal_nfcc_reset");
 
   memset(&inpOutData, 0x00, sizeof(nfc_nci_IoctlInOutData_t));
-  inpOutData.inp.data.nciCmd.cmd_len = sizeof(cmd_reset_nci);
-  memcpy(inpOutData.inp.data.nciCmd.p_cmd, cmd_reset_nci,
+  inpOutData.inp.data.nciCmd().cmd_len = sizeof(cmd_reset_nci);
+  memcpy(&inpOutData.inp.data.nciCmd().p_cmd, cmd_reset_nci,
          sizeof(cmd_reset_nci));
   do {
     core_status =
-        nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_NCI_TRANSCEIVE, &inpOutData);
+        nfc_cb.p_hal->ioctl((long)NfcEvent1::HAL_NFC_IOCTL_NCI_TRANSCEIVE, &inpOutData);
     retry_count++;
   } while (NCI_STATUS_OK != core_status &&
            retry_count < (NFC_NFCC_INIT_MAX_RETRY + 1));
@@ -1989,25 +1989,25 @@ uint8_t nfc_hal_nfcc_init(uint8_t** pinit_rsp) {
   memset(&inpOutData, 0x00, sizeof(nfc_nci_IoctlInOutData_t));
   if(nfc_cb.nci_version == NCI_VERSION_1_0)
   {
-     inpOutData.inp.data.nciCmd.cmd_len = sizeof(cmd_init_nci);
-     memcpy(inpOutData.inp.data.nciCmd.p_cmd, cmd_init_nci, sizeof(cmd_init_nci));
+     inpOutData.inp.data.nciCmd().cmd_len = sizeof(cmd_init_nci);
+     memcpy(&inpOutData.inp.data.nciCmd().p_cmd, cmd_init_nci, sizeof(cmd_init_nci));
   }
   else
   {
-     inpOutData.inp.data.nciCmd.cmd_len = sizeof(cmd_init_nci2_0);
-     memcpy(inpOutData.inp.data.nciCmd.p_cmd, cmd_init_nci2_0, sizeof(cmd_init_nci2_0));
+     inpOutData.inp.data.nciCmd().cmd_len = sizeof(cmd_init_nci2_0);
+     memcpy(&inpOutData.inp.data.nciCmd().p_cmd, cmd_init_nci2_0, sizeof(cmd_init_nci2_0));
   }
   do {
     init_status =
-        nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_NCI_TRANSCEIVE, &inpOutData);
+        nfc_cb.p_hal->ioctl((long)NfcEvent1::HAL_NFC_IOCTL_NCI_TRANSCEIVE, &inpOutData);
     retry_count++;
   } while (NCI_STATUS_OK != init_status &&
            retry_count < (NFC_NFCC_INIT_MAX_RETRY + 1));
-  if (init_status == NCI_STATUS_OK && inpOutData.out.data.nciRsp.rsp_len > 0) {
-    *pinit_rsp = (uint8_t*)GKI_getbuf(inpOutData.out.data.nciRsp.rsp_len);
+  if (init_status == NCI_STATUS_OK && inpOutData.out.data.nciRsp().rsp_len > 0) {
+    *pinit_rsp = (uint8_t*)GKI_getbuf(inpOutData.out.data.nciRsp().rsp_len);
     if (nullptr != *pinit_rsp)
-      memcpy(*pinit_rsp, inpOutData.out.data.nciRsp.p_rsp,
-             inpOutData.out.data.nciRsp.rsp_len);
+      memcpy(*pinit_rsp, &inpOutData.out.data.nciRsp().p_rsp,
+             inpOutData.out.data.nciRsp().rsp_len);
     else {
       init_status = NCI_STATUS_FAILED;
       DLOG_IF(INFO, nfc_debug_enabled)

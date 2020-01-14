@@ -45,7 +45,25 @@
 #include "data_types.h"
 #include "nfc_hal_target.h"
 #if (NXP_EXTNS == TRUE)
-#include "hal_nxpnfc.h"
+#include <vendor/nxp/hardware/nfc/2.0/types.h>
+namespace vendor {
+namespace nxp {
+namespace hardware {
+namespace nfc {
+namespace V2_0 {
+struct INqNfc;
+} } } } }
+
+using vendor::nxp::hardware::nfc::V2_0::nfc_nci_IoctlInOutData_t;
+using vendor::nxp::hardware::nfc::V2_0::nfc_nci_ExtnOutputData_t;
+using vendor::nxp::hardware::nfc::V2_0::NfcEvent1;
+using vendor::nxp::hardware::nfc::V2_0::NfcEvent2;
+using vendor::nxp::hardware::nfc::V2_0::NfcEvent3;
+using vendor::nxp::hardware::nfc::V2_0::NfcFwUpdateStatus;
+using vendor::nxp::hardware::nfc::V2_0::NxpNfcHalStatus;
+using vendor::nxp::hardware::nfc::V2_0::nxp_nfc_config_t;
+using vendor::nxp::hardware::nfc::V2_0::Constants;
+
 #endif
 
 typedef uint8_t tHAL_NFC_STATUS;

@@ -91,7 +91,7 @@ extern uint8_t nfa_ee_max_ee_cfg;
 extern bool nfa_poll_bail_out_mode;
 bool isDownloadFirmwareCompleted = false;
 #if (NXP_EXTNS == TRUE)
-uint8_t fw_dl_status = HAL_NFC_FW_UPDATE_INVALID;
+uint8_t fw_dl_status = (uint8_t)NfcFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID;
 #endif
 
 // Whitelist for hosts allowed to create a pipe
@@ -720,7 +720,7 @@ void IoctlCallback(::android::hardware::nfc::V1_0::NfcData outputData) {
   nfc_nci_ExtnOutputData_t* pOutData =
       (nfc_nci_ExtnOutputData_t*)&outputData[0];
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Ioctl Type=%llu", func, (unsigned long long)pOutData->ioctlType);
-  NfcAdaptation* pAdaptation = (NfcAdaptation*)pOutData->context;
+  NfcAdaptation* pAdaptation = &NfcAdaptation::GetInstance();
   /*Output Data from stub->Proxy is copied back to output data
    * This data will be sent back to libnfc*/
   memcpy(&pAdaptation->mCurrentIoctlData->out, &outputData[0],
@@ -749,17 +749,16 @@ int NfcAdaptation::HalIoctl(long arg, void* p_data) {
   AutoThreadMutex a(sIoctlLock);
   nfc_nci_IoctlInOutData_t* pInpOutData = (nfc_nci_IoctlInOutData_t*)p_data;
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s arg=%ld", func, arg);
-  pInpOutData->inp.context = &NfcAdaptation::GetInstance();
   NfcAdaptation::GetInstance().mCurrentIoctlData = pInpOutData;
   data.setToExternal((uint8_t*)pInpOutData, sizeof(nfc_nci_IoctlInOutData_t));
     /*Insert Transit config at the end of IOCTL data as transit buffer also
     needs to be part of NfcData(hidl_vec)*/
-  if (arg == HAL_NFC_IOCTL_SET_TRANSIT_CONFIG) {
+  if (arg == (long)NfcEvent2::HAL_NFC_IOCTL_SET_TRANSIT_CONFIG) {
     std::vector<uint8_t> tempStdVec(data);
     tempStdVec.insert(
-        tempStdVec.end(), pInpOutData->inp.data.transitConfig.val,
-        pInpOutData->inp.data.transitConfig.val +
-            (pInpOutData->inp.data.transitConfig.len));
+        tempStdVec.end(), &(pInpOutData->inp.data.transitConfig().val[0]),
+        &(pInpOutData->inp.data.transitConfig().val[0]) +
+            (pInpOutData->inp.data.transitConfig().len));
     data = tempStdVec;
   }
   if(mNqHal_2_0 != nullptr)
@@ -985,7 +984,7 @@ bool NfcAdaptation::DownloadFirmware() {
   isDownloadFirmwareCompleted = false;
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: enter", func);
 #if (NXP_EXTNS == TRUE)
-  fw_dl_status = HAL_NFC_FW_UPDATE_INVALID;
+  fw_dl_status = (uint8_t)NfcFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID;
   p_fwupdate_status_cback = p_cback;
   if (isNfcOn) {
     return true;
@@ -1017,7 +1016,7 @@ bool NfcAdaptation::DownloadFirmware() {
     status =mHal->close();
   }
   if (NfcAdaptation::GetInstance().p_fwupdate_status_cback &&
-          (fw_dl_status != HAL_NFC_FW_UPDATE_INVALID)) {
+          (fw_dl_status != (uint8_t)NfcFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID)) {
     (*NfcAdaptation::GetInstance().p_fwupdate_status_cback)(fw_dl_status);
   }
 #else
@@ -1049,10 +1048,10 @@ void NfcAdaptation::HalDownloadFirmwareCallback(nfc_event_t event,
       << StringPrintf("%s: event=0x%X", func, event);
   switch (event) {
 #if (NXP_EXTNS == TRUE)
-    case HAL_NFC_FW_UPDATE_STATUS_EVT:
+    case (uint8_t)NfcEvent3::HAL_NFC_FW_UPDATE_STATUS_EVT:
       /* Notify app of FW Update status*/
       if (NfcAdaptation::GetInstance().p_fwupdate_status_cback) {
-        if (event_status == HAL_NFC_FW_UPDATE_START)
+        if (event_status == (uint8_t)NfcFwUpdateStatus::HAL_NFC_FW_UPDATE_START)
           (*NfcAdaptation::GetInstance().p_fwupdate_status_cback)(event_status);
         else {
           fw_dl_status = event_status;
