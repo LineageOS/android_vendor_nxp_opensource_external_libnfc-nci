@@ -5,6 +5,7 @@ cc_library_shared {
         },
     },
     name: "libnqnfc-nci",
+    system_ext_specific: true,
     shared_libs: [
         "libcutils",
         "liblog",
