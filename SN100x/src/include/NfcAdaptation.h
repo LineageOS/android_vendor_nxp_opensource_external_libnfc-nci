@@ -29,7 +29,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 *
-*  Copyright 2019 NXP
+*  Copyright 2020 NXP
 *
 ******************************************************************************/
 #pragma once
@@ -135,9 +135,10 @@ class NfcAdaptation {
   bool HalSetProperty(string key, string value);
   string propVal;
 #endif
+  static bool resetEse(uint64_t level);
   void Dump(int fd);
 #if (NXP_EXTNS == TRUE)
-  nfc_nci_IoctlInOutData_t* mCurrentIoctlData;
+
   tNFC_JNI_FWSTATUS_CBACK* p_fwupdate_status_cback;
 #endif
  private:
@@ -181,8 +182,7 @@ class NfcAdaptation {
                                  uint8_t* p_core_init_rsp_params);
   static void HalWrite(uint16_t data_len, uint8_t* p_data);
 #if (NXP_EXTNS == TRUE)
-  static int HalIoctl(long arg, void* p_data);
-  static int HalIoctlIntf(long arg, void* p_data);
+
   static void HalWriteIntf(uint16_t data_len, uint8_t* p_data);
 #endif
   static bool HalPrediscover();
@@ -193,4 +193,6 @@ class NfcAdaptation {
                                           nfc_status_t event_status);
   static void HalDownloadFirmwareDataCallback(uint16_t data_len,
                                               uint8_t* p_data);
+  static bool HalSetTransitConfig(char * strval);
+
 };

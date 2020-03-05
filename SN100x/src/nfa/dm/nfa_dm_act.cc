@@ -1214,15 +1214,11 @@ bool nfa_dm_act_change_discovery_tech (tNFA_DM_MSG *p_data)
 *******************************************************************************/
 bool nfa_dm_set_transit_config(tNFA_DM_MSG* p_data) {
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s", __func__);
-  nfc_nci_IoctlInOutData_t inpOutData;
+
   tNFA_DM_CBACK_DATA dm_cback_data;
   dm_cback_data.set_transit_config.status = NFA_STATUS_OK;
 
-  /* size including the null char */
-  inpOutData.inp.data.transitConfig().len =
-      strlen(p_data->transit_config.transitConfig) + 1;
-  memcpy(&(inpOutData.inp.data.transitConfig().val), p_data->transit_config.transitConfig, inpOutData.inp.data.transitConfig().len);
-  nfc_cb.p_hal->ioctl((long)NfcEvent2::HAL_NFC_IOCTL_SET_TRANSIT_CONFIG, (void*)&inpOutData);
+  nfc_cb.p_hal->set_transit_config(p_data->transit_config.transitConfig);
   (*nfa_dm_cb.p_dm_cback)(NFA_DM_SET_TRANSIT_CONFIG_EVT, &dm_cback_data);
 
   return true;
@@ -1354,7 +1350,10 @@ bool nfa_dm_act_start_rf_discovery(__attribute__((unused))
 
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
-  if (nfa_dm_cb.disc_cb.disc_flags & NFA_DM_DISC_FLAGS_ENABLED) {
+  if (nfa_dm_cb.disc_cb.disc_flags & NFA_DM_DISC_FLAGS_ENABLED ||
+      ((nfa_ee_cb.ee_flags & NFA_EE_FLAG_RECOVERY) == NFA_EE_FLAG_RECOVERY)) {
+    LOG(ERROR) << StringPrintf("Discovery start not required");
+
     evt_data.status = NFA_STATUS_OK;
     nfa_dm_conn_cback_event_notify(NFA_RF_DISCOVERY_STARTED_EVT, &evt_data);
   } else if (nfa_dm_cb.disc_cb.disc_state != NFA_DM_RFST_IDLE) {

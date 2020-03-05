@@ -459,8 +459,8 @@ uint8_t LLCP_RegisterServer(uint8_t reg_sap, uint8_t link_type,
       return LLCP_INVALID_SAP;
     }
 
-        NQ_STRLCPY_S (p_app_cb->p_service_name, length + 1, p_service_name.c_str(), length + 1);
-        p_app_cb->p_service_name[length] = 0;
+    strlcpy(p_app_cb->p_service_name, p_service_name.c_str(), length + 1);
+    p_app_cb->p_service_name[length] = 0;
   } else
     p_app_cb->p_service_name = nullptr;
 

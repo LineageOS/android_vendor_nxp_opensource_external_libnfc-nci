@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018 NXP
+ *  Copyright 2020 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -53,18 +53,19 @@ namespace nfc {
 namespace V2_0 {
 struct INqNfc;
 } } } } }
-
-using vendor::nxp::hardware::nfc::V2_0::nfc_nci_IoctlInOutData_t;
-using vendor::nxp::hardware::nfc::V2_0::nfc_nci_ExtnOutputData_t;
-using vendor::nxp::hardware::nfc::V2_0::NfcEvent1;
-using vendor::nxp::hardware::nfc::V2_0::NfcEvent2;
-using vendor::nxp::hardware::nfc::V2_0::NfcEvent3;
-using vendor::nxp::hardware::nfc::V2_0::NfcFwUpdateStatus;
-using vendor::nxp::hardware::nfc::V2_0::NxpNfcHalStatus;
-using vendor::nxp::hardware::nfc::V2_0::nxp_nfc_config_t;
-using vendor::nxp::hardware::nfc::V2_0::Constants;
-
 #endif
+
+enum NfcHalStatus : uint8_t {
+    HAL_NFC_STATUS_RESTART = 0x30,
+    HAL_NFC_HCI_NV_RESET = 0x40,
+};
+
+enum NfcHalFwUpdateStatus : uint8_t {
+    HAL_NFC_FW_UPDATE_INVALID = 0x00,
+    HAL_NFC_FW_UPDATE_START,
+    HAL_NFC_FW_UPDATE_SCUCCESS,
+    HAL_NFC_FW_UPDATE_FAILED,
+};
 
 typedef uint8_t tHAL_NFC_STATUS;
 typedef void(tHAL_NFC_STATUS_CBACK)(tHAL_NFC_STATUS status);
@@ -91,6 +92,7 @@ typedef uint8_t(tHAL_API_GET_MAX_NFCEE)(void);
 typedef int(tHAL_API_IOCTL)(long arg, void* p_data);
 typedef int(tHAL_API_GET_FW_DWNLD_FLAG)(uint8_t* fwDnldRequest);
 #endif
+typedef bool(tHAL_API_SET_NXP_TRANSIT_CONFIG)(char* strval);
 
 typedef struct {
   tHAL_API_INITIALIZE* initialize;
@@ -107,6 +109,7 @@ typedef struct {
   tHAL_API_IOCTL* ioctl;
   tHAL_API_GET_FW_DWNLD_FLAG* check_fw_dwnld_flag;
 #endif
+  tHAL_API_SET_NXP_TRANSIT_CONFIG* set_transit_config;
 
 } tHAL_NFC_ENTRY;
 
