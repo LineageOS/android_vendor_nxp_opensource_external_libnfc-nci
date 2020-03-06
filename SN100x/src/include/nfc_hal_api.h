@@ -44,16 +44,6 @@
 #include <hardware/nfc.h>
 #include "data_types.h"
 #include "nfc_hal_target.h"
-#if (NXP_EXTNS == TRUE)
-#include <vendor/nxp/hardware/nfc/2.0/types.h>
-namespace vendor {
-namespace nxp {
-namespace hardware {
-namespace nfc {
-namespace V2_0 {
-struct INqNfc;
-} } } } }
-#endif
 
 enum NfcHalStatus : uint8_t {
     HAL_NFC_STATUS_RESTART = 0x30,
