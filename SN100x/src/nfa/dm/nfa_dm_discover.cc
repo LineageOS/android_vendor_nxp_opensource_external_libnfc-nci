@@ -30,7 +30,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2019 NXP
+ *  Copyright 2018-2020 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -1447,8 +1447,10 @@ static tNFA_STATUS nfa_dm_disc_notify_activation(tNFC_DISCOVER* p_data) {
    * 1. Pass this info to JNI as START_READER_EVT.
    * return (NFA_STATUS_OK)
    */
-  if (p_data->activate.intf_param.type == nfcFL.nfcMwFL._NCI_INTERFACE_UICC_DIRECT ||
-      p_data->activate.intf_param.type == nfcFL.nfcMwFL._NCI_INTERFACE_ESE_DIRECT) {
+  if (IS_SCR_ON &&
+      (p_data->activate.intf_param.type == NCI_INTERFACE_FIRST_VS ||
+       p_data->activate.intf_param.type == nfcFL.nfcMwFL._NCI_INTERFACE_UICC_DIRECT ||
+       p_data->activate.intf_param.type == nfcFL.nfcMwFL._NCI_INTERFACE_ESE_DIRECT)) {
     for (xx = 0; xx < NFA_DM_DISC_NUM_ENTRIES; xx++) {
       if ((nfa_dm_cb.disc_cb.entry[xx].in_use)) {
         nfa_dm_cb.disc_cb.activated_rf_interface =
@@ -2530,23 +2532,17 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
       } else if (p_data->nfc_discover.deactivate.type ==
                  NFC_DEACTIVATE_TYPE_DISCOVERY) {
         nfa_dm_disc_new_state(NFA_DM_RFST_DISCOVERY);
-        /* if deactivation type is discovery and comes after 3 tentatives of
-         * unsuccessful deactivation to sleep then reset the counter and  notify
+        /* If deactivation type is discovery, reset the counter and notify
          * upper layer.
-         *
          */
-        if (nfa_dm_cb.deactivate_cmd_retry_count == 3) {
-          nfa_dm_cb.deactivate_cmd_retry_count = 0;
-          DLOG_IF(INFO, nfc_debug_enabled)
-              << __func__
-              << StringPrintf(
-                     " NFA_DM_RF_DEACTIVATE_NTF to discovery after 3 attempt "
-                     "of deactivate (sleep)");
-          if (p_data->nfc_discover.deactivate.reason ==
-              NFC_DEACTIVATE_REASON_DH_REQ_FAILED) {
-            nfa_dm_disc_notify_deactivation(NFA_DM_RF_DEACTIVATE_NTF,
-                                            &(p_data->nfc_discover));
-          }
+        nfa_dm_cb.deactivate_cmd_retry_count = 0;
+        DLOG_IF(INFO, nfc_debug_enabled)
+            << __func__
+            << StringPrintf("NFA_DM_RF_DEACTIVATE_NTF to discovery");
+        if (p_data->nfc_discover.deactivate.reason ==
+            NFC_DEACTIVATE_REASON_DH_REQ_FAILED) {
+          nfa_dm_disc_notify_deactivation(NFA_DM_RF_DEACTIVATE_NTF,
+                                          &(p_data->nfc_discover));
         }
         if (nfa_dm_cb.disc_cb.disc_flags & NFA_DM_DISC_FLAGS_STOPPING) {
 #if (NXP_EXTNS == TRUE)

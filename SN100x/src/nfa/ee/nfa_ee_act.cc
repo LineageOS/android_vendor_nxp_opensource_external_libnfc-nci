@@ -154,7 +154,8 @@ static void nfa_ee_trace_aid(std::string p_str, uint8_t id, uint8_t aid_len,
                              uint8_t* p) {
   int len = aid_len;
   int xx, yy = 0;
-  char buff[100];
+  const uint8_t MAX_BUFF_SIZE = 100;
+  char buff[MAX_BUFF_SIZE];
 
   buff[0] = 0;
   if (aid_len > NFA_MAX_AID_LEN) {
@@ -165,7 +166,7 @@ static void nfa_ee_trace_aid(std::string p_str, uint8_t id, uint8_t aid_len,
   for (xx = 0; xx < len; xx++) {
 #if (NXP_EXTNS == TRUE)
     int err = 0;
-    err = snprintf(&buff[yy], (sizeof(buff) - yy), "%02x ", *p);
+    err = snprintf(&buff[yy], (MAX_BUFF_SIZE - yy), "%02x ", *p);
     if (err > 0) {
       yy += err;
     } else {
@@ -173,7 +174,7 @@ static void nfa_ee_trace_aid(std::string p_str, uint8_t id, uint8_t aid_len,
       return;
     }
 #else
-    yy += snprintf(&buff[yy], (sizeof(buff) - yy), "%02x ", *p);
+    yy += snprintf(&buff[yy], (MAX_BUFF_SIZE - yy), "%02x ", *p);
 #endif
     p++;
   }
@@ -2851,8 +2852,7 @@ static void nfa_ee_build_discover_req_evt(tNFA_EE_DISCOVER_REQ* p_evt_data) {
 
   for (xx = 0; xx < nfa_ee_cb.cur_ee; xx++, p_cb++) {
     if ((p_cb->ee_status & NFA_EE_STATUS_INT_MASK) ||
-        (p_cb->ee_status != NFA_EE_STATUS_ACTIVE) ||
-        ((p_cb->ecb_flags & NFA_EE_ECB_FLAGS_DISC_REQ) == 0)) {
+        (p_cb->ee_status != NFA_EE_STATUS_ACTIVE) ) {
       continue;
     }
     p_info->ee_handle = (tNFA_HANDLE)p_cb->nfcee_id | NFA_HANDLE_GROUP_EE;
