@@ -2,7 +2,7 @@
  *
  *  Copyright (C) 1999-2012 Broadcom Corporation
  *
- *  Copyright (C) 2018-2019 NXP
+ *  Copyright (C) 2018-2020 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -91,7 +91,7 @@ extern uint8_t nfa_ee_max_ee_cfg;
 extern bool nfa_poll_bail_out_mode;
 bool isDownloadFirmwareCompleted = false;
 #if (NXP_EXTNS == TRUE)
-uint8_t fw_dl_status = (uint8_t)NfcFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID;
+uint8_t fw_dl_status = (uint8_t)NfcHalFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID;
 #endif
 
 // Whitelist for hosts allowed to create a pipe
@@ -172,7 +172,7 @@ class NfcDeathRecipient : public hidl_death_recipient {
 **
 *******************************************************************************/
 NfcAdaptation::NfcAdaptation() {
-  mCurrentIoctlData = nullptr;
+
   p_fwupdate_status_cback = nullptr;
   memset(&mHalEntryFuncs, 0, sizeof(mHalEntryFuncs));
 #if (NXP_EXTNS == TRUE)
@@ -577,7 +577,9 @@ void NfcAdaptation::InitializeHalDeviceContext() {
                         mNqHal_2_0.get(),
                         (mNqHal_2_0->isRemote() ? "remote" : "local"));
   }
-  mHalEntryFuncs.ioctl = HalIoctlIntf;
+
+  mHalEntryFuncs.set_transit_config = HalSetTransitConfig;
+
   nfcBootMode = NFA_NORMAL_BOOT_MODE;
 #endif
 }
@@ -704,83 +706,6 @@ void NfcAdaptation::HalWrite(uint16_t data_len, uint8_t* p_data) {
   mHal->write(data);
 }
 #if (NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function:    IoctlCallback
-**
-** Description: Callback from HAL stub for IOCTL api invoked.
-**              Output data for IOCTL is sent as argument
-**
-** Returns:     None.
-**
-*******************************************************************************/
-
-void IoctlCallback(::android::hardware::nfc::V1_0::NfcData outputData) {
-  const char* func = "IoctlCallback";
-  nfc_nci_ExtnOutputData_t* pOutData =
-      (nfc_nci_ExtnOutputData_t*)&outputData[0];
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Ioctl Type=%llu", func, (unsigned long long)pOutData->ioctlType);
-  NfcAdaptation* pAdaptation = &NfcAdaptation::GetInstance();
-  /*Output Data from stub->Proxy is copied back to output data
-   * This data will be sent back to libnfc*/
-  memcpy(&pAdaptation->mCurrentIoctlData->out, &outputData[0],
-         sizeof(nfc_nci_ExtnOutputData_t));
-}
-/*******************************************************************************
-**
-** Function:    NfcAdaptation::HalIoctl
-**
-** Description: Calls ioctl to the Nfc driver.
-**              If called with a arg value of 0x01 than wired access requested,
-**              status of the requst would be updated to p_data.
-**              If called with a arg value of 0x00 than wired access will be
-**              released, status of the requst would be updated to p_data.
-**              If called with a arg value of 0x02 than current p61 state would
-*be
-**              updated to p_data.
-**
-** Returns:     -1 or 0.
-**
-*******************************************************************************/
-
-int NfcAdaptation::HalIoctl(long arg, void* p_data) {
-  const char* func = "NfcAdaptation::HalIoctl";
-  ::android::hardware::nfc::V1_0::NfcData data;
-  AutoThreadMutex a(sIoctlLock);
-  nfc_nci_IoctlInOutData_t* pInpOutData = (nfc_nci_IoctlInOutData_t*)p_data;
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s arg=%ld", func, arg);
-  NfcAdaptation::GetInstance().mCurrentIoctlData = pInpOutData;
-  data.setToExternal((uint8_t*)pInpOutData, sizeof(nfc_nci_IoctlInOutData_t));
-    /*Insert Transit config at the end of IOCTL data as transit buffer also
-    needs to be part of NfcData(hidl_vec)*/
-  if (arg == (long)NfcEvent2::HAL_NFC_IOCTL_SET_TRANSIT_CONFIG) {
-    std::vector<uint8_t> tempStdVec(data);
-    tempStdVec.insert(
-        tempStdVec.end(), &(pInpOutData->inp.data.transitConfig().val[0]),
-        &(pInpOutData->inp.data.transitConfig().val[0]) +
-            (pInpOutData->inp.data.transitConfig().len));
-    data = tempStdVec;
-  }
-  if(mNqHal_2_0 != nullptr)
-      mNqHal_2_0->ioctl(arg, data, IoctlCallback);
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Ioctl Completed for Type=%llu", func, (unsigned long long)pInpOutData->out.ioctlType);
-  return (pInpOutData->out.result);
-}
-
-/*******************************************************************************
-**
-** Function:    NfcAdaptation::HalIoctlIntf
-**
-** Description: Calls ioctl to the Nfc driver.
-**                           updated to p_data.
-**
-** Returns:     -1 or 0.
-**
-*******************************************************************************/
-
-int NfcAdaptation::HalIoctlIntf(long arg, void* p_data) {
-    return HalIoctl(arg, p_data);
-}
 
 /*******************************************************************************
  ** Function         HalGetProperty_cb
@@ -823,7 +748,7 @@ string NfcAdaptation::HalGetProperty(string key) {
   if (mNqHal_2_0 != NULL) {
     /* Synchronous HIDL call, will be returned only after
      * HalGetProperty_cb() is called from HAL*/
-    mNqHal_2_0->getSystemProperty(key, HalGetProperty_cb);
+    mNqHal_2_0->getVendorParam(key, HalGetProperty_cb);
     value = propVal;    /* Copy the string received from HAL */
     propVal.assign(""); /* Clear the global string variable  */
   } else {
@@ -848,13 +773,73 @@ string NfcAdaptation::HalGetProperty(string key) {
 bool NfcAdaptation::HalSetProperty(string key, string value) {
   bool status = false;
   if (mNqHal_2_0 != NULL) {
-    status = mNqHal_2_0->setSystemProperty(key, value);
+    status = mNqHal_2_0->setVendorParam(key, value);
   } else {
     DLOG_IF(INFO, nfc_debug_enabled)
         << StringPrintf("%s: mNqHal_2_0 is NULL", __func__);
   }
   return status;
 }
+
+/*******************************************************************************
+ **
+ ** Function         HalSetTransitConfig
+ **
+ ** Description      It shall be called from libnfc-nci to set the value of
+ *given
+ **                  key in HAL context.
+ **
+ ** Parameters       string key, string value
+ **
+ ** Returns          true if successfully saved the value of key, else false
+ *******************************************************************************/
+bool NfcAdaptation::HalSetTransitConfig(char * strval) {
+  bool status = false;
+  if (mNqHal_2_0 != NULL) {
+    status = mNqHal_2_0->setNxpTransitConfig(strval);
+  } else {
+    DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf("%s: mNqHal_2_0 is NULL", __func__);
+  }
+  return status;
+}
+
+/*******************************************************************************
+**
+** Function:    NfcAdaptation::resetEse
+**
+** Description: Calls ioctl to the Nfc driver.
+**              If called with a arg value of 0x01 than wired access requested,
+**              status of the requst would be updated to p_data.
+**              If called with a arg value of 0x00 than wired access will be
+**              released, status of the requst would be updated to p_data.
+**              If called with a arg value of 0x02 than current p61 state would
+*be
+**              updated to p_data.
+**
+** Returns:     -1 or 0.
+**
+*******************************************************************************/
+bool NfcAdaptation::resetEse(uint64_t level) {
+  const char* func = "NfcAdaptation::resetEse";
+  bool ret = 0;
+
+  ALOGD_IF(nfc_debug_enabled, "%s : Enter", func);
+
+  if (mNqHal_2_0 != nullptr) {
+    ret = mNqHal_2_0->resetEse(level);
+    if(ret){
+      ALOGE("NfcAdaptation::resetEse mNqHal_2_0 completed");
+    } else {
+      ALOGE("NfcAdaptation::resetEse mNqHal_2_0 failed");
+    }
+  }
+
+  ALOGD_IF(nfc_debug_enabled, "%s : Exit", func);
+
+  return ret;
+}
+
 
 /*******************************************************************************
 **
@@ -984,7 +969,7 @@ bool NfcAdaptation::DownloadFirmware() {
   isDownloadFirmwareCompleted = false;
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: enter", func);
 #if (NXP_EXTNS == TRUE)
-  fw_dl_status = (uint8_t)NfcFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID;
+  fw_dl_status = (uint8_t)NfcHalFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID;
   p_fwupdate_status_cback = p_cback;
   if (isNfcOn) {
     return true;
@@ -1016,7 +1001,7 @@ bool NfcAdaptation::DownloadFirmware() {
     status =mHal->close();
   }
   if (NfcAdaptation::GetInstance().p_fwupdate_status_cback &&
-          (fw_dl_status != (uint8_t)NfcFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID)) {
+          (fw_dl_status != (uint8_t)NfcHalFwUpdateStatus::HAL_NFC_FW_UPDATE_INVALID)) {
     (*NfcAdaptation::GetInstance().p_fwupdate_status_cback)(fw_dl_status);
   }
 #else
@@ -1048,10 +1033,10 @@ void NfcAdaptation::HalDownloadFirmwareCallback(nfc_event_t event,
       << StringPrintf("%s: event=0x%X", func, event);
   switch (event) {
 #if (NXP_EXTNS == TRUE)
-    case (uint8_t)NfcEvent3::HAL_NFC_FW_UPDATE_STATUS_EVT:
+    case HAL_NFC_FW_UPDATE_STATUS_EVT:
       /* Notify app of FW Update status*/
       if (NfcAdaptation::GetInstance().p_fwupdate_status_cback) {
-        if (event_status == (uint8_t)NfcFwUpdateStatus::HAL_NFC_FW_UPDATE_START)
+        if (event_status == (uint8_t)NfcHalFwUpdateStatus::HAL_NFC_FW_UPDATE_START)
           (*NfcAdaptation::GetInstance().p_fwupdate_status_cback)(event_status);
         else {
           fw_dl_status = event_status;

@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2019 NXP
+ *  Copyright 2018-2020 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -47,12 +47,17 @@
 #include "nfa_api.h"
 #include "nfa_dm_int.h"
 #include "nfa_ee_int.h"
+
 #if (NXP_EXTNS == TRUE)
 #include "nfa_hci_int.h"
 #include "nfa_nfcee_int.h"
 #include "nfc_config.h"
 #include "nfa_scr_int.h"
 #endif
+
+#include <statslog.h>
+#include "metrics.h"
+
 using android::base::StringPrintf;
 
 extern bool nfc_debug_enabled;
@@ -136,9 +141,6 @@ static void nfa_ee_report_discover_req_evt(void);
 static void nfa_ee_build_discover_req_evt(tNFA_EE_DISCOVER_REQ* p_evt_data);
 void nfa_ee_check_set_routing(uint16_t new_size, int* p_max_len, uint8_t* p,
                               int* p_cur_offset);
-#if (NXP_EXTNS == TRUE)
-static void nfa_ee_add_t4tnfcee_aid(uint8_t* p, int* cur_offset);
-#endif
 /*******************************************************************************
 **
 ** Function         nfa_ee_trace_aid
@@ -161,7 +163,18 @@ static void nfa_ee_trace_aid(std::string p_str, uint8_t id, uint8_t aid_len,
     len = NFA_MAX_AID_LEN;
   }
   for (xx = 0; xx < len; xx++) {
-    yy += snprintf(&buff[yy], sizeof(char), "%02x ", *p);
+#if (NXP_EXTNS == TRUE)
+    int err = 0;
+    err = snprintf(&buff[yy], (sizeof(buff) - yy), "%02x ", *p);
+    if (err > 0) {
+      yy += err;
+    } else {
+      LOG(ERROR) << StringPrintf("snprintf returned error !");
+      return;
+    }
+#else
+    yy += snprintf(&buff[yy], (sizeof(buff) - yy), "%02x ", *p);
+#endif
     p++;
   }
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
@@ -200,14 +213,28 @@ static void nfa_ee_trace_apdu(std::string p_str, tNFA_EE_API_ADD_APDU* p_apdu) {
 
   p =  p_apdu->p_apdu;
   for (xx = 0; xx < apdu_len; xx++) {
-    yy += snprintf(&apdu[yy], sizeof(char), "%02x ", *p);
+    int err = 0;
+    err = snprintf(&apdu[yy], (sizeof(apdu) - yy), "%02x ", *p);
+    if (err > 0) {
+      yy += err;
+    } else {
+      LOG(ERROR) << StringPrintf("snprintf returned error !");
+      return;
+    }
     p++;
   }
 
   p =  p_apdu->p_mask;
   yy = 0;
   for (xx = 0; xx < mask_len; xx++) {
-    yy += snprintf(&mask[yy], sizeof(char), "%02x ", *p);
+    int err = 0;
+    err = snprintf(&mask[yy], (sizeof(mask) - yy), "%02x ", *p);
+    if (err > 0) {
+      yy += err;
+    } else {
+      LOG(ERROR) << StringPrintf("snprintf returned error !");
+      return;
+    }
     p++;
   }
    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s id:0x%x apdu_len=%d apdu:%s mask_len=%d mask:%s",
@@ -1653,6 +1680,9 @@ void nfa_ee_api_add_aid(tNFA_EE_MSG* p_data) {
   }
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
       "status:%d ee_cfged:0x%02x ", evt_data.status, nfa_ee_cb.ee_cfged);
+  if (evt_data.status == NFA_STATUS_BUFFER_FULL)
+    android::util::stats_write(android::util::NFC_ERROR_OCCURRED,
+                               (int32_t)AID_OVERFLOW, 0, 0);
   /* report the status of this operation */
   nfa_ee_report_event(p_cb->p_ee_cback, NFA_EE_ADD_AID_EVT, &evt_data);
 }
@@ -2744,8 +2774,12 @@ void nfa_ee_nci_nfcee_status_ntf(tNFA_EE_MSG* p_data) {
       p_cb->nfcee_status = p_ee->nfcee_status;
       if(p_ee->nfcee_status == NFC_NFCEE_STS_UNRECOVERABLE_ERROR ||
         ((p_ee->nfcee_status & 0xF0 ) == NFC_NFCEE_STS_PROP_UNRECOVERABLE_ERROR)) {
-          if (nfa_ee_cb.p_enable_cback)
-                      (*nfa_ee_cb.p_enable_cback) (NFA_EE_UNRECOVERABLE_ERROR);
+        if (nfa_dm_cb.disc_cb.disc_state != NFA_DM_RFST_IDLE) {
+          nfa_ee_cb.ee_flags |= NFA_EE_FLAG_RECOVERY;
+          nfa_dm_act_stop_rf_discovery(NULL);
+        }
+        if (nfa_ee_cb.p_enable_cback)
+          (*nfa_ee_cb.p_enable_cback)(NFA_EE_UNRECOVERABLE_ERROR);
       } else if(p_ee->nfcee_status == NFC_NFCEE_STS_INIT_COMPLETED) {
           if (nfa_ee_cb.p_enable_cback)
                       (*nfa_ee_cb.p_enable_cback) (NFA_EE_STATUS_INIT_COMPLETED);
@@ -3620,9 +3654,6 @@ void nfa_ee_lmrt_to_nfcc(__attribute__((unused)) tNFA_EE_MSG* p_data) {
   cur_offset = 0;
   /* use the first byte of the buffer (p) to keep the num_tlv */
   *p = 0;
-#if (NXP_EXTNS == TRUE)
-  if (nfa_t4tnfcee_is_enabled()) nfa_ee_add_t4tnfcee_aid(p, &cur_offset);
-#endif
   for (int rt = NCI_ROUTE_ORDER_AID; rt <= NCI_ROUTE_ORDER_TECHNOLOGY; rt++) {
     /* add the routing entries for NFCEEs */
     p_cb = &nfa_ee_cb.ecb[0];
@@ -3709,47 +3740,5 @@ uint16_t nfa_ee_lmrt_size() {
   int len;
   len = nfa_all_ee_find_total_aid_len();
   return len < NFA_EE_MAX_AID_CFG_LEN ? len : NFA_EE_MAX_AID_CFG_LEN;
-}
-
-/*******************************************************************************
-**
-** Function         nfa_ee_add_t4tnfcee_aid
-**
-** Description      Adds t4t Nfcee AID at the beginning top of routing table
-**
-** Returns          none
-**
-*******************************************************************************/
-static void nfa_ee_add_t4tnfcee_aid(uint8_t* p, int* cur_offset) {
-  const uint8_t t4tNfcee[] = {0xD2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x01};
-  int t4tNfceeRoute = T4TNFCEE_TARGET_HANDLE;
-  unsigned long t4tNfceePower = 0x00;
-  uint8_t* pp;
-  t4tNfceePower =
-      NfcConfig::getUnsigned(NAME_DEFAULT_T4TNFCEE_AID_POWER_STATE, 0x00);
-  if (!t4tNfceePower) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf("t4tNfceePower not found; taking default value");
-    t4tNfceePower = (NCI_ROUTE_PWR_STATE_ON | NCI_ROUTE_PWR_STATE_SWITCH_OFF);
-    t4tNfceePower |= NCI_ROUTE_PWR_STATE_SCREEN_ON_LOCK();
-    t4tNfceePower |= NCI_ROUTE_PWR_STATE_SCREEN_OFF_UNLOCK();
-    t4tNfceePower |= NCI_ROUTE_PWR_STATE_SCREEN_OFF_LOCK();
-  } else {
-    t4tNfceePower = T4TNFCEE_AID_POWER_STATE;
-  }
-
-  /*Number of Entries. Current Entry 1.
-   *Later same values will be incremented with required number of entries
-   */
-  *p = 0x01;
-  pp = p + 1;
-  *pp++ = NFC_ROUTE_TAG_AID;
-  *pp++ = sizeof(t4tNfcee) + 2;  // sizeof(t4tNfcee) + size(t4tNfceeRoute):1byte
-                                 // + size(t4tNfceePower):1byte
-  *pp++ = t4tNfceeRoute;
-  *pp++ = (uint8_t)t4tNfceePower;
-  memcpy(pp, t4tNfcee, sizeof(t4tNfcee));
-
-  *cur_offset = (uint8_t)(pp - (p + 1)) + sizeof(t4tNfcee);
 }
 #endif
