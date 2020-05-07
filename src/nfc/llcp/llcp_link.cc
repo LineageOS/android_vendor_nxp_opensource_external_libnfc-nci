@@ -3,7 +3,7 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
@@ -1319,9 +1319,18 @@ static void llcp_link_proc_rx_data(NFC_HDR* p_msg) {
         } else {
           info_length = p_msg->len - LLCP_PDU_HEADER_SIZE;
         }
+#if (NXP_EXTNS == TRUE)
+        DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+            "frame_error:0x%x, info_length:0x%x ptype:0x%x",
+            frame_error, info_length, ptype);
 
         /* check if length of information is bigger than link MIU */
+        if ((!frame_error) && (info_length > llcp_cb.lcb.local_link_miu) &&
+            (ptype == LLCP_PDU_UI_TYPE)) {
+#else
+        /* check if length of information is bigger than link MIU */
         if ((!frame_error) && (info_length > llcp_cb.lcb.local_link_miu)) {
+#endif
           LOG(ERROR) << StringPrintf("Received exceeding MIU (%d): got %d bytes SDU",
                             llcp_cb.lcb.local_link_miu, info_length);
 

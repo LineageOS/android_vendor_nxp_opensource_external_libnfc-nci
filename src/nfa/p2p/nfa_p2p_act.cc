@@ -613,13 +613,12 @@ bool nfa_p2p_reg_server(tNFA_P2P_MSG* p_msg) {
       p_msg->api_reg_server.server_sap, p_msg->api_reg_server.link_type,
       p_msg->api_reg_server.service_name, nfa_p2p_llcp_cback);
 
-    if (server_sap == LLCP_INVALID_SAP)
-    {
-        evt_data.reg_server.server_handle = NFA_HANDLE_INVALID;
-        evt_data.reg_server.server_sap    = NFA_P2P_INVALID_SAP;
-        NQ_STRLCPY_S (evt_data.reg_server.service_name, sizeof (evt_data.reg_server.service_name),
-                       p_msg->api_reg_server.service_name, LLCP_MAX_SN_LEN);
-        evt_data.reg_server.service_name[LLCP_MAX_SN_LEN] = 0;
+  if (server_sap == LLCP_INVALID_SAP) {
+    evt_data.reg_server.server_handle = NFA_HANDLE_INVALID;
+    evt_data.reg_server.server_sap = NFA_P2P_INVALID_SAP;
+    strlcpy(evt_data.reg_server.service_name,
+            p_msg->api_reg_server.service_name, LLCP_MAX_SN_LEN);
+    evt_data.reg_server.service_name[LLCP_MAX_SN_LEN] = 0;
 
     p_msg->api_reg_server.p_cback(NFA_P2P_REG_SERVER_EVT, &evt_data);
 
@@ -636,11 +635,11 @@ bool nfa_p2p_reg_server(tNFA_P2P_MSG* p_msg) {
   nfa_p2p_cb.sap_cb[server_sap].p_cback = p_msg->api_reg_server.p_cback;
   nfa_p2p_cb.sap_cb[server_sap].flags = NFA_P2P_SAP_FLAG_SERVER;
 
-    evt_data.reg_server.server_handle = (NFA_HANDLE_GROUP_P2P | server_sap);
-    evt_data.reg_server.server_sap    = server_sap;
-    NQ_STRLCPY_S (evt_data.reg_server.service_name, sizeof (evt_data.reg_server.service_name),
-                   p_msg->api_reg_server.service_name, LLCP_MAX_SN_LEN);
-    evt_data.reg_server.service_name[LLCP_MAX_SN_LEN] = 0;
+  evt_data.reg_server.server_handle = (NFA_HANDLE_GROUP_P2P | server_sap);
+  evt_data.reg_server.server_sap = server_sap;
+  strlcpy(evt_data.reg_server.service_name, p_msg->api_reg_server.service_name,
+          LLCP_MAX_SN_LEN);
+  evt_data.reg_server.service_name[LLCP_MAX_SN_LEN] = 0;
 
   /* notify NFA_P2P_REG_SERVER_EVT to server */
   nfa_p2p_cb.sap_cb[server_sap].p_cback(NFA_P2P_REG_SERVER_EVT, &evt_data);
@@ -890,18 +889,15 @@ bool nfa_p2p_create_data_link_connection(tNFA_P2P_MSG* p_msg) {
   conn_params.miu = p_msg->api_connect.miu;
   conn_params.rw = p_msg->api_connect.rw;
 
-    /* NFA_P2pConnectBySap () */
-    if (p_msg->api_connect.dsap != LLCP_INVALID_SAP)
-    {
-        conn_params.sn[0] = 0;
-        status = LLCP_ConnectReq (local_sap, p_msg->api_connect.dsap, &conn_params);
-    }
-    /* NFA_P2pConnectByName () */
-    else
-    {
-        NQ_STRLCPY_S (conn_params.sn, sizeof (conn_params.sn),
-                       p_msg->api_connect.service_name, LLCP_MAX_SN_LEN);
-        conn_params.sn[LLCP_MAX_SN_LEN] = 0;
+  /* NFA_P2pConnectBySap () */
+  if (p_msg->api_connect.dsap != LLCP_INVALID_SAP) {
+    conn_params.sn[0] = 0;
+    status = LLCP_ConnectReq(local_sap, p_msg->api_connect.dsap, &conn_params);
+  }
+  /* NFA_P2pConnectByName () */
+  else {
+    strlcpy(conn_params.sn, p_msg->api_connect.service_name, LLCP_MAX_SN_LEN);
+    conn_params.sn[LLCP_MAX_SN_LEN] = 0;
 
     status = LLCP_ConnectReq(local_sap, LLCP_SAP_SDP, &conn_params);
   }
