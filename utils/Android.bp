@@ -55,13 +55,13 @@ cc_test {
 }
 
 cc_fuzz {
-    name: "nfc_utils_ringbuffer_fuzzer",
+    name: "nqnfc_utils_ringbuffer_fuzzer",
     host_supported: true,
     srcs: [
         "test/ringbuffer_fuzzer/ringbuffer_fuzzer.cpp",
     ],
     static_libs: [
-        "libnfcutils",
+        "libnqnfcutils",
     ],
     corpus: [
         "test/ringbuffer_fuzzer/corpus/*",

@@ -45,7 +45,7 @@
 #include <android/hardware/nfc/1.0/INfc.h>
 #include <android/hardware/nfc/1.0/INfcClientCallback.h>
 #include <android/hardware/nfc/1.0/types.h>
-#include <vendor/nxp/hardware/nfc/1.0/INqNfc.h>
+#include <vendor/nxp/hardware/nfc/2.0/INqNfc.h>
 #include <vendor/nxp/nxpnfclegacy/1.0/INxpNfcLegacy.h>
 #include <vendor/nxp/nxpnfclegacy/1.0/types.h>
 
@@ -260,8 +260,7 @@ class NfcAdaptation {
   static android::sp<android::hardware::nfc::V1_0::INfc> mHal;
   static android::sp<android::hardware::nfc::V1_1::INfc> mHal_1_1;
   static android::sp<android::hardware::nfc::V1_2::INfc> mHal_1_2;
-  static android::sp<vendor::nxp::hardware::nfc::V1_0::INqNfc> mNqHal;
-  static android::sp<vendor::nxp::hardware::nfc::V1_1::INqNfc> mNqHal_1_1;
+  static android::sp<vendor::nxp::hardware::nfc::V2_0::INqNfc> mNqHal_2_0;
   static android::sp<vendor::nxp::nxpnfclegacy::V1_0::INxpNfcLegacy> mHalNxpNfcLegacy;
   static android::hardware::nfc::V1_1::INfcClientCallback* mCallback;
   sp<NfcDeathRecipient> mNfcHalDeathRecipient;

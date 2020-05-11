@@ -59,8 +59,7 @@ using NfcVendorConfigV1_1 = android::hardware::nfc::V1_1::NfcConfig;
 using NfcVendorConfigV1_2 = android::hardware::nfc::V1_2::NfcConfig;
 using android::hardware::nfc::V1_1::INfcClientCallback;
 using android::hardware::hidl_vec;
-using vendor::nxp::hardware::nfc::V1_0::INqNfc;
-using INqNfcV1_1 = vendor::nxp::hardware::nfc::V1_1::INqNfc;
+using vendor::nxp::hardware::nfc::V2_0::INqNfc;
 using android::hardware::configureRpcThreadpool;
 using ::android::hardware::hidl_death_recipient;
 using ::android::wp;
@@ -79,8 +78,7 @@ android::Mutex sIoctlMutex;
 sp<INxpNfcLegacy> NfcAdaptation::mHalNxpNfcLegacy;
 sp<INfc> NfcAdaptation::mHal;
 sp<INfcV1_1> NfcAdaptation::mHal_1_1;
-sp<INqNfc> NfcAdaptation::mNqHal;
-sp<INqNfcV1_1> NfcAdaptation::mNqHal_1_1;
+sp<INqNfc> NfcAdaptation::mNqHal_2_0;
 sp<INfcV1_2> NfcAdaptation::mHal_1_2;
 INfcClientCallback* NfcAdaptation::mCallback;
 tHAL_NFC_CBACK* NfcAdaptation::mHalCallback = nullptr;
@@ -739,17 +737,13 @@ void NfcAdaptation::InitializeHalDeviceContext() {
           (mHal->isRemote() ? "remote" : "local"));
     mHal->linkToDeath(mNfcHalDeathRecipient,0);
    }
-  LOG(INFO) << StringPrintf("%s: Try INqNfcV1_1::getService()", func);
-  mNqHal = mNqHal_1_1 = INqNfcV1_1::getService();
-  if (mNqHal_1_1 == nullptr) {
-    LOG(INFO) << StringPrintf("%s: Failure in INqNfcV1_1 getService. Try INqNfc::getService()", func);
-    mNqHal = INqNfc::getService();
-  }
-  if(mNqHal == nullptr) {
-    LOG(INFO) << StringPrintf ( "Failed to retrieve the NXPNFC HAL!");
+  LOG(INFO) << StringPrintf("%s: Try INqNfc V2_0::getService()", func);
+  mNqHal_2_0 = INqNfc::getService();
+  if (mNqHal_2_0 == nullptr) {
+    LOG(INFO) << StringPrintf("Failed to retrieve NXPNFC V2_0 vendor HAL!");
   } else {
-    LOG(INFO) << StringPrintf("%s: INqNfc::getService() returned %p (%s)", func, mNqHal.get(),
-          (mNqHal->isRemote() ? "remote" : "local"));
+    LOG(INFO) << StringPrintf("%s: INqNfc::getService() returned %p (%s)", func, mNqHal_2_0.get(),
+          (mNqHal_2_0->isRemote() ? "remote" : "local"));
   }
 
   LOG(INFO) << StringPrintf("%s: INxpNfcLegacy::getService()", func);
@@ -896,8 +890,8 @@ void NfcAdaptation::HalWrite(uint16_t data_len, uint8_t* p_data) {
  *******************************************************************************/
 bool NfcAdaptation::HalSetTransitConfig(char * strval) {
   bool status = false;
-  if (mHalNxpNfc != NULL) {
-    status = mHalNxpNfc->setNxpTransitConfig(strval);
+  if (mNqHal_2_0 != NULL) {
+    status = mNqHal_2_0->setNxpTransitConfig(strval);
   } else {
     DLOG_IF(INFO, nfc_debug_enabled)
         << StringPrintf("%s: mHalNxpNfc is NULL", __func__);
