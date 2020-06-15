@@ -69,6 +69,8 @@ extern uint8_t HCI_LOOPBACK_DEBUG;
 #define NFA_HCI_SET_CONFIG_EVENT 0x01
 /* event to clear the nfcee config bit*/
 #define NFA_HCI_CLEAR_CONFIG_EVENT 0x02
+
+#define T4TNFCEE_TARGET_HANDLE 0x10
 #endif
 
 /* HCI SW Version number                       */
@@ -469,6 +471,7 @@ typedef struct {
   uint8_t active_host[NFA_HCI_MAX_HOST_IN_NETWORK];
   uint8_t reset_host[NFA_HCI_MAX_HOST_IN_NETWORK]; /* List of host reseting */
   bool b_low_power_mode;  /* Host controller in low power mode */
+  bool b_hci_new_sessionId; /* Command sent to set a new session Id */
   bool b_hci_netwk_reset; /* Command sent to reset HCI Network */
   bool w4_hci_netwk_init; /* Wait for other host in network to initialize */
   TIMER_LIST_ENT timer;   /* Timer to avoid indefinitely waiting for response */
@@ -685,7 +688,8 @@ extern std::string nfa_hciu_instr_2_str(uint8_t type);
 extern std::string nfa_hciu_get_event_name(uint16_t event);
 extern std::string nfa_hciu_get_state_name(uint8_t state);
 extern char* nfa_hciu_get_type_inst_names(uint8_t pipe, uint8_t type,
-                                          uint8_t inst, char* p_buff);
+                                          uint8_t inst, char* p_buff,
+                                          const uint8_t max_buff_size);
 extern std::string nfa_hciu_evt_2_str(uint8_t pipe_id, uint8_t evt);
 #define VERBOSE_BUFF_SIZE 100
 #endif /* NFA_HCI_INT_H */

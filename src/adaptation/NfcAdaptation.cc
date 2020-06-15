@@ -3,7 +3,7 @@
  *  Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2020 NXP Semiconductors
  *  The original Work has been changed by NXP Semiconductors.
  *
  *  Copyright (C) 1999-2012 Broadcom Corporation
@@ -28,6 +28,8 @@
 #include <vendor/nxp/hardware/nfc/1.0/INqNfc.h>
 #include <vendor/nxp/hardware/nfc/1.1/INqNfc.h>
 #include <android/hardware/nfc/1.2/INfc.h>
+#include <vendor/nxp/nxpnfclegacy/1.0/INxpNfcLegacy.h>
+#include <vendor/nxp/nxpnfclegacy/1.0/types.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <cutils/properties.h>
@@ -35,9 +37,6 @@
 #include <hwbinder/ProcessState.h>
 #include <vector>
 #include "debug_nfcsnoop.h"
-#ifdef ENABLE_ESE_CLIENT
-#include "hal_nxpese.h"
-#endif
 #include "nfa_api.h"
 #include "nfa_rw_api.h"
 #include "nfc_config.h"
@@ -60,12 +59,12 @@ using NfcVendorConfigV1_1 = android::hardware::nfc::V1_1::NfcConfig;
 using NfcVendorConfigV1_2 = android::hardware::nfc::V1_2::NfcConfig;
 using android::hardware::nfc::V1_1::INfcClientCallback;
 using android::hardware::hidl_vec;
-using vendor::nxp::hardware::nfc::V1_0::INqNfc;
-using INqNfcV1_1 = vendor::nxp::hardware::nfc::V1_1::INqNfc;
+using vendor::nxp::hardware::nfc::V2_0::INqNfc;
 using android::hardware::configureRpcThreadpool;
 using ::android::hardware::hidl_death_recipient;
 using ::android::wp;
 using ::android::hidl::base::V1_0::IBase;
+using vendor::nxp::nxpnfclegacy::V1_0::NxpNfcHalConfig;
 
 extern bool nfc_debug_enabled;
 
@@ -76,10 +75,10 @@ extern void delete_stack_non_volatile_store(bool forceDelete);
 NfcAdaptation* NfcAdaptation::mpInstance = nullptr;
 ThreadMutex NfcAdaptation::sLock;
 android::Mutex sIoctlMutex;
+sp<INxpNfcLegacy> NfcAdaptation::mHalNxpNfcLegacy;
 sp<INfc> NfcAdaptation::mHal;
 sp<INfcV1_1> NfcAdaptation::mHal_1_1;
-sp<INqNfc> NfcAdaptation::mNqHal;
-sp<INqNfcV1_1> NfcAdaptation::mNqHal_1_1;
+sp<INqNfc> NfcAdaptation::mNqHal_2_0;
 sp<INfcV1_2> NfcAdaptation::mHal_1_2;
 INfcClientCallback* NfcAdaptation::mCallback;
 tHAL_NFC_CBACK* NfcAdaptation::mHalCallback = nullptr;
@@ -191,7 +190,6 @@ class NfcDeathRecipient : public hidl_death_recipient {
 *******************************************************************************/
 NfcAdaptation::NfcAdaptation() {
   mNfcHalDeathRecipient = new NfcDeathRecipient(mHal);
-  mCurrentIoctlData = NULL;
   memset(&mHalEntryFuncs, 0, sizeof(mHalEntryFuncs));
 }
 
@@ -227,132 +225,138 @@ NfcAdaptation& NfcAdaptation::GetInstance() {
 
 void NfcAdaptation::GetNxpConfigs(
     std::map<std::string, ConfigValue>& configMap) {
-  nfc_nci_IoctlInOutData_t inpOutData = {};
-  int ret = HalIoctl(HAL_NFC_GET_NXP_CONFIG, &inpOutData);
-  DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("HAL_NFC_GET_NXP_CONFIG ioctl return value = %d", ret);
+  NxpAdaptationConfig mNxpAdaptationConfig;
+  HalGetNxpConfig(mNxpAdaptationConfig);
   configMap.emplace(
       NAME_NXP_ESE_LISTEN_TECH_MASK,
-      ConfigValue(inpOutData.out.data.nxpConfigs.ese_listen_tech_mask));
+      ConfigValue(mNxpAdaptationConfig.ese_listen_tech_mask));
   configMap.emplace(
       NAME_NXP_DEFAULT_NFCEE_DISC_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.default_nfcee_disc_timeout));
+      ConfigValue(mNxpAdaptationConfig.default_nfcee_disc_timeout));
   configMap.emplace(
       NAME_NXP_DEFAULT_NFCEE_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.default_nfcee_timeout));
+      ConfigValue(mNxpAdaptationConfig.default_nfcee_timeout));
   configMap.emplace(
       NAME_NXP_ESE_WIRED_PRT_MASK,
-      ConfigValue(inpOutData.out.data.nxpConfigs.ese_wired_prt_mask));
+      ConfigValue(mNxpAdaptationConfig.ese_wired_prt_mask));
   configMap.emplace(
       NAME_NXP_UICC_WIRED_PRT_MASK,
-      ConfigValue(inpOutData.out.data.nxpConfigs.uicc_wired_prt_mask));
+      ConfigValue(mNxpAdaptationConfig.uicc_wired_prt_mask));
   configMap.emplace(
       NAME_NXP_WIRED_MODE_RF_FIELD_ENABLE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.wired_mode_rf_field_enable));
+      ConfigValue(mNxpAdaptationConfig.wired_mode_rf_field_enable));
   configMap.emplace(
       NAME_AID_BLOCK_ROUTE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.aid_block_route));
+      ConfigValue(mNxpAdaptationConfig.aid_block_route));
 
   configMap.emplace(
       NAME_NXP_ESE_POWER_DH_CONTROL,
-      ConfigValue(inpOutData.out.data.nxpConfigs.esePowerDhControl));
+      ConfigValue(mNxpAdaptationConfig.esePowerDhControl));
   configMap.emplace(NAME_NXP_SWP_RD_TAG_OP_TIMEOUT,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.tagOpTimeout));
+                    ConfigValue(mNxpAdaptationConfig.tagOpTimeout));
   configMap.emplace(
       NAME_NXP_LOADER_SERICE_VERSION,
-      ConfigValue(inpOutData.out.data.nxpConfigs.loaderServiceVersion));
+      ConfigValue(mNxpAdaptationConfig.loaderServiceVersion));
   configMap.emplace(
       NAME_NXP_DEFAULT_NFCEE_DISC_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.defaultNfceeDiscTimeout));
+      ConfigValue(mNxpAdaptationConfig.defaultNfceeDiscTimeout));
   configMap.emplace(NAME_NXP_DUAL_UICC_ENABLE,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.dualUiccEnable));
+                    ConfigValue(mNxpAdaptationConfig.dualUiccEnable));
   configMap.emplace(
       NAME_NXP_CE_ROUTE_STRICT_DISABLE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.ceRouteStrictDisable));
+      ConfigValue(mNxpAdaptationConfig.ceRouteStrictDisable));
   configMap.emplace(
       NAME_OS_DOWNLOAD_TIMEOUT_VALUE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.osDownloadTimeoutValue));
+      ConfigValue(mNxpAdaptationConfig.osDownloadTimeoutValue));
   configMap.emplace(
       NAME_DEFAULT_AID_ROUTE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.defaultAidRoute));
+      ConfigValue(mNxpAdaptationConfig.defaultAidRoute));
   configMap.emplace(
       NAME_DEFAULT_AID_PWR_STATE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.defaultAidPwrState));
+      ConfigValue(mNxpAdaptationConfig.defaultAidPwrState));
   configMap.emplace(
       NAME_DEFAULT_ISODEP_PWR_STATE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.defaultRoutePwrState));
+      ConfigValue(mNxpAdaptationConfig.defaultRoutePwrState));
   configMap.emplace(
       NAME_DEFAULT_OFFHOST_PWR_STATE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.defaultOffHostPwrState));
+      ConfigValue(mNxpAdaptationConfig.defaultOffHostPwrState));
   configMap.emplace(
       NAME_NXP_JCOPDL_AT_BOOT_ENABLE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.jcopDlAtBootEnable));
+      ConfigValue(mNxpAdaptationConfig.jcopDlAtBootEnable));
   configMap.emplace(
       NAME_NXP_DEFAULT_NFCEE_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.defaultNfceeTimeout));
+      ConfigValue(mNxpAdaptationConfig.defaultNfceeTimeout));
   configMap.emplace(NAME_NXP_NFC_CHIP,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.nxpNfcChip));
+                    ConfigValue(mNxpAdaptationConfig.nxpNfcChip));
   configMap.emplace(
       NAME_NXP_CORE_SCRN_OFF_AUTONOMOUS_ENABLE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.coreScrnOffAutonomousEnable));
+      ConfigValue(mNxpAdaptationConfig.coreScrnOffAutonomousEnable));
   configMap.emplace(
       NAME_NXP_P61_JCOP_DEFAULT_INTERFACE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.p61JcopDefaultInterface));
+      ConfigValue(mNxpAdaptationConfig.p61JcopDefaultInterface));
   configMap.emplace(NAME_NXP_AGC_DEBUG_ENABLE,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.agcDebugEnable));
+                    ConfigValue(mNxpAdaptationConfig.agcDebugEnable));
   configMap.emplace(
       NAME_DEFAULT_NFCF_PWR_STATE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.felicaCltPowerState));
+      ConfigValue(mNxpAdaptationConfig.felicaCltPowerState));
   configMap.emplace(
       NAME_NXP_HCEF_CMD_RSP_TIMEOUT_VALUE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.cmdRspTimeoutValue));
+      ConfigValue(mNxpAdaptationConfig.cmdRspTimeoutValue));
   configMap.emplace(
       NAME_CHECK_DEFAULT_PROTO_SE_ID,
-      ConfigValue(inpOutData.out.data.nxpConfigs.checkDefaultProtoSeId));
+      ConfigValue(mNxpAdaptationConfig.checkDefaultProtoSeId));
   configMap.emplace(
       NAME_NXP_NFCC_PASSIVE_LISTEN_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nfccPassiveListenTimeout));
+      ConfigValue(mNxpAdaptationConfig.nfccPassiveListenTimeout));
   configMap.emplace(
       NAME_NXP_NFCC_STANDBY_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nfccStandbyTimeout));
+      ConfigValue(mNxpAdaptationConfig.nfccStandbyTimeout));
   configMap.emplace(NAME_NXP_WM_MAX_WTX_COUNT,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.wmMaxWtxCount));
+                    ConfigValue(mNxpAdaptationConfig.wmMaxWtxCount));
   configMap.emplace(
       NAME_NXP_NFCC_RF_FIELD_EVENT_TIMEOUT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nfccRfFieldEventTimeout));
+      ConfigValue(mNxpAdaptationConfig.nfccRfFieldEventTimeout));
   configMap.emplace(
       NAME_NXP_ALLOW_WIRED_IN_MIFARE_DESFIRE_CLT,
-      ConfigValue(inpOutData.out.data.nxpConfigs.allowWiredInMifareDesfireClt));
+      ConfigValue(mNxpAdaptationConfig.allowWiredInMifareDesfireClt));
   configMap.emplace(
       NAME_NXP_DWP_INTF_RESET_ENABLE,
-      ConfigValue(inpOutData.out.data.nxpConfigs.dwpIntfResetEnable));
+      ConfigValue(mNxpAdaptationConfig.dwpIntfResetEnable));
   configMap.emplace(
       NAME_NXPLOG_HAL_LOGLEVEL,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nxpLogHalLoglevel));
+      ConfigValue(mNxpAdaptationConfig.nxpLogHalLoglevel));
   configMap.emplace(
       NAME_NXPLOG_EXTNS_LOGLEVEL,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nxpLogExtnsLogLevel));
+      ConfigValue(mNxpAdaptationConfig.nxpLogExtnsLogLevel));
   configMap.emplace(
       NAME_NXPLOG_TML_LOGLEVEL,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nxpLogTmlLogLevel));
+      ConfigValue(mNxpAdaptationConfig.nxpLogTmlLogLevel));
   configMap.emplace(
       NAME_NXPLOG_FWDNLD_LOGLEVEL,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nxpLogFwDnldLogLevel));
+      ConfigValue(mNxpAdaptationConfig.nxpLogFwDnldLogLevel));
   configMap.emplace(
       NAME_NXPLOG_NCIX_LOGLEVEL,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nxpLogNcixLogLevel));
+      ConfigValue(mNxpAdaptationConfig.nxpLogNcixLogLevel));
   configMap.emplace(
       NAME_NXPLOG_NCIR_LOGLEVEL,
-      ConfigValue(inpOutData.out.data.nxpConfigs.nxpLogNcirLogLevel));
+      ConfigValue(mNxpAdaptationConfig.nxpLogNcirLogLevel));
   configMap.emplace(NAME_NFA_CONFIG_FORMAT,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.scrCfgFormat));
+                    ConfigValue(mNxpAdaptationConfig.scrCfgFormat));
   configMap.emplace(NAME_ETSI_READER_ENABLE,
-                    ConfigValue(inpOutData.out.data.nxpConfigs.etsiReaderEnable));
-  if (inpOutData.out.data.nxpConfigs.scrResetEmvco.len) {
+                    ConfigValue(mNxpAdaptationConfig.etsiReaderEnable));
+  configMap.emplace(NAME_DEFAULT_TECH_ABF_ROUTE,
+                    ConfigValue(mNxpAdaptationConfig.techAbfRoute));
+  configMap.emplace(NAME_DEFAULT_TECH_ABF_PWR_STATE,
+                    ConfigValue(mNxpAdaptationConfig.techAbfPwrState));
+  configMap.emplace(NAME_WTAG_SUPPORT,
+                    ConfigValue(mNxpAdaptationConfig.wTagSupport));
+  configMap.emplace(NAME_DEFAULT_T4TNFCEE_AID_POWER_STATE,
+                    ConfigValue(mNxpAdaptationConfig.t4tNfceePwrState));
+  if (mNxpAdaptationConfig.scrResetEmvco.len) {
     std::vector scrResetEmvcoCmd(
-        inpOutData.out.data.nxpConfigs.scrResetEmvco.cmd,
-        inpOutData.out.data.nxpConfigs.scrResetEmvco.cmd +
-            inpOutData.out.data.nxpConfigs.scrResetEmvco.len);
+        mNxpAdaptationConfig.scrResetEmvco.cmd,
+        mNxpAdaptationConfig.scrResetEmvco.cmd +
+            mNxpAdaptationConfig.scrResetEmvco.len);
     configMap.emplace(NAME_NXP_PROP_RESET_EMVCO_CMD,
                       ConfigValue(scrResetEmvcoCmd));
   }
@@ -702,13 +706,20 @@ void NfcAdaptation::InitializeHalDeviceContext() {
   mHalEntryFuncs.close = HalClose;
   mHalEntryFuncs.core_initialized = HalCoreInitialized;
   mHalEntryFuncs.write = HalWrite;
-#if (NXP_EXTNS == TRUE)
-  mHalEntryFuncs.ioctl = HalIoctl;
-#endif
   mHalEntryFuncs.prediscover = HalPrediscover;
   mHalEntryFuncs.control_granted = HalControlGranted;
   mHalEntryFuncs.power_cycle = HalPowerCycle;
   mHalEntryFuncs.get_max_ee = HalGetMaxNfcee;
+  mHalEntryFuncs.spiDwpSync = HalSpiDwpSync;
+  mHalEntryFuncs.RelForceDwpOnOffWait = HalRelForceDwpOnOffWait;
+  mHalEntryFuncs.HciInitUpdateState = HalHciInitUpdateState;
+  mHalEntryFuncs.setEseState = HalsetEseState;
+  mHalEntryFuncs.getchipType = HalgetchipType;
+  mHalEntryFuncs.setNfcServicePid = HalsetNfcServicePid;
+  mHalEntryFuncs.getEseState = HalgetEseState;
+  mHalEntryFuncs.GetCachedNfccConfig = HalGetCachedNfccConfig;
+  mHalEntryFuncs.nciTransceive = HalNciTransceive;
+
   LOG(INFO) << StringPrintf("%s: Try INfcV1_1::getService()", func);
   mHal = mHal_1_1 = mHal_1_2 = INfcV1_2::tryGetService();
   if (mHal_1_2 == nullptr) {
@@ -726,18 +737,26 @@ void NfcAdaptation::InitializeHalDeviceContext() {
           (mHal->isRemote() ? "remote" : "local"));
     mHal->linkToDeath(mNfcHalDeathRecipient,0);
    }
-  LOG(INFO) << StringPrintf("%s: Try INqNfcV1_1::getService()", func);
-  mNqHal = mNqHal_1_1 = INqNfcV1_1::getService();
-  if (mNqHal_1_1 == nullptr) {
-    LOG(INFO) << StringPrintf("%s: Failure in INqNfcV1_1 getService. Try INqNfc::getService()", func);
-    mNqHal = INqNfc::getService();
-  }
-  if(mNqHal == nullptr) {
-    LOG(INFO) << StringPrintf ( "Failed to retrieve the NXPNFC HAL!");
+  LOG(INFO) << StringPrintf("%s: Try INqNfc V2_0::getService()", func);
+  mNqHal_2_0 = INqNfc::getService();
+  if (mNqHal_2_0 == nullptr) {
+    LOG(INFO) << StringPrintf("Failed to retrieve NXPNFC V2_0 vendor HAL!");
   } else {
-    LOG(INFO) << StringPrintf("%s: INqNfc::getService() returned %p (%s)", func, mNqHal.get(),
-          (mNqHal->isRemote() ? "remote" : "local"));
+    LOG(INFO) << StringPrintf("%s: INqNfc::getService() returned %p (%s)", func, mNqHal_2_0.get(),
+          (mNqHal_2_0->isRemote() ? "remote" : "local"));
   }
+
+  LOG(INFO) << StringPrintf("%s: INxpNfcLegacy::getService()", func);
+  mHalNxpNfcLegacy = INxpNfcLegacy::tryGetService();
+  if(mHalNxpNfcLegacy == nullptr) {
+    LOG(INFO) << StringPrintf ( "Failed to retrieve the NXPNFC Legacy HAL!");
+  } else {
+    LOG(INFO) << StringPrintf("%s: INxpNfcLegacy::getService() returned %p (%s)", func, mHalNxpNfcLegacy.get(),
+          (mHalNxpNfcLegacy->isRemote() ? "remote" : "local"));
+  }
+#if (NXP_EXTNS == TRUE)
+  mHalEntryFuncs.set_transit_config = HalSetTransitConfig;
+#endif
 
 }
 
@@ -857,70 +876,30 @@ void NfcAdaptation::HalWrite(uint16_t data_len, uint8_t* p_data) {
   mHal->write(data);
 }
 
-#if (NXP_EXTNS == TRUE)
 /*******************************************************************************
-**
-** Function:    IoctlCallback
-**
-** Description: Callback from HAL stub for IOCTL api invoked.
-**              Output data for IOCTL is sent as argument
-**
-** Returns:     None.
-**
-*******************************************************************************/
-void IoctlCallback(::android::hardware::nfc::V1_0::NfcData outputData) {
-  const char* func = "IoctlCallback";
-  nfc_nci_ExtnOutputData_t* pOutData =
-      (nfc_nci_ExtnOutputData_t*)&outputData[0];
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Ioctl Type=%llu", func, (unsigned long long)pOutData->ioctlType);
-  NfcAdaptation* pAdaptation = (NfcAdaptation*)pOutData->context;
-  /*Output Data from stub->Proxy is copied back to output data
-   * This data will be sent back to libnfc*/
-  memcpy(&pAdaptation->mCurrentIoctlData->out, &outputData[0],
-         sizeof(nfc_nci_ExtnOutputData_t));
-}
-/*******************************************************************************
-**
-** Function:    NfcAdaptation::HalIoctl
-**
-** Description: Calls ioctl to the Nfc driver.
-**              If called with a arg value of 0x01 than wired access requested,
-**              status of the requst would be updated to p_data.
-**              If called with a arg value of 0x00 than wired access will be
-**              released, status of the requst would be updated to p_data.
-**              If called with a arg value of 0x02 than current p61 state would
-*be
-**              updated to p_data.
-**
-** Returns:     -1 or 0.
-**
-*******************************************************************************/
-int NfcAdaptation::HalIoctl(long arg, void* p_data) {
-  const char* func = "NfcAdaptation::HalIoctl";
-  ::android::hardware::nfc::V1_0::NfcData data;
-  sIoctlMutex.lock();
-  nfc_nci_IoctlInOutData_t* pInpOutData = (nfc_nci_IoctlInOutData_t*)p_data;
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s arg=%ld", func, arg);
-  pInpOutData->inp.context = &NfcAdaptation::GetInstance();
-  NfcAdaptation::GetInstance().mCurrentIoctlData = pInpOutData;
-  data.setToExternal((uint8_t*)pInpOutData, sizeof(nfc_nci_IoctlInOutData_t));
-  if (arg == HAL_NFC_IOCTL_SET_TRANSIT_CONFIG) {
-    /*Insert Transit config at the end of IOCTL data as transit buffer also
-    needs to be part of NfcData(hidl_vec)*/
-    std::vector<uint8_t> tempStdVec(data);
-    tempStdVec.insert(
-        tempStdVec.end(), pInpOutData->inp.data.transitConfig.val,
-        pInpOutData->inp.data.transitConfig.val +
-            (pInpOutData->inp.data.transitConfig.len));
-    data = tempStdVec;
+ **
+ ** Function         HalSetTransitConfig
+ **
+ ** Description      It shall be called from libnfc-nci to set the value of
+ *given
+ **                  key in HAL context.
+ **
+ ** Parameters       string key, string value
+ **
+ ** Returns          true if successfully saved the value of key, else false
+ *******************************************************************************/
+bool NfcAdaptation::HalSetTransitConfig(char * strval) {
+  bool status = false;
+  if (mNqHal_2_0 != NULL) {
+    status = mNqHal_2_0->setNxpTransitConfig(strval);
+  } else {
+    DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf("%s: mHalNxpNfc is NULL", __func__);
   }
-  if(mNqHal != nullptr)
-      mNqHal->ioctl(arg, data, IoctlCallback);
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s Ioctl Completed for Type=%llu", func, (unsigned long long)pInpOutData->out.ioctlType);
-  sIoctlMutex.unlock();
-  return (pInpOutData->out.result);
+  return status;
 }
 
+#if (NXP_EXTNS == TRUE)
 /*******************************************************************************
 **
 ** Function:    NfcAdaptation::HalGetFwDwnldFlag
@@ -1072,10 +1051,7 @@ bool NfcAdaptation::DownloadFirmware() {
   {
       cmd_init_nci_size = sizeof(cmd_init_nci2_0) / sizeof(uint8_t);
   }
-  nfc_nci_IoctlInOutData_t inpOutData;
-  tNFC_FWUpdate_Info_t fw_update_inf;
   uint8_t p_core_init_rsp_params;
-  uint16_t fw_dwnld_status = NFC_STATUS_FAILED;
   evt_status = NFC_STATUS_FAILED;
 #endif
   HalInitialize();
@@ -1119,15 +1095,6 @@ bool NfcAdaptation::DownloadFirmware() {
   if (evt_status == NFC_STATUS_FAILED) {
     goto TheEnd;
   }
-  mHalEntryFuncs.ioctl(HAL_NFC_IOCTL_CHECK_FLASH_REQ, &inpOutData);
-  fw_update_inf = *(tNFC_FWUpdate_Info_t*)&inpOutData.out.data.fwUpdateInf;
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("fw_update required  -> %d", fw_update_inf.fw_update_reqd);
-  if (fw_update_inf.fw_update_reqd == true) {
-    mHalEntryFuncs.ioctl(HAL_NFC_IOCTL_FW_DWNLD, &inpOutData);
-    fw_dwnld_status = inpOutData.out.data.fwDwnldStatus;
-    if (fw_dwnld_status != NFC_STATUS_OK) {
-      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: FW Download failed", func);
-    } else {
       isSignaled = SIGNAL_NONE;
       DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: send CORE_RESET", func);
       HalWrite(cmd_reset_nci_size, cmd_reset_nci);
@@ -1163,14 +1130,13 @@ bool NfcAdaptation::DownloadFirmware() {
       }
       isSignaled = SIGNAL_NONE;
       mHalInitCompletedEvent.unlock();
-    }
-  }
 
 TheEnd:
   isSignaled = SIGNAL_NONE;
 #endif
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: try close HAL", func);
   HalClose();
+
   HalTerminate();
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: exit", func);
 
@@ -1388,4 +1354,309 @@ AutoThreadMutex::~AutoThreadMutex() { mm.unlock(); }
 void initializeGlobalAppDtaMode() {
   appl_dta_mode_flag = 0x01;
   ALOGD("%s: DTA Enabled", __func__);
+}
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::setEseState
+**
+** Description      This function is called for to update ese P61 state.
+**
+** Returns          None.
+**
+***************************************************************************/
+uint32_t NfcAdaptation::HalsetEseState(tNxpEseState ESEstate) {
+  const char* func = "NfcAdaptation::HalsetEseState";
+  uint32_t status = NFA_STATUS_FAILED;
+  uint8_t ret = 0;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  if (mHalNxpNfcLegacy != nullptr) {
+    ret = mHalNxpNfcLegacy->setEseState((NxpNfcHalEseState)ESEstate);
+    if(!ret){
+      ALOGE("NfcAdaptation::setEseState mHalNxpNfcLegacy completed");
+      status = NFA_STATUS_OK;
+    } else {
+      ALOGE("NfcAdaptation::setEseState mHalNxpNfcLegacy failed");
+    }
+  }
+  return status;
+}
+
+
+/*******************************************************************************
+ **
+ ** Function         phNxpNciHal_getchipType
+ **
+ ** Description      Gets the chipType from hal which is already configured
+ **                  during init time.
+ **
+ ** Returns          chipType
+ *******************************************************************************/
+uint8_t NfcAdaptation::HalgetchipType() {
+  const char* func = "NfcAdaptation::HalgetchipType";
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+  return mHalNxpNfcLegacy->getchipType();
+}
+
+
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::setNfcServicePid
+**
+** Description      This function request to pn54x driver to
+**                  update NFC service process ID for signalling.
+**
+** Returns          0 if api call success, else -1
+***************************************************************************/
+uint16_t NfcAdaptation::HalsetNfcServicePid(uint64_t NfcNxpServicePid) {
+  const char* func = "NfcAdaptation::HalsetNfcServicePid";
+  uint16_t status = NFA_STATUS_FAILED;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  if (mHalNxpNfcLegacy != nullptr) {
+    status = mHalNxpNfcLegacy->setNfcServicePid(NfcNxpServicePid);
+
+    if(status != NFA_STATUS_FAILED){
+      ALOGE("NfcAdaptation::setNfcServicePid mHalNxpNfcLegacy completed");
+    } else {
+      ALOGE("NfcAdaptation::setNfcServicePid mHalNxpNfcLegacy failed");
+    }
+  }
+
+  return status;
+}
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::getEseState
+**
+** Description      This function is called for to get ese state.
+**
+** Returns          Status.
+**
+***************************************************************************/
+uint32_t NfcAdaptation::HalgetEseState() {
+  const char* func = "NfcAdaptation::HalgetEseState";
+  uint32_t status = NFA_STATUS_FAILED;
+
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  if (mHalNxpNfcLegacy != nullptr) {
+    status = mHalNxpNfcLegacy->getEseState();
+    if(status != NFA_STATUS_FAILED){
+      ALOGE("NfcAdaptation::getEseState mHalNxpNfcLegacy completed");
+      status = NFA_STATUS_OK;
+    } else {
+      ALOGE("NfcAdaptation::getEseState mHalNxpNfcLegacy failed");
+    }
+  }
+
+  return status;
+}
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::HalSpiDwpSync
+**
+** Description      This function is called for to update ese P61 state.
+**
+** Returns          None.
+**
+***************************************************************************/
+uint16_t NfcAdaptation::HalSpiDwpSync(uint32_t level) {
+  const char* func = "NfcAdaptation::HalSpiDwpSync";
+  uint16_t ret = 0;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  if (mHalNxpNfcLegacy != nullptr) {
+    ret = mHalNxpNfcLegacy->spiDwpSync(level);
+  }
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Exit", func);
+
+  return ret;
+}
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::HalRelForceDwpOnOffWait
+**
+** Description      This function is called for to update ese P61 state.
+**
+** Returns          None.
+**
+***************************************************************************/
+uint16_t NfcAdaptation::HalRelForceDwpOnOffWait(uint32_t level) {
+  const char* func = "NfcAdaptation::HalRelForceDwpOnOffWait";
+  uint16_t ret = 0;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  if (mHalNxpNfcLegacy != nullptr) {
+    ret = mHalNxpNfcLegacy->RelForceDwpOnOffWait(level);
+  }
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Exit", func);
+
+  return ret;
+}
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::HalHciInitUpdateState
+**
+** Description      This function is called for to update ese P61 state.
+**
+** Returns          None.
+**
+***************************************************************************/
+int32_t NfcAdaptation::HalHciInitUpdateState(tNFC_HCI_INIT_STATUS HciStatus) {
+  const char* func = "NfcAdaptation::HalHciInitUpdateState";
+  uint16_t ret = 0;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  if (mHalNxpNfcLegacy != nullptr) {
+    ret = mHalNxpNfcLegacy->hciInitUpdateState((NfcHciInitStatus)HciStatus);
+  }
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Exit", func);
+
+  return ret;
+}
+
+/*******************************************************************************
+ ** Function         HalGetProperty_cb
+ **
+ ** Description      This is a callback for HalGetProperty. It shall be called
+ **                  from HAL to return the value of requested property.
+ **
+ ** Parameters       ::android::hardware::hidl_string
+ **
+ ** Return           void
+ *********************************************************************/
+static void HalGetCachedNfccConfig_cb(NxpNciCfgInfo CfgInfo) {
+    memcpy(&(NfcAdaptation::GetInstance().AdapCfgInfo),&CfgInfo,sizeof(NxpNciCfgInfo));
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("isGetcfg = %d",NfcAdaptation::GetInstance().AdapCfgInfo.isGetcfg);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("total_duration = %d",NfcAdaptation::GetInstance().AdapCfgInfo.total_duration[0]);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("total_duration_len = %d",NfcAdaptation::GetInstance().AdapCfgInfo.total_duration_len);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("atr_req_gen_bytes = %d",NfcAdaptation::GetInstance().AdapCfgInfo.atr_req_gen_bytes[0]);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("atr_req_gen_bytes_len = %d",NfcAdaptation::GetInstance().AdapCfgInfo.atr_req_gen_bytes_len);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("atr_res_gen_bytes = %d",NfcAdaptation::GetInstance().AdapCfgInfo.atr_res_gen_bytes[0]);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("atr_res_gen_bytes_len = %d",NfcAdaptation::GetInstance().AdapCfgInfo.atr_res_gen_bytes_len);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("pmid_wt = %d",NfcAdaptation::GetInstance().AdapCfgInfo.pmid_wt[0]);
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("pmid_wt_len = %d",NfcAdaptation::GetInstance().AdapCfgInfo.pmid_wt_len);
+
+  return;
+}
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::GetCachedNfccConfig
+**
+** Description      This function is called for to update ese P61 state.
+**
+** Returns          void.
+**
+***************************************************************************/
+void NfcAdaptation::HalGetCachedNfccConfig(tNxpNci_getCfg_info_t *nxpNciAtrInfo) {
+  const char* func = "NfcAdaptation::HalGetCachedNfccConfig";
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  if (mHalNxpNfcLegacy != nullptr) {
+     mHalNxpNfcLegacy->getCachedNfccConfig(HalGetCachedNfccConfig_cb);
+  }
+
+  memcpy(nxpNciAtrInfo , &(NfcAdaptation::GetInstance().AdapCfgInfo) , sizeof(tNxpNci_getCfg_info_t));
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Exit", func);
+}
+
+
+/*******************************************************************************
+ ** Function         HalGetNxpConfig_cb
+ **
+ ** Description      This is a callback for HalGetNxpConfig. It shall be called
+ **                  from HAL to return the value of Nxp Config.
+ **
+ ** Parameters       ::vendor::nxp::nxpnfclegacy::V1_0::NxpNfcHalConfig
+ **
+ ** Return           void
+ *********************************************************************/
+static void HalGetNxpConfig_cb(const NxpNfcHalConfig& ConfigData) {
+
+  memcpy(&(NfcAdaptation::GetInstance().mNxpNfcHalConfig), &ConfigData, sizeof(NxpNfcHalConfig));
+  return;
+}
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::HalGetNxpConfig
+**
+** Description      This function is called for to get Nxp Config.
+**
+** Returns          void.
+**
+***************************************************************************/
+void NfcAdaptation::HalGetNxpConfig(NxpAdaptationConfig& NfcConfigData) {
+  const char* func = "NfcAdaptation::getNxpConfig";
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  if (mHalNxpNfcLegacy != nullptr) {
+    mHalNxpNfcLegacy->getNxpConfig(HalGetNxpConfig_cb);
+    memcpy(&NfcConfigData , &(NfcAdaptation::GetInstance().mNxpNfcHalConfig) , sizeof(NxpAdaptationConfig));
+  }
+}
+
+/*******************************************************************************
+ ** Function         HalNciTransceive_cb
+ **
+ ** Description      This is a callback for HalGetProperty. It shall be called
+ **                  from HAL to return the value of requested property.
+ **
+ ** Parameters       ::android::hardware::hidl_string
+ **
+ ** Return           void
+ *********************************************************************/
+static void HalNciTransceive_cb(NxpNciExtnResp out) {
+    memcpy(&(NfcAdaptation::GetInstance().mNciResp),&out,sizeof(NxpNciExtnResp));
+  return;
+}
+
+/***************************************************************************
+**
+** Function         NfcAdaptation::HalNciTransceive
+**
+** Description      This function does tarnsceive of nci command
+**
+** Returns          NfcStatus.
+**
+***************************************************************************/
+uint32_t NfcAdaptation::HalNciTransceive(phNxpNci_Extn_Cmd_t* NciCmd,phNxpNci_Extn_Resp_t* NciResp) {
+  const char* func = "NfcAdaptation::nciTransceive";
+  NxpNciExtnCmd inNciCmd;
+  uint32_t status = 0;
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Enter", func);
+
+  memcpy(&inNciCmd,NciCmd,sizeof(NxpNciExtnCmd));
+
+  if (mHalNxpNfcLegacy != nullptr) {
+     mHalNxpNfcLegacy->nciTransceive(inNciCmd,HalNciTransceive_cb);
+     status = (NfcAdaptation::GetInstance().mNciResp).status;
+     memcpy(NciResp , &(NfcAdaptation::GetInstance().mNciResp) , sizeof(phNxpNci_Extn_Resp_t));
+  }
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s : Exit", func);
+  return status;
+
 }

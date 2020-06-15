@@ -6,9 +6,15 @@
 |:-------------:|:-------------:|
 | NFC_NCIHAL_libnfc-nci     |  git clone https://github.com/NXPNFCProject/NFC_NCIHAL_libnfc-nci.git |
 
+#### Supported Version on "br_android_ncihalx_row_q" branch
+| Android Version        | NXP Release          | NXP Tag  |
+| :-------------: |:---------------------:| :-----:|
+| aosp-master                |  10.01.00 (PN80T/PN81T/PN553/PN557) |  NFC_AR_00_18C0_10.01.00_OpnSrc  |
+| aosp-master              |  10.02.00 (PN80T/PN81T/PN553/PN557) |  NFC_AR_00_18C0_10.02.00_OpnSrc |
 
 ####Supported Versions on "master" Branch
 
+#### Supported Version on "br_android_ncihalx_11" branch
 | Android Version        | NXP Release          | NXP Tag  |
 | :-------------: |:-------------:| :-----:|
 | android-5.0.0_r1/android5.1.0_r1     |  3.5.0_L (PN547C2/PN548C2) |  NFC_NCIHALx_AR0F.3.5.0_L_OpnSrc |
@@ -57,3 +63,9 @@
 | Android Version        | NXP Release          | NXP Tag  |
 | :-------------: |:---------------------:| :-----:|
 | aosp-master           |  11.01.00 (SN110) |  NFC_AR_00_6000_11.01.00_OpnSrc |
+| aosp-master              |  11.02.00 (SN110) |  NFC_AR_00_6000_11.02.00_OpnSrc |
+
+#### Supported Version on "br_android_ncihalx_row_11" branch
+| Android Version        | NXP Release          | NXP Tag  |
+| :-------------: |:---------------------:| :-----:|
+| aosp-master                |  11.01.00 (PN80T/PN81T/PN553/PN557) |  NFC_AR_00_18C0_11.01.00_OpnSrc  |

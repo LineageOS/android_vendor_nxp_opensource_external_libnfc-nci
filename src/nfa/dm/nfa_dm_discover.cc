@@ -19,7 +19,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright (C) 2015-2019 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -933,6 +933,10 @@ static tNFA_DM_DISC_TECH_PROTO_MASK nfa_dm_disc_get_disc_mask(
 static void nfa_dm_disc_discovery_cback(tNFC_DISCOVER_EVT event,
                                         tNFC_DISCOVER* p_data) {
   tNFA_DM_RF_DISC_SM_EVENT dm_disc_event = NFA_DM_DISC_SM_MAX_EVENT;
+  if (!p_data) {
+    LOG(ERROR) << StringPrintf("NULL returning...");
+    return;
+  }
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_dm_disc_discovery_cback (): event:0x%X", event);
 
@@ -969,7 +973,7 @@ static void nfa_dm_disc_discovery_cback(tNFC_DISCOVER_EVT event,
   nfa_dm_rf_disc_data.nfc_discover = *p_data;
   nfa_dm_disc_sm_execute(dm_disc_event, &nfa_dm_rf_disc_data);
 #if (NXP_EXTNS == TRUE)
-  NFA_SCR_PROCESS_EVT(dm_disc_event, p_data->status);
+  if(p_data) NFA_SCR_PROCESS_EVT(dm_disc_event, p_data->status);
 #endif
 }
 
@@ -2611,7 +2615,7 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
       if (!(nfa_dm_cb.disc_cb.disc_flags & NFA_DM_DISC_FLAGS_W4_NTF)) {
         /* it's race condition. received deactivate NTF before receiving RSP */
 
-        tNFC_DEACTIVATE_DEVT deact;
+        tNFC_DEACTIVATE_DEVT deact = tNFC_DEACTIVATE_DEVT();
         deact.status = NFC_STATUS_OK;
         deact.type = NFC_DEACTIVATE_TYPE_IDLE;
         deact.is_ntf = true;
@@ -2639,6 +2643,9 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
       }
       if (p_data->nfc_discover.deactivate.reason !=
           NFC_DEACTIVATE_REASON_DH_REQ_FAILED) {
+        /* count for number of times deactivate cmd sent */
+        nfa_dm_cb.deactivate_cmd_retry_count = 0;
+
         sleep_wakeup_event = true;
         nfa_dm_disc_notify_deactivation(NFA_DM_RF_DEACTIVATE_NTF,
                                         &(p_data->nfc_discover));
@@ -2649,8 +2656,6 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
              NFC_DEACTIVATE_TYPE_SLEEP_AF)) {
           if (p_data->nfc_discover.deactivate.reason !=
               NFC_DEACTIVATE_REASON_DH_REQ_FAILED) {
-            /* count for number of times deactivate cmd sent */
-            nfa_dm_cb.deactivate_cmd_retry_count = 0;
             nfa_dm_disc_new_state(NFA_DM_RFST_W4_HOST_SELECT);
           }
           if (old_sleep_wakeup_flag) {
@@ -2685,7 +2690,6 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
                   (!nfa_dm_cb.disc_cb.deact_pending)) {
                 nfa_dm_send_deactivate_cmd(NFA_DEACTIVATE_TYPE_DISCOVERY);
               }
-              nfa_dm_cb.deactivate_cmd_retry_count = 0;
             } else {
               nfa_dm_cb.deactivate_cmd_retry_count++;
               nfa_dm_send_deactivate_cmd(p_data->nfc_discover.deactivate.type);
@@ -2698,6 +2702,18 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
       } else if (p_data->nfc_discover.deactivate.type ==
                  NFC_DEACTIVATE_TYPE_DISCOVERY) {
         nfa_dm_disc_new_state(NFA_DM_RFST_DISCOVERY);
+        /* If deactivation type is discovery, reset the counter and notify
+         * upper layer.
+         */
+        nfa_dm_cb.deactivate_cmd_retry_count = 0;
+        DLOG_IF(INFO, nfc_debug_enabled)
+            << __func__
+            << StringPrintf("NFA_DM_RF_DEACTIVATE_NTF to discovery");
+        if (p_data->nfc_discover.deactivate.reason ==
+            NFC_DEACTIVATE_REASON_DH_REQ_FAILED) {
+          nfa_dm_disc_notify_deactivation(NFA_DM_RF_DEACTIVATE_NTF,
+                                          &(p_data->nfc_discover));
+        }
         if (nfa_dm_cb.disc_cb.disc_flags & NFA_DM_DISC_FLAGS_STOPPING) {
           /* stop discovery */
           NFC_Deactivate(NFA_DEACTIVATE_TYPE_IDLE);
@@ -2740,7 +2756,7 @@ static void nfa_dm_disc_sm_poll_active(tNFA_DM_RF_DISC_SM_EVENT event,
 *******************************************************************************/
 static void nfa_dm_disc_sm_listen_active(tNFA_DM_RF_DISC_SM_EVENT event,
                                          tNFA_DM_RF_DISC_DATA* p_data) {
-  tNFC_DEACTIVATE_DEVT deact;
+  tNFC_DEACTIVATE_DEVT deact = tNFC_DEACTIVATE_DEVT();
 
   switch (event) {
     case NFA_DM_RF_DEACTIVATE_CMD:

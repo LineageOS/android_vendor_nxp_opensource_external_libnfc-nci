@@ -53,3 +53,17 @@ cc_test {
         "libbase",
     ],
 }
+
+cc_fuzz {
+    name: "nqnfc_utils_ringbuffer_fuzzer",
+    host_supported: true,
+    srcs: [
+        "test/ringbuffer_fuzzer/ringbuffer_fuzzer.cpp",
+    ],
+    static_libs: [
+        "libnqnfcutils",
+    ],
+    corpus: [
+        "test/ringbuffer_fuzzer/corpus/*",
+    ],
+}

@@ -1342,7 +1342,7 @@ static void rw_mfc_handle_ndef_read_rsp(uint8_t* p_data) {
  **
  *******************************************************************************/
 static void rw_mfc_process_error() {
-  tRW_READ_DATA evt_data;
+  tRW_READ_DATA evt_data = tRW_READ_DATA();
   memset (&evt_data, 0, sizeof(tRW_READ_DATA));
   tRW_EVENT rw_event = RW_MFC_NDEF_DETECT_EVT;
   NFC_HDR* p_cmd_buf;
@@ -1350,6 +1350,7 @@ static void rw_mfc_process_error() {
   tRW_DETECT_NDEF_DATA ndef_data;
 
   DLOG_IF(INFO, nfc_debug_enabled) << __func__ << " State=" << p_mfc->state;
+  evt_data.status = NFC_STATUS_FAILED;
 
   /* Retry sending command if retry-count < max */
   if (rw_cb.cur_retry < RW_MAX_RETRIES) {
