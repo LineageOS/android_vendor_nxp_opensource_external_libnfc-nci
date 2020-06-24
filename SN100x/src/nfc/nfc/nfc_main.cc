@@ -97,6 +97,9 @@ extern void delete_stack_non_volatile_store(bool forceDelete);
 tNFC_CB nfc_cb;
 #if (NXP_EXTNS == TRUE)
 #define NFC_NCI_CREDIT_NTF_TOUT 2
+/* Refused status sent by HAL to restart NFC service */
+#define HAL_NFC_STATUS_RESTART HAL_NFC_STATUS_REFUSED
+
 extern uint8_t nfa_ee_max_ee_cfg;
 extern std::string nfc_storage_path;
 tNfc_featureList nfcFL;
@@ -673,6 +676,15 @@ static void nfc_main_hal_cback(uint8_t event, tHAL_NFC_STATUS status) {
           << StringPrintf("NFA_EE_MAX_EE_SUPPORTED to use %d", nfa_ee_max_ee_cfg);
 #endif
       }
+#if (NXP_EXTNS == TRUE)
+      /* Updates completed, restart NFC service */
+      else if (status == HAL_NFC_STATUS_RESTART) {
+        DLOG_IF(INFO, nfc_debug_enabled)
+            << StringPrintf("Restart NFC service");
+        abort();
+      }
+#endif
+
       break;
 
     case HAL_NFC_CLOSE_CPLT_EVT:
