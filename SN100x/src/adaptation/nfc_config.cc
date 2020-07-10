@@ -40,6 +40,9 @@
 #include <android-base/properties.h>
 #include <android-base/strings.h>
 
+#include <cutils/properties.h>
+#include <utils/Log.h>
+
 #include <config.h>
 
 using namespace ::std;
@@ -68,6 +71,9 @@ std::string searchConfigPath(std::string file_name) {
 //   Search a file matches libnfc-nci-SKU.conf
 // 3. If none of 1,2 is defined, search a default file name "libnfc-nci.conf".
 std::string findConfigPath() {
+  char system_device_prop[PROPERTY_VALUE_MAX] = {0};
+  int ret = 0;
+
   string f_path = searchConfigPath(
       android::base::GetProperty("persist.nfc_cfg.config_file_name", ""));
   if (!f_path.empty()) return f_path;
@@ -79,7 +85,17 @@ std::string findConfigPath() {
   if (!f_path.empty()) return f_path;
 
   // load default file if the desired file not found.
-  return searchConfigPath("libnfc-nci.conf");
+  ret = __system_property_get("ro.product.system.device", system_device_prop);
+  if (ret <= 0) {
+      ALOGE("Failure to read system device property");
+      return searchConfigPath("libnfc-nci.conf");
+  // load SN100 file to support SN1XX for msm8937
+  } else if (!strcmp(system_device_prop, "msm8937_64") ||
+             !strcmp(system_device_prop, "msm8937_32")) {
+      return searchConfigPath("libnfc-nci_SN100.conf");
+  } else {
+      return searchConfigPath("libnfc-nci.conf");
+  }
 }
 
 }  // namespace
