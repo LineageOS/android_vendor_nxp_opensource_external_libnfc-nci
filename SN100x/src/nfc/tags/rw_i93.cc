@@ -214,16 +214,16 @@ void rw_i93_get_product_version(uint8_t* p_uid) {
         case I93_IC_REF_ONS_N24RF04E:
           p_i93->product_version = RW_I93_ONS_N24RF04E;
           break;
-        case RW_I93_ONS_N24RF16:
+        case I93_IC_REF_ONS_N24RF16:
           p_i93->product_version = RW_I93_ONS_N24RF16;
           break;
-        case RW_I93_ONS_N24RF16E:
+        case I93_IC_REF_ONS_N24RF16E:
           p_i93->product_version = RW_I93_ONS_N24RF16E;
           break;
-        case RW_I93_ONS_N24RF64:
+        case I93_IC_REF_ONS_N24RF64:
           p_i93->product_version = RW_I93_ONS_N24RF64;
           break;
-        case RW_I93_ONS_N24RF64E:
+        case I93_IC_REF_ONS_N24RF64E:
           p_i93->product_version = RW_I93_ONS_N24RF64E;
           break;
         default:
@@ -327,8 +327,8 @@ bool rw_i93_process_ext_sys_info(uint8_t* p_data, uint16_t length) {
     rw_i93_get_product_version(p_uid);
 
     if (p_i93->uid[0] == I93_UID_FIRST_BYTE) {
-      if (p_i93->uid[1] == I93_UID_IC_MFG_CODE_STM || (p_i93->uid[1] == I93_UID_IC_MFG_CODE_ONS)) {
-        /* STM supports more than 2040 bytes */
+      if ((p_i93->uid[1] == I93_UID_IC_MFG_CODE_STM) || (p_i93->uid[1] == I93_UID_IC_MFG_CODE_ONS)){
+        /* STM & ONS supports more than 2040 bytes */
         p_i93->intl_flags |= RW_I93_FLAG_EXT_COMMANDS;
       }
     }
@@ -483,10 +483,12 @@ bool rw_i93_process_sys_info(uint8_t* p_data, uint16_t length) {
             case RW_I93_ONS_N24RF16:
             case RW_I93_ONS_N24RF16E:
                  p_i93->num_block = 0x200;
+                 p_i93->intl_flags |= RW_I93_FLAG_16BIT_NUM_BLOCK;
                  break;
             case RW_I93_ONS_N24RF64:
             case RW_I93_ONS_N24RF64E:
                  p_i93->num_block = 0x800;
+                 p_i93->intl_flags |= RW_I93_FLAG_16BIT_NUM_BLOCK;
                  break;
             default:
                  return false;
@@ -513,7 +515,7 @@ bool rw_i93_check_sys_info_prot_ext(uint8_t error_code) {
 
   DLOG_IF(INFO, nfc_debug_enabled) << __func__;
 
-  if (((p_i93->uid[1] == I93_UID_IC_MFG_CODE_STM)|| (p_i93->uid[1] == I93_UID_IC_MFG_CODE_ONS)) &&
+  if (((p_i93->uid[1] == I93_UID_IC_MFG_CODE_STM) || (p_i93->uid[1] == I93_UID_IC_MFG_CODE_ONS)) &&
       (p_i93->sent_cmd == I93_CMD_GET_SYS_INFO) &&
       (error_code == I93_ERROR_CODE_OPTION_NOT_SUPPORTED) &&
       (rw_i93_send_cmd_get_sys_info(nullptr, I93_FLAG_PROT_EXT_YES) ==
@@ -1776,6 +1778,7 @@ void rw_i93_sm_detect_ndef(NFC_HDR* p_resp) {
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
       "sub_state:%s (0x%x)",
       rw_i93_get_sub_state_name(p_i93->sub_state).c_str(), p_i93->sub_state);
+
   if (length == 0) {
     android_errorWriteLog(0x534e4554, "121260197");
     rw_i93_handle_error(NFC_STATUS_FAILED);
@@ -1799,7 +1802,8 @@ void rw_i93_sm_detect_ndef(NFC_HDR* p_resp) {
 
   switch (p_i93->sub_state) {
     case RW_I93_SUBSTATE_WAIT_UID:
-    if (length < (I93_UID_BYTE_LEN + 1)) {
+
+      if (length < (I93_UID_BYTE_LEN + 1)) {
         android_errorWriteLog(0x534e4554, "121260197");
         rw_i93_handle_error(NFC_STATUS_FAILED);
         return;
@@ -1871,8 +1875,8 @@ void rw_i93_sm_detect_ndef(NFC_HDR* p_resp) {
       **         without any security)
       **       : Bit 1-0:Write access condition (00b: write access granted
       **         without any security)
-      ** CC[2] : Memory size in 8 bytes (Ex. 0x04 is 32 bytes) [STM, ONS set to
-      **         0xFF if more than 2040bytes]
+      ** CC[2] : Memory size in 8 bytes (Ex. 0x04 is 32 bytes) [STM, ONS set
+      **         to 0xFF if more than 2040bytes]
       ** CC[3] : Bit 0:Read multiple blocks is supported [NXP, STM, ONS]
       **       : Bit 1:Inventory page read is supported [NXP]
       **       : Bit 2:More than 2040 bytes are supported [STM, ONS]
@@ -2047,6 +2051,9 @@ void rw_i93_sm_detect_ndef(NFC_HDR* p_resp) {
         block = (p_i93->rw_offset / p_i93->block_size);
         last_block = (p_i93->ndef_tlv_last_offset / p_i93->block_size);
 
+        if (length == 0) {
+          rw_i93_handle_error(NFC_STATUS_FAILED);
+        }
         if ((*p) & I93_BLOCK_LOCKED) {
           if (block <= last_block) {
             p_i93->intl_flags |= RW_I93_FLAG_READ_ONLY;
@@ -2341,7 +2348,7 @@ void rw_i93_sm_update_ndef(NFC_HDR* p_resp) {
         android_errorWriteLog(0x534e4554, "143109193");
         rw_i93_handle_error(NFC_STATUS_FAILED);
       } else if (rw_i93_send_cmd_write_single_block(block_number, p) ==
-          NFC_STATUS_OK) {
+                 NFC_STATUS_OK) {
         /* update next writing offset */
         p_i93->rw_offset = (block_number + 1) * p_i93->block_size;
         p_i93->sub_state = RW_I93_SUBSTATE_WRITE_NDEF;
@@ -2499,7 +2506,7 @@ void rw_i93_sm_update_ndef(NFC_HDR* p_resp) {
             android_errorWriteLog(0x534e4554, "143155861");
             rw_i93_handle_error(NFC_STATUS_FAILED);
           } else if (rw_i93_send_cmd_write_single_block(block_number, p) ==
-              NFC_STATUS_OK) {
+                     NFC_STATUS_OK) {
             /* set offset to the beginning of next block */
             p_i93->rw_offset +=
                 p_i93->block_size - (p_i93->rw_offset % p_i93->block_size);
@@ -2721,7 +2728,7 @@ void rw_i93_sm_format(NFC_HDR* p_resp) {
           (p_i93->product_version == RW_I93_TAG_IT_HF_I_PRO_CHIP_INLAY) ||
           ((p_i93->uid[1] == I93_UID_IC_MFG_CODE_NXP) &&
            (p_i93->ic_reference & I93_ICODE_IC_REF_MBREAD_MASK))) {
-        if ((*p) & I93_BLOCK_LOCKED) {
+        if (length == 0 || ((*p) & I93_BLOCK_LOCKED)) {
           rw_i93_handle_error(NFC_STATUS_FAILED);
           break;
         }
@@ -2779,7 +2786,7 @@ void rw_i93_sm_format(NFC_HDR* p_resp) {
         /* Possible leaking information from previous NFC transactions */
         /* Clear previous values */
         memset(p_i93->p_update_data, I93_ICODE_TLV_TYPE_NULL,
-            I93_MAX_BLOCK_LENGH);
+               I93_MAX_BLOCK_LENGH);
         android_errorWriteLog(0x534e4554, "139738828");
       }
 
@@ -2814,7 +2821,7 @@ void rw_i93_sm_format(NFC_HDR* p_resp) {
                   RW_I93_TAG_IT_HF_I_PRO_CHIP_INLAY)) {
         *(p++) = 0;
       } else {
-        /* STM except LRIS2K, ONS,  Broadcom supports read multi block command */
+        /* STM except LRIS2K, ONS, Broadcom supports read multi block command */
 
         /* if memory size is more than 2040 bytes (which is not LRIS2K) */
         if (((p_i93->num_block * p_i93->block_size) / 8) > 0xFF)
@@ -3186,6 +3193,7 @@ static void rw_i93_data_cback(__attribute__((unused)) uint8_t conn_id,
         p_i93->p_retry_cmd = nullptr;
         p_i93->retry_count = 0;
       }
+
       rw_i93_handle_error((tNFC_STATUS)(*(uint8_t*)p_data));
     } else {
       /* free retry buffer */

@@ -54,6 +54,7 @@
 #define NCI_MAX_VSC_SIZE 0xFF
 #if (NXP_EXTNS == TRUE)
 #define APPL_DTA_MODE TRUE
+#define NCI_MAX_DATA_PAYLOAD_SIZE 0xFF
 #endif
 /* NCI header (3) + callback function pointer(8; use 8 to be safe) + HCIT (1
  * byte) */
@@ -191,7 +192,6 @@
 #define NCI_STATUS_EE_PROTOCOL_ERR 0xC2
 #define NCI_STATUS_EE_TIMEOUT 0xC3
 
-
 /* RF Technologies */
 #define NCI_RF_TECHNOLOGY_A 0x00
 #define NCI_RF_TECHNOLOGY_B 0x01
@@ -236,6 +236,10 @@
 #define NCI_MSG_RF_EE_ACTION 9
 #define NCI_MSG_RF_EE_DISCOVERY_REQ 10
 #define NCI_MSG_RF_PARAMETER_UPDATE 11
+#if (NXP_EXTNS == TRUE)
+#define NCI_MSG_RF_INTF_EXT_START 12
+#define NCI_MSG_RF_INTF_EXT_STOP 13
+#endif
 #define NCI_MSG_RF_ISO_DEP_NAK_PRESENCE 16
 
 /**********************************************
@@ -315,11 +319,14 @@
 /****************************************************
  * NCI NFCEE INterface specific status Codes
  ****************************************************/
+#define NCI_NFCEE_STS_UNRECOVERABLE_ERROR 0x00
 #define NCI_NFCEE_STS_INTF_ACTIVATION_FAILED 0xC0
 #define NCI_NFCEE_STS_TRANSMISSION_ERROR 0xC1
 #define NCI_NFCEE_STS_PROTOCOL_ERROR 0xC2
 #define NCI_NFCEE_STS_TIMEOUT_ERROR 0xC3
 
+#define NCI_STATUS_PMU_TXLDO_OVERCURRENT 0xE3
+#define NCI_STATUS_GPADC_ERROR 0xE7
 #define NCI_NFCEE_STS_COLD_TEMP_THRESOLD_REACHED 0xEB
 
 #define NCI_NFCEE_STS_CONN_ACTIVE 0x00
@@ -384,6 +391,12 @@ typedef uint8_t tNCI_NFCEE_PL_CONFIG;
 #define NCI_INTERFACE_FIRST_VS 0x80
 typedef uint8_t tNCI_INTF_TYPE;
 
+#if (NXP_EXTNS == TRUE)
+/**********************************************
+ * NCI Interface Extension Types
+ **********************************************/
+#define NCI_INTERFACE_EXTN_RF_WLC 0x81
+#endif
 /**********************************************
  * NCI RF Management / DISCOVERY Group Params
  **********************************************/
@@ -419,6 +432,9 @@ typedef uint8_t tNCI_INTF_TYPE;
 #define NCI_DISCOVERY_TYPE_POLL_B 0x01
 #define NCI_DISCOVERY_TYPE_POLL_F 0x02
 #define NCI_DISCOVERY_TYPE_POLL_V 0x06
+#if (NXP_EXTNS == TRUE)
+#define NCI_DISCOVERY_TYPE_POLL_WLC 0x73
+#endif
 #define NCI_DISCOVERY_TYPE_POLL_A_ACTIVE 0x03
 /* NCI2.0 standardizes P2P poll active*/
 #define NCI_DISCOVERY_TYPE_POLL_ACTIVE 0x03

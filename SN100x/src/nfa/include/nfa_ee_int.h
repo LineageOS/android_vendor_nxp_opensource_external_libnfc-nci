@@ -132,8 +132,6 @@ enum {
   NFA_EE_NCI_PWR_LNK_CTRL_SET_EVT,
   NFA_EE_NCI_PWR_LNK_CTRL_RSP_EVT,
   NFA_EE_NCI_NFCEE_STATUS_NTF_EVT,
-  NFA_EE_API_ADD_APDU_EVT,
-  NFA_EE_API_REMOVE_APDU_EVT,
 #endif
   NFA_EE_MAX_EVT
 
@@ -166,12 +164,14 @@ enum {
 typedef uint8_t tNFA_EE_CONN_ST;
 #if (NXP_EXTNS != TRUE)
 #define NFA_EE_MAX_AID_CFG_LEN (510)
-#endif
 // Technology A/B/F reserved: 5*3 = 15
 // Protocol ISODEP/NFCDEP/T3T reserved: 5*3 = 15
 // Extends (APDU pattern/SC)reserved: 30
 #define NFA_EE_MAX_PROTO_TECH_EXT_ROUTE_LEN 60
-#if (NXP_EXTNS == TRUE)
+#else
+/* Four bytes are reserved for empty AID routing */
+#define NFA_EE_MAX_PROTO_TECH_EXT_ROUTE_LEN 56
+#define NFA_EE_EMPTY_AID_ROUTE_LEN 0x04
 #define NFA_EE_MAX_AID_CFG_LEN (1030-64)
 #define NFA_EE_TOTAL_APDU_PATTERN_SIZE 250
 #define NFA_EE_APDU_ROUTE_MASK 8 /* APDU route location mask*/
@@ -741,8 +741,6 @@ void nfa_ee_nci_set_mode_info(tNFA_EE_MSG* p_data);
 void nfa_ee_nci_pwr_link_ctrl_rsp(tNFA_EE_MSG* p_data);
 void nfa_ee_api_power_link_set(tNFA_EE_MSG* p_data);
 void nfa_ee_nci_nfcee_status_ntf(tNFA_EE_MSG* p_data);
-void nfa_ee_api_add_apdu(tNFA_EE_MSG* p_data);
-void nfa_ee_api_remove_apdu(tNFA_EE_MSG* p_data);
 uint16_t nfa_ee_api_get_max_aid_config_length();
 uint16_t nfa_ee_lmrt_size();
 uint8_t nfa_ee_get_supported_tech_list(uint8_t nfcee_id);

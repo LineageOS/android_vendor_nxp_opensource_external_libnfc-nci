@@ -86,7 +86,7 @@
 #define NFC_TTYPE_P2P_PRIO_LOGIC_CLEANUP 111
 #define NFC_TTYPE_RW_MFC_RESPONSE 112
 /* time out for mode set notification */
-#define NFC_MODE_SET_NTF_TIMEOUT 2
+#define NFC_MODE_SET_NTF_TIMEOUT 1
 /* NFC Task event messages */
 
 enum {
@@ -138,6 +138,7 @@ enum {
 #define NFC_FL_HCI_FC_STOPPED 0x01
 
 #define NFC_CONN_NO_CREDITS 0x00
+#define NFC_CONN_INITIAL_CREDITS 0x01
 #endif
 #if (NFC_RW_ONLY == FALSE)
 /* only allow the entries that the NFCC can support */
@@ -185,6 +186,10 @@ typedef struct {
 
 /* NCI command buffer contains a VSC (in NFC_HDR.layer_specific) */
 #define NFC_WAIT_RSP_VSC 0x01
+
+#if (NXP_EXTNS == TRUE)
+typedef void(tNFA_CREDIT_CBACK)(bool islastCredit);
+#endif
 
 /* NFC control blocks */
 typedef struct {
@@ -256,6 +261,8 @@ typedef struct {
 
   TIMER_LIST_ENT nci_mode_set_ntf_timer; /*Mode set notification timer*/
 #if (NXP_EXTNS == TRUE)
+  bool isWlcPollEnabled;
+  tNFA_CREDIT_CBACK* credit_cback;
   TIMER_LIST_ENT
   nci_wait_data_ntf_timer; /* Timer for waiting for core credit ntf*/
   uint16_t nci_credit_ntf_timeout;

@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2019 NXP
+ *  Copyright 2018-2020 NXP
  *
  ******************************************************************************/
 
@@ -60,6 +60,9 @@ using android::base::StringPrintf;
 extern bool nfc_debug_enabled;
 #if (NXP_EXTNS == TRUE)
 extern void nfa_t4tnfcee_init();
+#if(NXP_SRD == TRUE)
+extern void nfa_srd_init();
+#endif
 #endif
 /*****************************************************************************
 **  Constants
@@ -96,10 +99,13 @@ void NFA_Init(tHAL_NFC_ENTRY* p_hal_entry_tbl) {
   nfa_ee_init();
   if (nfa_ee_max_ee_cfg != 0) {
     nfa_dm_cb.get_max_ee = p_hal_entry_tbl->get_max_ee;
-    #if (NXP_EXTNS == TRUE)
+#if (NXP_EXTNS == TRUE)
     nfa_t4tnfcee_init();
     nfa_scr_init();
-    #endif
+#if (NXP_SRD == TRUE)
+    nfa_srd_init();
+#endif
+#endif
     nfa_hci_init();
   }
 #if (NXP_EXTNS == TRUE)
@@ -1466,9 +1472,12 @@ tNFA_STATUS NFA_SendRawVsCommand(uint8_t cmd_params_len, uint8_t* p_cmd_params,
     p_msg->cmd_params_len = cmd_params_len;
     p_msg->p_cmd_params = (uint8_t*)(p_msg + 1);
     memcpy(p_msg->p_cmd_params, p_cmd_params, cmd_params_len);
+
     nfa_sys_sendmsg(p_msg);
+
     return NFA_STATUS_OK;
   }
+
   return NFA_STATUS_FAILED;
 }
 
@@ -1503,14 +1512,26 @@ tNFA_MW_VERSION NFA_GetMwVersion() {
   mwVer.cust_id = NFC_NXP_MW_CUSTOMER_ID;
   mwVer.validation = (NXP_EN_SN100U << 13);
   mwVer.validation |= (NXP_EN_SN110U << 14);
+  mwVer.validation |= (NXP_EN_SN220U << 15);
   mwVer.android_version = NXP_ANDROID_VER;
   DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("0x%x:NFC MW Major Version:", NFC_NXP_MW_VERSION_MAJ);
+      << StringPrintf("0x%x:NFC CBC Major Version:", NFC_NXP_CBC_VERSION_MAJ);
   DLOG_IF(INFO, nfc_debug_enabled)
-      << StringPrintf("0x%x:NFC MW Minor Version:", NFC_NXP_MW_VERSION_MIN);
-  mwVer.major_version = NFC_NXP_MW_VERSION_MAJ;
-  mwVer.minor_version = NFC_NXP_MW_VERSION_MIN;
+      << StringPrintf("0x%x:NFC CBC Minor Version:", NFC_NXP_CBC_VERSION_MIN);
+  mwVer.cbc_major_version = NFC_NXP_CBC_VERSION_MAJ;
+  mwVer.cbc_minor_version = NFC_NXP_CBC_VERSION_MIN;
   mwVer.rc_version = NFC_NXP_MW_RC_VERSION;
+  switch (nfcFL.chipType) {
+    case sn220u:
+      mwVer.major_version = NFC_NXP_MW_SN220_VERSION_MAJ;
+      mwVer.minor_version = NFC_NXP_MW_SN220_VERSION_MIN;
+      break;
+    case sn100u:
+    default:
+      mwVer.major_version = NFC_NXP_MW_SN1XX_VERSION_MAJ;
+      mwVer.minor_version = NFC_NXP_MW_SN1XX_VERSION_MIN;
+      break;
+  }
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("mwVer:Major=0x%x,Minor=0x%x", mwVer.major_version,
                  mwVer.minor_version);

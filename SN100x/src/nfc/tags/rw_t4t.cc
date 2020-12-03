@@ -31,7 +31,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 *
-*  Copyright 2018-2019 NXP
+*  Copyright 2018-2020 NXP
 *
 ******************************************************************************/
 
@@ -1432,6 +1432,7 @@ static void rw_t4t_sm_detect_ndef(NFC_HDR* p_r_apdu) {
         p_t4t->sub_state = RW_T4T_SUBSTATE_WAIT_SELECT_CC;
       }
       break;
+
     case RW_T4T_SUBSTATE_WAIT_SELECT_CC:
 
       /* CC file has been selected then read mandatory part of CC file */
@@ -1441,6 +1442,7 @@ static void rw_t4t_sm_detect_ndef(NFC_HDR* p_r_apdu) {
         p_t4t->sub_state = RW_T4T_SUBSTATE_WAIT_CC_FILE;
       }
       break;
+
     case RW_T4T_SUBSTATE_WAIT_CC_FILE:
 
       /* CC file has been read then validate and select mandatory NDEF file */
@@ -1451,6 +1453,7 @@ static void rw_t4t_sm_detect_ndef(NFC_HDR* p_r_apdu) {
         BE_STREAM_TO_UINT8(p_t4t->cc_file.version, p);
         BE_STREAM_TO_UINT16(p_t4t->cc_file.max_le, p);
         BE_STREAM_TO_UINT16(p_t4t->cc_file.max_lc, p);
+
         BE_STREAM_TO_UINT8(type, p);
         BE_STREAM_TO_UINT8(length, p);
 
@@ -1702,8 +1705,12 @@ static void rw_t4t_sm_update_ndef(NFC_HDR* p_r_apdu) {
   p = (uint8_t*)(p_r_apdu + 1) + p_r_apdu->offset;
   p += (p_r_apdu->len - T4T_RSP_STATUS_WORDS_SIZE);
   BE_STREAM_TO_UINT16(status_words, p);
-
+#if (NXP_EXTNS == TRUE)
+  if ((status_words != T4T_RSP_CMD_CMPLTED) &&
+    (!T4T_RSP_WARNING_PARAMS_CHECK(status_words >> 8))) {
+#else
   if (status_words != T4T_RSP_CMD_CMPLTED) {
+#endif
     rw_t4t_handle_error(NFC_STATUS_CMD_NOT_CMPLTD, *(p - 2), *(p - 1));
     return;
   }
@@ -2506,7 +2513,8 @@ tNFC_STATUS RW_T4tPresenceCheck(uint8_t option) {
     status = false;
     if (option == RW_T4T_CHK_EMPTY_I_BLOCK) {
       /* use empty I block for presence check */
-      p_data = (NFC_HDR*)GKI_getbuf(NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE);
+      p_data = (NFC_HDR*)GKI_getbuf(sizeof(NFC_HDR) + NCI_MSG_OFFSET_SIZE +
+                                    NCI_DATA_HDR_SIZE);
       if (p_data != nullptr) {
         p_data->offset = NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE;
         p_data->len = 0;

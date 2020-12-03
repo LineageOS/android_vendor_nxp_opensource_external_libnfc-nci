@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018 NXP
+ *  Copyright 2018-2020 NXP
  *
  ******************************************************************************/
 
@@ -130,6 +130,7 @@ void nfa_dm_init(void) {
   /* register message handler on NFA SYS */
   nfa_sys_register(NFA_ID_DM, &nfa_dm_sys_reg);
 #if (NXP_EXTNS == TRUE)
+  nfa_dm_p2p_prio_logic_cleanup();
   nfa_dm_cb.selected_uicc_id = UICC1_HOST;
 #endif
 }
@@ -478,6 +479,21 @@ tNFA_STATUS nfa_dm_check_set_config(uint8_t tlv_list_len, uint8_t* p_tlv_list,
     return NFA_STATUS_OK;
   }
 }
+
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         nfa_dm_update_wlc_data
+**
+** Description      Registers/Deregisters WLC specific data with DM
+**
+** Returns          none
+**
+*******************************************************************************/
+void nfa_dm_update_wlc_data(tNFA_DM_WLC_DATA* p_wlc_data) {
+  nfa_dm_cb.wlc_data = p_wlc_data;
+}
+#endif
 
 /*******************************************************************************
 **

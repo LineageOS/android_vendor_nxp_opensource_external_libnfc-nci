@@ -310,7 +310,10 @@ void rw_t3t_process_error(tNFC_STATUS status) {
       /* If doing presence check, use status=NFC_STATUS_FAILED, otherwise
        * NFC_STATUS_TIMEOUT */
       evt_data.status = status;
-      evt = rw_t3t_api_res_evt[p_cb->cur_cmd];
+      if (rw_cb.cur_retry < RW_MAX_RETRIES)
+        evt = rw_t3t_api_res_evt[p_cb->cur_cmd];
+      else
+        evt = RW_T3T_INTF_ERROR_EVT;
 
       /* Set additional flags for RW_T3T_NDEF_DETECT_EVT */
       if (evt == RW_T3T_NDEF_DETECT_EVT) {
@@ -579,7 +582,7 @@ tNFC_STATUS rw_t3t_send_to_lower(NFC_HDR* p_msg) {
 #endif /* RW_STATS_INCLUDED */
 
   /* Set NFC-F SoD field (payload len + 1) */
-  p_msg->offset -= 1; /* Point to SoD field */
+  if (p_msg->offset) p_msg->offset -= 1; /* Point to SoD field */
   p = (uint8_t*)(p_msg + 1) + p_msg->offset;
   UINT8_TO_STREAM(p, (p_msg->len + 1));
   p_msg->len += 1; /* Increment len to include SoD */
@@ -1036,6 +1039,14 @@ void rw_t3t_message_set_block_list(tRW_T3T_CB* p_cb, uint8_t** p,
 
       /* Add service code to T3T message */
       UINT16_TO_STREAM((*p), cur_service_code);
+
+      /* Validate num_services */
+      if (num_services >= T3T_MSG_SERVICE_LIST_MAX) {
+        LOG(ERROR) << StringPrintf(
+            "RW T3T: num_services (%i) reaches maximum (%i)", num_services,
+            T3T_MSG_SERVICE_LIST_MAX);
+        break;
+      }
     }
   }
 
@@ -2298,6 +2309,7 @@ void rw_t3t_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
       }
       /* Data event with error status...fall through to NFC_ERROR_CEVT case */
       FALLTHROUGH_INTENDED;
+
     case NFC_ERROR_CEVT:
       nfc_stop_quick_timer(&p_cb->timer);
 
