@@ -13,7 +13,7 @@
 // limitations under the License.
 
 prebuilt_etc {
-    name: "libnfc-nci.conf-default",
+    name: "libsnnfc-nci.conf-default",
     src: "libnfc-nci.conf",
     filename: "libnfc-nci.conf",
 }
