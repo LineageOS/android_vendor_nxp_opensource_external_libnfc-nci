@@ -70,6 +70,10 @@
 #define NFA_STATUS_BUFFER_FULL NCI_STATUS_BUFFER_FULL
 /* failed               */
 #define NFA_STATUS_FAILED NCI_STATUS_FAILED
+#if (NXP_EXTNS == TRUE)
+/*Not initialized*/
+#define NFA_STATUS_NOT_INITIALIZED NCI_STATUS_NOT_INITIALIZED
+#endif
 /* Optional feature of NCI Spec not supported */
 #define NFA_STATUS_NOT_SUPPORTED NCI_STATUS_NOT_SUPPORTED
 /* Semantic error       */
@@ -342,6 +346,8 @@ typedef struct {
   uint8_t minor_version;   /* Minor Version of Mw */
   uint8_t cust_id;         /*Customer id*/
   uint8_t rc_version;      /*RC version*/
+  uint8_t cbc_major_version;   /* Major Version of Common Code Base*/
+  uint8_t cbc_minor_version;   /* Minor Version of Common Code Base */
 } tNFA_MW_VERSION;
 #endif
 
@@ -415,7 +421,10 @@ typedef struct {
 #define NFA_P2P_PAUSED_EVT 38
 /* P2P services resumed event */
 #define NFA_P2P_RESUMED_EVT 39
-
+#if (NXP_EXTNS == TRUE)
+/* Last credit Ntf received for tunneling data */
+#define NFA_TMW_CREDIT_EVT 40
+#endif
 /* NFC deactivation type */
 #define NFA_DEACTIVATE_TYPE_IDLE NFC_DEACTIVATE_TYPE_IDLE
 #define NFA_DEACTIVATE_TYPE_SLEEP NFC_DEACTIVATE_TYPE_SLEEP

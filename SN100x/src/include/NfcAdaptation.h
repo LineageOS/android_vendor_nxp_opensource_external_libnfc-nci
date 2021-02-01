@@ -41,6 +41,8 @@
 
 #include <utils/RefBase.h>
 
+using ::android::sp;
+
 namespace android {
 namespace hardware {
 namespace nfc {
@@ -73,7 +75,6 @@ struct INqNfc;
 
 typedef void(tNFC_JNI_FWSTATUS_CBACK)(uint8_t status);
 #endif
-class NfcDeathRecipient;
 class ThreadMutex {
  public:
   ThreadMutex();
@@ -113,6 +114,8 @@ class AutoThreadMutex {
   ThreadMutex& mm;
 };
 
+class NfcHalDeathRecipient;
+
 class NfcAdaptation {
  public:
   virtual ~NfcAdaptation();
@@ -134,8 +137,9 @@ class NfcAdaptation {
   string HalGetProperty(string key);
   bool HalSetProperty(string key, string value);
   string propVal;
-#endif
   static bool resetEse(uint64_t level);
+#endif
+
   void Dump(int fd);
 #if (NXP_EXTNS == TRUE)
 
@@ -157,6 +161,7 @@ class NfcAdaptation {
   static android::sp<android::hardware::nfc::V1_2::INfc> mHal_1_2;
   static android::sp<vendor::nxp::hardware::nfc::V2_0::INqNfc> mNqHal_2_0;
   static android::hardware::nfc::V1_1::INfcClientCallback* mCallback;
+  sp<NfcHalDeathRecipient> mNfcHalDeathRecipient;
   static tHAL_NFC_CBACK* mHalCallback;
   static tHAL_NFC_DATA_CBACK* mHalDataCallback;
   static ThreadCondVar mHalOpenCompletedEvent;
@@ -164,7 +169,6 @@ class NfcAdaptation {
   static ThreadCondVar mHalDataCallbackEvent;
 #endif
   static ThreadCondVar mHalCloseCompletedEvent;
-  static android::sp<NfcDeathRecipient> mDeathRecipient;
 
   static uint32_t NFCA_TASK(uint32_t arg);
   static uint32_t Thread(uint32_t arg);
@@ -182,8 +186,8 @@ class NfcAdaptation {
                                  uint8_t* p_core_init_rsp_params);
   static void HalWrite(uint16_t data_len, uint8_t* p_data);
 #if (NXP_EXTNS == TRUE)
-
   static void HalWriteIntf(uint16_t data_len, uint8_t* p_data);
+  static bool HalSetTransitConfig(char * strval);
 #endif
   static bool HalPrediscover();
   static void HalControlGranted();
@@ -193,6 +197,4 @@ class NfcAdaptation {
                                           nfc_status_t event_status);
   static void HalDownloadFirmwareDataCallback(uint16_t data_len,
                                               uint8_t* p_data);
-  static bool HalSetTransitConfig(char * strval);
-
 };

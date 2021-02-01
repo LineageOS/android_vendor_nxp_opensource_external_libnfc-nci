@@ -15,7 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
-
+/******************************************************************************
+*
+*  The original Work has been changed by NXP.
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*  http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*
+*  Copyright 2020 NXP
+*
+******************************************************************************/
 /******************************************************************************
  *
  *  This file contains the implementation for Type 2 tag NDEF operation in
@@ -602,6 +620,12 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
               android_errorWriteLog(0x534e4554, "120506143");
             }
             if ((tlvtype == TAG_LOCK_CTRL_TLV) || (tlvtype == TAG_NDEF_TLV)) {
+              if (p_t2t->num_lockbytes > 0) {
+                LOG(ERROR) << StringPrintf("Malformed tag!");
+                android_errorWriteLog(0x534e4554, "147309942");
+                failed = true;
+                break;
+              }
               /* Collect Lock TLV */
               p_t2t->tlv_value[2 - p_t2t->bytes_count] = p_data[offset];
               if (p_t2t->bytes_count == 0) {
@@ -615,10 +639,19 @@ static void rw_t2t_handle_tlv_detect_rsp(uint8_t* p_data) {
                     p_t2t->tlv_value[0] & 0x0F;
                 p_t2t->lock_tlv[p_t2t->num_lock_tlvs].bytes_locked_per_bit =
                     (uint8_t)tags_pow(2, ((p_t2t->tlv_value[2] & 0xF0) >> 4));
-                p_t2t->lock_tlv[p_t2t->num_lock_tlvs].num_bits =
-                    p_t2t->tlv_value[1];
-                count = p_t2t->tlv_value[1] / 8 +
-                        ((p_t2t->tlv_value[1] % 8 != 0) ? 1 : 0);
+                /* Note: 0 value in DLA_NbrLockBits means 256 */
+                count = p_t2t->tlv_value[1];
+                /* Set it to max value that can be stored in lockbytes */
+                if (count == 0) {
+#if RW_T2T_MAX_LOCK_BYTES > 0x1F
+                  count = UCHAR_MAX;
+#else
+                  count = RW_T2T_MAX_LOCK_BYTES * TAG_BITS_PER_BYTE;
+#endif
+                }
+                p_t2t->lock_tlv[p_t2t->num_lock_tlvs].num_bits = count;
+                count = count / TAG_BITS_PER_BYTE +
+                        ((count % TAG_BITS_PER_BYTE != 0) ? 1 : 0);
 
                 /* Extract lockbytes info addressed by this Lock TLV */
                 xx = 0;
@@ -856,6 +889,14 @@ void rw_t2t_extract_default_locks_info(void) {
         bytes_locked_per_lock_bit;
     num_dynamic_lock_bytes = num_dynamic_lock_bits / 8;
     num_dynamic_lock_bytes += (num_dynamic_lock_bits % 8 == 0) ? 0 : 1;
+    if (num_dynamic_lock_bytes > RW_T2T_MAX_LOCK_BYTES) {
+      LOG(ERROR) << StringPrintf(
+          "rw_t2t_extract_default_locks_info - buffer size: %u less than "
+          "DynLock area sise: %u",
+          RW_T2T_MAX_LOCK_BYTES, num_dynamic_lock_bytes);
+      num_dynamic_lock_bytes = RW_T2T_MAX_LOCK_BYTES;
+      android_errorWriteLog(0x534e4554, "147310721");
+    }
 
     p_t2t->lock_tlv[p_t2t->num_lock_tlvs].offset =
         (p_t2t->tag_hdr[T2T_CC2_TMS_BYTE] * T2T_TMS_TAG_FACTOR) +
@@ -1747,7 +1788,7 @@ static void rw_t2t_handle_config_tag_readonly(uint8_t* p_data) {
         b_notify = true;
         break;
       }
-      [[fallthrough]];
+      FALLTHROUGH_INTENDED;
 
     /* Coverity: [FALSE-POSITIVE error] intended fall through */
     /* Missing break statement between cases in switch statement */
@@ -1893,7 +1934,7 @@ static void rw_t2t_handle_format_tag_rsp(uint8_t* p_data) {
         } else
           break;
       }
-      [[fallthrough]];
+      FALLTHROUGH_INTENDED;
 
     case RW_T2T_SUBSTATE_WAIT_SET_LOCK_TLV:
 
@@ -2251,7 +2292,8 @@ static void rw_t2t_update_lock_attributes(void) {
           if (p_t2t->lockbyte[num_dyn_lock_bytes].lock_byte &
               rw_t2t_mask_bits[xx]) {
             /* If the bit is set then it is locked */
-            p_t2t->lock_attr[block_count] |= 0x01 << bits_covered;
+            if (block_count < RW_T2T_SEGMENT_SIZE)
+              p_t2t->lock_attr[block_count] |= 0x01 << bits_covered;
           }
           bytes_covered++;
           bits_covered++;

@@ -51,6 +51,9 @@
 #include "nfa_hci_int.h"
 #if (NXP_EXTNS == TRUE)
 #include "nfa_ee_int.h"
+#if(NXP_SRD == TRUE)
+#include "nfa_srd_int.h"
+#endif
 #include "nfa_nv_co.h"
 #include "nfa_scr_int.h"
 #endif
@@ -1473,6 +1476,10 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
   uint8_t host_count = 0;
   uint8_t host_id = 0;
 #endif
+#if (NXP_EXTNS == TRUE)
+  // Terminal Host Type as ETSI12  Byte1 -Host Id Byte2 - 00
+  uint8_t terminalHostTsype[NFA_HCI_HOST_TYPE_LEN] = {0x01, 0x00};
+#endif
   uint32_t os_tick;
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
@@ -1516,6 +1523,17 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
               NFA_HCI_ADMIN_PIPE, NFA_HCI_WHITELIST_INDEX,
               p_nfa_hci_cfg->num_whitelist_host, p_nfa_hci_cfg->p_whitelist);
         } else if (nfa_hci_cb.param_in_use == NFA_HCI_WHITELIST_INDEX) {
+#if (NXP_EXTNS == TRUE)
+          DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+              "nfa_hci_handle_admin_gate_rsp - Set the HOST_TYPE as per ETSI "
+              "12 !!!");
+          /* Set the HOST_TYPE as per ETSI 12 */
+          nfa_hciu_send_set_param_cmd(
+              NFA_HCI_ADMIN_PIPE, NFA_HCI_HOST_TYPE_INDEX,
+              NFA_HCI_HOST_TYPE_LEN, terminalHostTsype);
+          return;
+        } else if (nfa_hci_cb.param_in_use == NFA_HCI_HOST_TYPE_INDEX) {
+#endif
           if ((nfa_hci_cb.hci_state == NFA_HCI_STATE_STARTUP) ||
               (nfa_hci_cb.hci_state == NFA_HCI_STATE_RESTORE))
             nfa_hci_dh_startup_complete();
@@ -1524,6 +1542,10 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
             NFA_EeGetInfo(&nfa_hci_cb.num_nfcee, nfa_hci_cb.ee_info);
             if (nfa_hci_enable_one_nfcee() == false) {
               DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_hci_enable_one_nfcee() failed");
+#if (NXP_EXTNS == TRUE)
+              nfa_hciu_send_get_param_cmd(NFA_HCI_ADMIN_PIPE,
+                                          NFA_HCI_HOST_LIST_INDEX);
+#endif
             }
           }
         }
@@ -1565,7 +1587,7 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
            * Check for match. */
           if (data_len >= NFA_HCI_SESSION_ID_LEN &&
               !memcmp((uint8_t*)nfa_hci_cb.cfg.admin_gate.session_id, p_data,
-                NFA_HCI_SESSION_ID_LEN)) {
+                      NFA_HCI_SESSION_ID_LEN)) {
             /* Session has not changed, Set WHITELIST */
             nfa_hciu_send_set_param_cmd(
                 NFA_HCI_ADMIN_PIPE, NFA_HCI_WHITELIST_INDEX,
@@ -1574,7 +1596,11 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
             /* Something wrong, NVRAM data could be corrupt or first start with
              * default session id */
             nfa_hciu_send_clear_all_pipe_cmd();
+#if(NXP_EXTNS == TRUE)
+            nfa_hci_cb.b_hci_netwk_reset = true;
+#else
             nfa_hci_cb.b_hci_new_sessionId = true;
+#endif
             if (data_len < NFA_HCI_SESSION_ID_LEN) {
               android_errorWriteLog(0x534e4554, "124524315");
             }
@@ -1584,8 +1610,8 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
 
       case NFA_HCI_ANY_OPEN_PIPE:
         nfa_hci_cb.cfg.admin_gate.pipe01_state = NFA_HCI_PIPE_OPENED;
-
         if (nfa_hci_cb.b_hci_netwk_reset) {
+#if(NXP_EXTNS != TRUE)
           /* Something wrong, NVRAM data could be corrupt or first start with
            * default session id */
           nfa_hciu_send_clear_all_pipe_cmd();
@@ -1593,6 +1619,9 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
           nfa_hci_cb.b_hci_new_sessionId = true;
         } else if (nfa_hci_cb.b_hci_new_sessionId) {
           nfa_hci_cb.b_hci_new_sessionId = false;
+#else
+          nfa_hci_cb.b_hci_netwk_reset = false;
+#endif
 
           /* Session ID is reset, Set New session id */
           memcpy(
@@ -1665,7 +1694,7 @@ void nfa_hci_handle_admin_gate_rsp(uint8_t* p_data, uint8_t data_len) {
         if (nfa_hci_cb.param_in_use == NFA_HCI_SESSION_IDENTITY_INDEX) {
           if (data_len >= NFA_HCI_SESSION_ID_LEN &&
               !memcmp((uint8_t*)default_session, p_data,
-                NFA_HCI_SESSION_ID_LEN)) {
+                      NFA_HCI_SESSION_ID_LEN)) {
             memcpy(&nfa_hci_cb.cfg.admin_gate
                         .session_id[(NFA_HCI_SESSION_ID_LEN / 2)],
                    nfa_hci_cb.cfg.admin_gate.session_id,
@@ -2256,10 +2285,15 @@ static void nfa_hci_handle_connectivity_gate_pkt(uint8_t* p_data,
         evt_data.rcvd_evt.evt_code = nfa_hci_cb.inst;
         evt_data.rcvd_evt.evt_len = data_len;
         evt_data.rcvd_evt.p_evt_buf = p_data;
+#if(NXP_EXTNS == TRUE && NXP_SRD == TRUE)
+        if (nfa_srd_check_hci_evt(&evt_data)) {
+          return;
+        }
+#endif
 
-    /* notify NFA_HCI_EVENT_RCVD_EVT to the application */
-    nfa_hciu_send_to_apps_handling_connectivity_evts(NFA_HCI_EVENT_RCVD_EVT,
-                                                     &evt_data);
+        /* notify NFA_HCI_EVENT_RCVD_EVT to the application */
+        nfa_hciu_send_to_apps_handling_connectivity_evts(NFA_HCI_EVENT_RCVD_EVT,
+                                                         &evt_data);
 #if(NXP_EXTNS == TRUE)
       }
 #endif
@@ -2354,13 +2388,9 @@ static void nfa_hci_handle_generic_gate_evt(uint8_t* p_data, uint16_t data_len,
 
 #else
   if (nfa_hci_cb.assembly_failed)
-  {
-      evt_data.rcvd_evt.status = NFA_STATUS_OK;
-  }
+    evt_data.rcvd_evt.status = NFA_STATUS_BUFFER_FULL;
   else
-  {
-      evt_data.rcvd_evt.status = NFA_STATUS_BUFFER_FULL;
-  }
+    evt_data.rcvd_evt.status = NFA_STATUS_OK;
 #endif
 
   evt_data.rcvd_evt.p_evt_buf = p_data;
@@ -2368,6 +2398,7 @@ static void nfa_hci_handle_generic_gate_evt(uint8_t* p_data, uint16_t data_len,
   nfa_hci_cb.rsp_buf_size = 0;
   nfa_hci_cb.p_rsp_buf = nullptr;
 #endif
+
   /* notify NFA_HCI_EVENT_RCVD_EVT to the application */
   nfa_hciu_send_to_app(NFA_HCI_EVENT_RCVD_EVT, &evt_data, p_gate->gate_owner);
 }

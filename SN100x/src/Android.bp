@@ -35,6 +35,7 @@ cc_library_shared {
         "-Werror",
         "-Wimplicit-fallthrough",
         "-DNXP_EXTNS=TRUE",
+        "-DNXP_SRD=TRUE"
     ],
     local_include_dirs: [
         "include",
@@ -53,6 +54,8 @@ cc_library_shared {
         "nfa/scr/*.cc",
         "nfa/sys/*.cc",
         "nfa/t4tnfcee/*.cc",
+        "nfa/wlc/*.cc",
+        "nfa/srd/*.cc",
         "nfc/llcp/*.cc",
         "nfc/nci/*.cc",
         "nfc/ndef/*.cc",
@@ -62,15 +65,27 @@ cc_library_shared {
         "gki/common/*.cc",
         "gki/ulinux/*.cc",
     ],
+    required: [
+        // Provide a default libnfc-nci.conf in /system/etc for devices that
+        // does not ship one in /product
+        "libnfc-nci.conf-default",
+    ],
     product_variables: {
         debuggable: {
             cflags: [
-                "-DDCHECK_ALWAYS_ON"
+                "-DDCHECK_ALWAYS_ON",
             ],
         },
     },
     sanitize: {
         cfi: true,
+        misc_undefined: ["bounds"],
         integer_overflow: true,
+        diag: {
+            integer_overflow: true,
+            misc_undefined: ["bounds"],
+            no_recover: ["bounds", "integer"],
+        },
     },
+
 }

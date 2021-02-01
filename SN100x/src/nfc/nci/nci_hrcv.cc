@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2019 NXP
+ *  Copyright 2019-2020 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -140,7 +140,7 @@ void nci_proc_core_ntf(NFC_HDR* p_msg) {
   len = p_msg->len;
   pp = p + 1;
 
-  if (len == 0) {
+  if (len < NCI_MSG_HDR_SIZE) {
     LOG(ERROR) << __func__ << ": Invalid packet length";
     return;
   }
@@ -148,7 +148,7 @@ void nci_proc_core_ntf(NFC_HDR* p_msg) {
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("nci_proc_core_ntf opcode:0x%x", op_code);
   pp++;
-  len--;
+  len -= NCI_MSG_HDR_SIZE;
   /* process the message based on the opcode and message type */
   switch (op_code) {
     case NCI_MSG_CORE_RESET:
@@ -241,7 +241,15 @@ void nci_proc_rf_management_rsp(NFC_HDR* p_msg) {
     case NCI_MSG_RF_PARAMETER_UPDATE:
       nfc_ncif_event_status(NFC_RF_COMM_PARAMS_UPDATE_REVT, *pp);
       break;
+#if (NXP_EXTNS == TRUE)
+    case NCI_MSG_RF_INTF_EXT_START:
+      nfc_ncif_event_status(NFC_RF_INTF_EXT_START_REVT, *pp);
+      break;
 
+    case NCI_MSG_RF_INTF_EXT_STOP:
+      nfc_ncif_event_status(NFC_RF_INTF_EXT_STOP_REVT, *pp);
+      break;
+#endif
     case NCI_MSG_RF_ISO_DEP_NAK_PRESENCE:
       nfc_ncif_proc_isodep_nak_presence_check_status(*pp, false);
       break;
@@ -351,13 +359,18 @@ void nci_proc_ee_management_rsp(NFC_HDR* p_msg) {
   NCI_MSG_PRS_HDR1(pp, op_code);
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("nci_proc_ee_management_rsp opcode:0x%x", op_code);
-  len = *pp++;
+  len = p_msg->len - NCI_MSG_HDR_SIZE;
+  /* Use pmsg->len in boundary checks, skip *pp */
+  pp++;
 
   switch (op_code) {
     case NCI_MSG_NFCEE_DISCOVER:
-      nfc_response.nfcee_discover.status = *pp++;
-      nfc_response.nfcee_discover.num_nfcee = *pp++;
-
+      if (len > 1) {
+        nfc_response.nfcee_discover.status = *pp++;
+        nfc_response.nfcee_discover.num_nfcee = *pp++;
+      } else {
+        nfc_response.nfcee_discover.status = NFC_STATUS_FAILED;
+      }
       if (nfc_response.nfcee_discover.status != NFC_STATUS_OK)
         nfc_response.nfcee_discover.num_nfcee = 0;
 
@@ -365,7 +378,11 @@ void nci_proc_ee_management_rsp(NFC_HDR* p_msg) {
       break;
 
     case NCI_MSG_NFCEE_MODE_SET:
-      nfc_response.mode_set.status = *pp;
+      if (len > 0) {
+        nfc_response.mode_set.status = *pp;
+      } else {
+        nfc_response.mode_set.status = NFC_STATUS_FAILED;
+      }
       nfc_response.mode_set.nfcee_id = *p_old++;
       nfc_response.mode_set.mode = *p_old++;
       if (nfc_cb.nci_version != NCI_VERSION_2_0 || *pp != NCI_STATUS_OK) {
@@ -378,7 +395,11 @@ void nci_proc_ee_management_rsp(NFC_HDR* p_msg) {
       break;
 
     case NCI_MSG_NFCEE_POWER_LINK_CTRL:
-      nfc_response.pl_control.status = *pp;
+      if (len > 0) {
+        nfc_response.pl_control.status = *pp;
+      } else {
+        nfc_response.pl_control.status = NFC_STATUS_FAILED;
+      }
       nfc_response.pl_control.nfcee_id = *p_old++;
       nfc_response.pl_control.pl_control = *p_old++;
       event = NFC_NFCEE_PL_CONTROL_REVT;

@@ -72,6 +72,8 @@
 #if (NXP_EXTNS == TRUE)
 #define NFC_SET_MAX_CONN_DEFAULT() \
   { nfc_cb.max_conn = 2; }
+/* Refused status sent by HAL to restart NFC service */
+#define HAL_NFC_STATUS_RESTART HAL_NFC_STATUS_REFUSED
 #else
 #define NFC_SET_MAX_CONN_DEFAULT() \
   { nfc_cb.max_conn = 1; }
@@ -97,14 +99,11 @@ extern void delete_stack_non_volatile_store(bool forceDelete);
 tNFC_CB nfc_cb;
 #if (NXP_EXTNS == TRUE)
 #define NFC_NCI_CREDIT_NTF_TOUT 2
-/* Refused status sent by HAL to restart NFC service */
-#define HAL_NFC_STATUS_RESTART HAL_NFC_STATUS_REFUSED
-
 extern uint8_t nfa_ee_max_ee_cfg;
 extern std::string nfc_storage_path;
 tNfc_featureList nfcFL;
 static tNFC_chipType chipType;
-static void NFC_GetFeatureList();
+tNFC_chipType ProcessChipType(tNFC_FW_VERSION nfc_fw_version);
 #endif
 #if (NFC_RW_ONLY == FALSE)
 #if (NXP_EXTNS == TRUE)
@@ -247,6 +246,7 @@ static void nfc_main_notify_enable_status(tNFC_STATUS nfc_status) {
 void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
   tNFC_RESPONSE evt_data;
   tNFC_CONN_CB* p_cb = &nfc_cb.conn_cb[NFC_RF_CONN_ID];
+  int16_t lremain = 0;
   uint8_t* p;
   uint8_t num_interfaces = 0, xx;
   uint8_t num_interface_extensions = 0, zz;
@@ -256,15 +256,28 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
 
   if (nfc_status == NCI_STATUS_OK) {
     nfc_set_state(NFC_STATE_IDLE);
+
     p = (uint8_t*)(p_init_rsp_msg + 1) + p_init_rsp_msg->offset +
         NCI_MSG_HDR_SIZE + 1;
+
+    lremain = p_init_rsp_msg->len - NCI_MSG_HDR_SIZE - 1 - sizeof(uint32_t) - 5;
+    if (lremain < 0) {
+      nfc_status = NCI_STATUS_FAILED;
+      goto plen_err;
+    }
     /* we currently only support NCI of the same version.
     * We may need to change this, when we support multiple version of NFCC */
 
     evt_data.enable.nci_version = nfc_cb.nci_version;
     STREAM_TO_UINT32(evt_data.enable.nci_features, p);
     if (nfc_cb.nci_version == NCI_VERSION_1_0) {
+      /* this byte is consumed in the top expression */
       STREAM_TO_UINT8(num_interfaces, p);
+      lremain -= num_interfaces;
+      if (lremain < 0) {
+        nfc_status = NCI_STATUS_FAILED;
+        goto plen_err;
+      }
       evt_data.enable.nci_interfaces = 0;
       for (xx = 0; xx < num_interfaces; xx++) {
         if ((*p) <= NCI_INTERFACE_MAX)
@@ -280,6 +293,7 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
       memcpy(evt_data.enable.vs_interface, nfc_cb.vs_interface,
              NFC_NFCC_MAX_NUM_VS_INTERFACE);
     }
+    /* four bytes below are consumed in the top expression */
     evt_data.enable.max_conn = *p++;
     STREAM_TO_UINT16(evt_data.enable.max_ce_table, p);
 #if (NFC_RW_ONLY == FALSE)
@@ -291,6 +305,13 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
     p_cb->init_credits = p_cb->num_buff = 0;
     nfc_set_conn_id(p_cb, NFC_RF_CONN_ID);
     if (nfc_cb.nci_version == NCI_VERSION_2_0) {
+      /* one byte is consumed in the top expression and
+       * 3 bytes from uit16+uint8 below */
+      lremain -= 4;
+      if (lremain < 0) {
+        nfc_status = NCI_STATUS_FAILED;
+        goto plen_err;
+      }
       if (evt_data.enable.nci_features & NCI_FEAT_HCI_NETWORK) {
         p_cb = &nfc_cb.conn_cb[NFC_HCI_CONN_ID];
         nfc_set_conn_id(p_cb, NFC_HCI_CONN_ID);
@@ -316,6 +337,11 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
       evt_data.enable.nci_interfaces = 0;
 
       for (xx = 0; xx < num_interfaces; xx++) {
+        lremain -= 2;
+        if (lremain < 0) {
+          nfc_status = NCI_STATUS_FAILED;
+          goto plen_err;
+        }
         if ((*p) <= NCI_INTERFACE_MAX)
           evt_data.enable.nci_interfaces |= (1 << (*p));
         else if (((*p) >= NCI_INTERFACE_FIRST_VS) &&
@@ -325,7 +351,18 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
         }
         interface_type = *p++;
         num_interface_extensions = *p++;
+        lremain -= num_interface_extensions;
+        if (lremain < 0) {
+          nfc_status = NCI_STATUS_FAILED;
+          goto plen_err;
+        }
         for (zz = 0; zz < num_interface_extensions; zz++) {
+#if (NXP_EXTNS == TRUE)
+          if ((interface_type == NCI_INTERFACE_FRAME) &&
+              (*p == NCI_INTERFACE_EXTN_RF_WLC))
+            nfc_ncif_event_status(NFC_WLC_FEATURE_SUPPORTED_REVT,
+                                  NFC_STATUS_OK);
+#endif
           if (((*p) < NCI_INTERFACE_EXTENSION_MAX) &&
               (interface_type <= NCI_INTERFACE_MAX)) {
             nfc_cb.nci_intf_extensions |= (1 << (*p));
@@ -339,6 +376,12 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
       memcpy(evt_data.enable.vs_interface, nfc_cb.vs_interface,
              NFC_NFCC_MAX_NUM_VS_INTERFACE);
     } else {
+      /* one byte is consumed in the top expression */
+      lremain -= sizeof(uint16_t) + NFC_NFCC_INFO_LEN;
+      if (lremain < 0) {
+        nfc_status = NCI_STATUS_FAILED;
+        goto plen_err;
+      }
       STREAM_TO_UINT16(evt_data.enable.max_param_size, p);
       evt_data.enable.manufacture_id = *p++;
       STREAM_TO_ARRAY(evt_data.enable.nfcc_info, p, NFC_NFCC_INFO_LEN);
@@ -348,6 +391,7 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
   }
   /* else not successful. the buffers will be freed in nfc_free_conn_cb () */
   else {
+  plen_err:
     if (nfc_cb.flags & NFC_FL_RESTARTING) {
       nfc_set_state(NFC_STATE_NFCC_POWER_OFF_SLEEP);
     } else {
@@ -662,19 +706,11 @@ static void nfc_main_hal_cback(uint8_t event, tHAL_NFC_STATUS status) {
       */
       if (nfc_cb.nfc_state == NFC_STATE_W4_HAL_OPEN) {
         if (status == HAL_NFC_STATUS_OK) {
-#if (NXP_EXTNS == TRUE)
-            NFC_GetFeatureList();
-#endif
           /* Notify NFC_TASK that NCI tranport is initialized */
           GKI_send_event(NFC_TASK, NFC_TASK_EVT_TRANSPORT_READY);
         } else {
           nfc_main_post_hal_evt(event, status);
         }
-#if (NXP_EXTNS == TRUE)
-        nfa_ee_max_ee_cfg = nfcFL.nfccFL._NFA_EE_MAX_EE_SUPPORTED;
-        DLOG_IF(INFO, nfc_debug_enabled)
-          << StringPrintf("NFA_EE_MAX_EE_SUPPORTED to use %d", nfa_ee_max_ee_cfg);
-#endif
       }
 #if (NXP_EXTNS == TRUE)
       /* Updates completed, restart NFC service */
@@ -908,7 +944,49 @@ uint16_t NFC_GetLmrtSize(void) {
 tNFC_STATUS NFC_SetConfig(uint8_t tlv_size, uint8_t* p_param_tlvs) {
   return nci_snd_core_set_config(p_param_tlvs, tlv_size);
 }
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFC_RfIntfExtStart
+**
+** Description      This function is called to send the Rf Interface Extension
+**                  start command
+**
+** Parameters       params :
+                    intf_ext_type - Type of Rf Interface Extension to start.
+**                  p_start_param - The parameter Value list
+**                  start_param_size - Size of start parameter
+**
+** Returns          tNFC_STATUS
+**
+*******************************************************************************/
+tNFC_STATUS NFC_RfIntfExtStart(uint8_t intf_ext_type, uint8_t* p_start_param,
+                                  uint8_t start_param_size) {
+  return nci_snd_rf_intf_ext_start(intf_ext_type, p_start_param,
+                                   start_param_size);
+}
 
+/*******************************************************************************
+**
+** Function         NFC_RfIntfExtStop
+**
+** Description      This function is called to send the Rf Interface Extension
+**                  stop command
+**
+** Parameters       params :
+**                  intf_ext_type - Type of Rf Interface Extension to start.
+**                  p_start_param - The parameter Value list
+**                  stop_param_size - Size of stop parameter
+**
+** Returns          tNFC_STATUS
+**
+*******************************************************************************/
+tNFC_STATUS NFC_RfIntfExtStop(uint8_t intf_ext_type, uint8_t* p_stop_param,
+                                  uint8_t stop_param_size) {
+  return nci_snd_rf_intf_ext_stop(intf_ext_type, p_stop_param,
+                                  stop_param_size);
+}
+#endif
 /*******************************************************************************
 **
 ** Function         NFC_GetConfig
@@ -1597,20 +1675,40 @@ std::string NFC_GetStatusName(tNFC_STATUS status) {
 #if (NXP_EXTNS == TRUE)
 /*******************************************************************************
  **
- ** Function         NFC_GetFeatureList
+ ** Function         NFC_ProcessChipType
  **
- ** Description      Gets the chipType from hal which is already configured
- **                  during init time.
+ ** Description      Get the chipType from FW version info.
+ **
+ ** Returns          chip Type
+ *******************************************************************************/
+tNFC_chipType NFC_ProcessChipType(tNFC_FW_VERSION nfc_fw_version) {
+  tNFC_chipType chipType = sn100u;
+  if (nfc_fw_version.rom_code_version == 0x01 &&
+      nfc_fw_version.major_version == 0x10) {
+    /* For SN1xx Rom code version : 0x01 && major version : 0x10*/
+    chipType = sn100u;
+  } else if (nfc_fw_version.rom_code_version == 0x01 &&
+             nfc_fw_version.major_version == 0x01) {
+    /* For SN220 Rom code version : 0x01 && major version : 0x01*/
+    chipType = sn220u;
+  }
+  return chipType;
+}
+/*******************************************************************************
+ **
+ ** Function         NFC_SetFeatureList
+ **
+ ** Description      Gets the chipType from FW version info.
  **                  Initializes featureList based onChipType
  **
  ** Returns          Nothing
  *******************************************************************************/
-void NFC_GetFeatureList() {
-    LOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFC_GetFeatureList() Enter");
-    chipType = sn100u;
-    CONFIGURE_FEATURELIST(chipType);
-    LOG_IF(INFO, nfc_debug_enabled) << StringPrintf("NFC_GetFeatureList ()chipType = %d", chipType);
-
+void NFC_SetFeatureList(tNFC_FW_VERSION nfc_fw_version) {
+  LOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: Enter", __func__);
+  chipType = NFC_ProcessChipType(nfc_fw_version);
+  CONFIGURE_FEATURELIST(chipType);
+  LOG_IF(INFO, nfc_debug_enabled)
+      << StringPrintf("%s: chipType = %d", __func__, chipType);
 }
 /*******************************************************************************
  **

@@ -47,12 +47,12 @@
 #include "nfa_api.h"
 #include "nfa_dm_int.h"
 #include "nfa_ee_int.h"
-
-#if (NXP_EXTNS == TRUE)
 #include "nfa_hci_int.h"
+#if (NXP_EXTNS == TRUE)
 #include "nfa_nfcee_int.h"
-#include "nfc_config.h"
 #include "nfa_scr_int.h"
+#include "nfc_config.h"
+#include "nfc_int.h"
 #endif
 
 #include <statslog.h>
@@ -174,74 +174,13 @@ static void nfa_ee_trace_aid(std::string p_str, uint8_t id, uint8_t aid_len,
       return;
     }
 #else
-    yy += snprintf(&buff[yy], (MAX_BUFF_SIZE - yy), "%02x ", *p);
+    yy += snprintf(&buff[yy], MAX_BUFF_SIZE - yy, "%02x ", *p);
 #endif
     p++;
   }
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
       "%s id:0x%x len=%d aid:%s", p_str.c_str(), id, aid_len, buff);
 }
-#if (NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         nfa_ee_trace_apdu
-**
-** Description      trace AID
-**
-** Returns          void
-**
-*******************************************************************************/
-static void nfa_ee_trace_apdu(std::string p_str, tNFA_EE_API_ADD_APDU* p_apdu) {
-  int apdu_len = p_apdu->apdu_len;
-  int mask_len = p_apdu->mask_len;
-  int xx, yy = 0;
-  char apdu[125];
-  char mask[125];
-  apdu[0] = 0;
-  mask[0] = 0;
-  uint8_t* p;
-  if (apdu_len > NFA_MAX_APDU_DATA_LEN) {
-    LOG(ERROR) << StringPrintf("apdu_len: %d exceeds max(%d)", apdu_len, NFA_MAX_APDU_DATA_LEN);
-    apdu_len = NFA_MAX_APDU_DATA_LEN;
-    p_apdu->apdu_len = apdu_len;
-  }
-
-  if (mask_len > NFA_MAX_APDU_MASK_LEN) {
-    LOG(ERROR) << StringPrintf("mask_len: %d exceeds max(%d)", mask_len, NFA_MAX_APDU_MASK_LEN);
-    mask_len = NFA_MAX_APDU_MASK_LEN;
-    p_apdu->mask_len = mask_len;
-  }
-
-  p =  p_apdu->p_apdu;
-  for (xx = 0; xx < apdu_len; xx++) {
-    int err = 0;
-    err = snprintf(&apdu[yy], (sizeof(apdu) - yy), "%02x ", *p);
-    if (err > 0) {
-      yy += err;
-    } else {
-      LOG(ERROR) << StringPrintf("snprintf returned error !");
-      return;
-    }
-    p++;
-  }
-
-  p =  p_apdu->p_mask;
-  yy = 0;
-  for (xx = 0; xx < mask_len; xx++) {
-    int err = 0;
-    err = snprintf(&mask[yy], (sizeof(mask) - yy), "%02x ", *p);
-    if (err > 0) {
-      yy += err;
-    } else {
-      LOG(ERROR) << StringPrintf("snprintf returned error !");
-      return;
-    }
-    p++;
-  }
-   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s id:0x%x apdu_len=%d apdu:%s mask_len=%d mask:%s",
-                                                p_str.c_str(), p_apdu->nfcee_id, apdu_len, apdu,mask_len,mask);
-}
-#endif
 
 /*******************************************************************************
 **
@@ -321,43 +260,7 @@ static void nfa_ee_update_route_size(tNFA_EE_ECB* p_cb) {
       "size_mask_tech:%d",
       p_cb->nfcee_id, p_cb->size_mask_proto, p_cb->size_mask_tech);
 }
-#if (NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         nfa_ee_update_route_apdu_size
-**
-** Description      Update the size required for APDU routing
-**                  of the given NFCEE ID.
-**
-** Returns          void
-**
-*******************************************************************************/
-static void nfa_ee_update_route_apdu_size(tNFA_EE_ECB* p_cb) {
-  uint8_t* pa, len;
-  int start_offset;
-  int xx;
 
-  p_cb->size_apdu = 0;
-  if (p_cb->apdu_pattern_entries) {
-    start_offset = 0;
-    for (xx = 0; xx < p_cb->apdu_pattern_entries; xx++) {
-      /* add one APDU entry */
-      if (p_cb->apdu_rt_info[xx] & NFA_EE_AE_ROUTE) {
-        pa = &p_cb->apdu_cfg[start_offset];
-        pa++;        /* EMV tag */
-        len = *pa++; /* apdu_len */
-        /* 4 = 1 (tag) + 1 (len) + 1(nfcee_id) + 1(power cfg) */
-        p_cb->size_apdu += 4;
-        p_cb->size_apdu += len;
-      }
-      start_offset += p_cb->apdu_len[xx];
-    }
-  }
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf
-    ("nfa_ee_update_route_apdu_size nfcee_id:0x%x size_apdu:%d",
-      p_cb->nfcee_id, p_cb->size_apdu);
-}
-#endif
 /*******************************************************************************
 **
 ** Function         nfa_ee_update_route_aid_size
@@ -442,7 +345,7 @@ static uint16_t nfa_ee_total_lmrt_size(void) {
   lmrt_size += p_cb->size_apdu;
 #endif
   lmrt_size += p_cb->size_sys_code;
-  p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+  if (nfa_ee_cb.cur_ee > 0) p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
   for (xx = 0; xx < nfa_ee_cb.cur_ee; xx++, p_cb--) {
     if (p_cb->ee_status == NFC_NFCEE_STATUS_ACTIVE) {
       lmrt_size += p_cb->size_mask_proto;
@@ -539,7 +442,6 @@ static void nfa_ee_add_proto_route_to_ecb(tNFA_EE_ECB* p_cb, uint8_t* pp,
       } else {
         proto_tag = NFC_ROUTE_TAG_PROTO;
       }
-
       if (p_cb->nfcee_id == NFC_DH_ID &&
           nfa_ee_proto_mask_list[xx] == NFA_PROTOCOL_MASK_NFC_DEP) {
         /* add NFC-DEP routing to HOST */
@@ -636,73 +538,6 @@ static void nfa_ee_add_aid_route_to_ecb(tNFA_EE_ECB* p_cb, uint8_t* pp,
         << StringPrintf("%s - No AID entries available", __func__);
   }
 }
-#if(NXP_EXTNS == TRUE)
-static void nfa_ee_add_apdu_route_to_ecb(tNFA_EE_ECB* p_cb, uint8_t* pp,
-                                        uint8_t* p, uint8_t* ps,
-                                        int* p_cur_offset, int* p_max_len) {
-    uint8_t num_tlv = *ps, len;
-    uint16_t tlv_size;
-    tlv_size = (uint8_t)*p_cur_offset;
-    int start_offset, xx;
-    uint8_t  *pa;
-    uint8_t* p_start;
-    uint8_t new_size;
-    uint8_t max_tlv;
-
-    /* add the AID routing */
-          if (p_cb->apdu_pattern_entries) {
-            start_offset = 0;
-            for (xx = 0; xx < p_cb->apdu_pattern_entries; xx++) {
-                p_start = pp;
-                /* add one APDU entry */
-                if (p_cb->apdu_rt_info[xx] & NFA_EE_AE_ROUTE) {
-                    num_tlv++;
-                    pa = &p_cb->apdu_cfg[start_offset];
-                    pa++;        /* EMV tag */
-                    len = *pa++; /* apdu_len */
-                    *pp++ = NFC_ROUTE_TAG_APDU;
-                    *pp++ = len + 2;
-                    *pp++ = (p_cb->apdu_rt_info[xx] >> NFA_EE_APDU_ROUTE_MASK);
-                    DLOG_IF(INFO, nfc_debug_enabled)
-                                  << StringPrintf("nfa_ee_route_add_one_ecb_by_route_order p_cb->apdu_rt_info[xx] %x", p_cb->apdu_rt_info[xx]);
-                    *pp++ = p_cb->apdu_pwr_cfg[xx];
-                    /* copy the APDU */
-                    memcpy(pp, pa, len);
-                    pp += len;
-                }
-                start_offset += p_cb->apdu_len[xx];
-                new_size = (uint8_t)(pp - p_start);
-                DLOG_IF(INFO, nfc_debug_enabled)
-                              << StringPrintf("nfa_ee_route_add_one_ecb_by_route_order --before num_tlv:- %d", num_tlv);
-                DLOG_IF(INFO, nfc_debug_enabled)
-                              << StringPrintf("nfa_ee_route_add_one_ecb_by_route_order --before new_size:- %d",new_size);
-                nfa_ee_check_set_routing(new_size, p_max_len, ps, p_cur_offset);
-                if (*ps == 0) {
-                  /* just sent routing command, update local */
-                  *ps = 1;
-                   num_tlv = *ps;
-                   *p_cur_offset = new_size;
-                   pp = ps + 1;
-                   p = pp;
-                   tlv_size = (uint8_t)*p_cur_offset;
-                   max_tlv = (uint8_t)((*p_max_len > NFA_EE_ROUT_MAX_TLV_SIZE)
-                                        ? NFA_EE_ROUT_MAX_TLV_SIZE
-                                        : *p_max_len);
-                   memcpy(p, p_start, new_size);
-                   pp += new_size;
-                   } else {
-                    /* add the new entry */
-                     *ps = num_tlv;
-                     *p_cur_offset += new_size;
-                }
-            }
-            DLOG_IF(INFO, nfc_debug_enabled)
-                          << StringPrintf("nfa_ee_route_add_one_ecb_by_route_order --num_tlv:- %d", num_tlv);
-            DLOG_IF(INFO, nfc_debug_enabled)
-                          << StringPrintf("nfa_ee_route_add_one_ecb_by_route_order --new_size:- %d",new_size);
-          }
-}
-#endif
 static void nfa_ee_add_sys_code_route_to_ecb(tNFA_EE_ECB* p_cb, uint8_t* pp,
                                              uint8_t* p, uint8_t* p_buff,
                                              int* p_cur_offset,
@@ -751,8 +586,17 @@ static void nfa_ee_add_sys_code_route_to_ecb(tNFA_EE_ECB* p_cb, uint8_t* pp,
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
         "nfa_ee_route_add_one_ecb_by_route_order --num_tlv:- %d", num_tlv);
   } else {
-    DLOG_IF(INFO, nfc_debug_enabled)
+#if(NXP_EXTNS == TRUE)
+    if(p_cb->ecb_flags & NFA_EE_ECB_FLAGS_SYSCODE) {
+      /*Update the routing information as part of de-register system code*/
+      p_cb->ecb_flags |= NFA_EE_ECB_FLAGS_ROUTING;
+    } else {
+#endif
+      DLOG_IF(INFO, nfc_debug_enabled)
         << StringPrintf("%s - No SC entries available", __func__);
+#if(NXP_EXTNS == TRUE)
+    }
+#endif
   }
 }
 
@@ -798,9 +642,19 @@ static void nfa_ee_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
 int nfa_ee_find_max_aid_cfg_len(void) {
   int max_lmrt_size = NFC_GetLmrtSize();
   if (max_lmrt_size) {
+#if (NXP_EXTNS == TRUE)
+    /* In NCI2.0 Protocol 7816 routing is replaced with empty AID, size for Empty
+     * AID is considered to be handled dynamically during AID registration */
+    return max_lmrt_size - NFA_EE_MAX_PROTO_TECH_EXT_ROUTE_LEN - NFA_EE_EMPTY_AID_ROUTE_LEN;
+#else
     return max_lmrt_size - NFA_EE_MAX_PROTO_TECH_EXT_ROUTE_LEN;
+#endif
   } else {
+#if (NXP_EXTNS == TRUE)
     return NFA_EE_MAX_AID_CFG_LEN - 4;
+#else
+    return NFA_EE_MAX_AID_CFG_LEN;
+#endif
   }
 }
 
@@ -824,27 +678,6 @@ int nfa_ee_find_total_aid_len(tNFA_EE_ECB* p_cb, int start_entry) {
   return len;
 }
 
-#if(NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         nfa_ee_find_total_apdu_len
-**
-** Description      Find the total len in apdu_cfg from start_entry to the last
-**
-** Returns          void
-**
-*******************************************************************************/
-int nfa_ee_find_total_apdu_len(tNFA_EE_ECB* p_cb, int start_entry) {
-  int len = 0, xx;
-
-  if (p_cb->apdu_pattern_entries > start_entry) {
-    for (xx = start_entry; xx < p_cb->apdu_pattern_entries; xx++) {
-      len += p_cb->apdu_len[xx];
-    }
-  }
-  return len;
-}
-#endif
 /*******************************************************************************
 **
 ** Function         nfa_ee_find_total_sys_code_len
@@ -864,29 +697,6 @@ int nfa_ee_find_total_sys_code_len(tNFA_EE_ECB* p_cb, int start_entry) {
   }
   return len;
 }
-
-#if(NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         nfa_all_ee_find_total_apdu_pattern_len
-**
-** Description      Find the total len in apdu_cfg from start_entry to the last
-**                  for all EE and DH.
-**
-** Returns          total length
-**
-*******************************************************************************/
-int nfa_all_ee_find_total_apdu_pattern_len() {
-  uint32_t xx;
-  int total_len = 0;
-  tNFA_EE_ECB* p_cb = nfa_ee_cb.ecb;
-  for (xx = 0; xx < NFA_EE_MAX_EE_SUPPORTED; xx++, p_cb++) {
-    total_len += nfa_ee_find_total_apdu_len(p_cb, 0);
-    total_len += (p_cb->apdu_pattern_entries * 2); /*Adding nfceeid/power_state */
-  }
-  return total_len;
-}
-#endif
 
 /*******************************************************************************
 **
@@ -950,7 +760,7 @@ tNFA_EE_ECB* nfa_ee_find_aid_offset(uint8_t aid_len, uint8_t* p_aid,
 
   p_ecb = &nfa_ee_cb.ecb[NFA_EE_CB_4_DH];
   aid_len_offset = 1; /* skip the tag */
-  for (yy = 0; yy < nfa_ee_cb.cur_ee; yy++) {
+  for (yy = 0; yy <= nfa_ee_cb.cur_ee; yy++) {
     if (p_ecb->aid_entries) {
       offset = 0;
       for (xx = 0; xx < p_ecb->aid_entries; xx++) {
@@ -975,48 +785,6 @@ tNFA_EE_ECB* nfa_ee_find_aid_offset(uint8_t aid_len, uint8_t* p_aid,
 
   return p_ret;
 }
-
-#if(NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         nfa_ee_find_apdu_offset
-**
-** Description      Given the APDU, find the associated tNFA_EE_ECB and the
-**                  offset in apdu_cfg[]. *p_entry is the index.
-**
-** Returns          void
-**
-*******************************************************************************/
-tNFA_EE_ECB* nfa_ee_find_apdu_offset(uint8_t apdu_len, uint8_t* p_apdu,
-                                    int* p_offset, int* p_entry) {
-  int xx, yy, apdu_len_offset = 1, offset;
-  tNFA_EE_ECB* p_ret = nullptr, *p_ecb;
-  p_ecb = &nfa_ee_cb.ecb[NFA_EE_CB_4_DH];
-  for (yy = 0; yy < nfa_ee_cb.cur_ee; yy++, p_ecb++) {
-    if (p_ecb->apdu_pattern_entries) {
-      offset = 0;
-      for (xx = 0; xx < p_ecb->apdu_pattern_entries; xx++) {
-        if ((p_ecb->apdu_cfg[offset + apdu_len_offset] == apdu_len) &&
-            (memcmp(&p_ecb->apdu_cfg[offset + apdu_len_offset + 1], p_apdu,
-                    apdu_len) == 0)) {
-          p_ret = p_ecb;
-          if (p_offset) *p_offset = offset;
-            if (p_entry) *p_entry = xx;
-          break;
-        }
-        offset += p_ecb->apdu_len[xx];
-      }
-
-      if (p_ret) {
-        /* found the entry already */
-        break;
-      }
-    }
-    p_ecb = &nfa_ee_cb.ecb[yy];
-  }
-  return p_ret;
-}
-#endif
 
 /*******************************************************************************
  **
@@ -1186,8 +954,8 @@ void nfa_ee_api_register(tNFA_EE_MSG* p_data) {
     if ((nullptr != nfa_ee_cb.ecb[xx].aid_len) &&
         (nullptr != nfa_ee_cb.ecb[xx].aid_pwr_cfg) &&
         (nullptr != nfa_ee_cb.ecb[xx].aid_info) &&
-        (nullptr != nfa_ee_cb.ecb[xx].aid_rt_info) &&
 #if (NXP_EXTNS == TRUE)
+        (nullptr != nfa_ee_cb.ecb[xx].aid_rt_info) &&
         (nullptr != nfa_ee_cb.ecb[xx].aid_rt_loc) &&
 #endif
         (nullptr != nfa_ee_cb.ecb[xx].aid_cfg)) {
@@ -1564,6 +1332,10 @@ void nfa_ee_api_add_aid(tNFA_EE_MSG* p_data) {
   nfa_ee_trace_aid("nfa_ee_api_add_aid", p_cb->nfcee_id, p_add->aid_len,
                    p_add->p_aid);
   int max_aid_cfg_length = nfa_ee_find_max_aid_cfg_len();
+#if (NXP_EXTNS == TRUE)
+  if (!p_add->aid_len) max_aid_cfg_length += NFA_EE_EMPTY_AID_ROUTE_LEN;
+#endif
+
   int max_aid_entries = max_aid_cfg_length / NFA_MIN_AID_LEN + 1;
 
   p_chk_cb =
@@ -1606,11 +1378,9 @@ void nfa_ee_api_add_aid(tNFA_EE_MSG* p_data) {
       evt_data.status = NFA_STATUS_SEMANTIC_ERROR;
     }
   } else {
-
     /* Find the total length so far */
 #if (NXP_EXTNS == TRUE)
     len = nfa_all_ee_find_total_aid_len();
-    len += nfa_all_ee_find_total_apdu_pattern_len();
     dh_ecb = &nfa_ee_cb.ecb[NFA_EE_CB_4_DH];
 #else
     len = nfa_ee_find_total_aid_len(p_cb, 0);
@@ -1795,218 +1565,6 @@ void nfa_ee_api_remove_aid(tNFA_EE_MSG* p_data) {
   }
   nfa_ee_report_event(p_cback, NFA_EE_REMOVE_AID_EVT, &evt_data);
 }
-#if(NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         nfa_ee_api_add_apdu
-**
-** Description      process add an APDU pattern data configuration from user
-**                  start a 1 second timer. When the timer expires,
-**                  the configuration collected in control block is sent to NFCC
-**
-** Returns          void
-**
-*******************************************************************************/
-void nfa_ee_api_add_apdu(tNFA_EE_MSG* p_data) {
-  tNFA_EE_API_ADD_APDU* p_add = &p_data->add_apdu;
-  tNFA_EE_ECB* p_cb = p_data->cfg_hdr.p_cb;
-
-  tNFA_EE_ECB* dh_ecb = nullptr;
-  tNFA_EE_ECB* p_chk_cb;
-  uint8_t* p, *p_start;
-  int aid_len,apdu_len, len_needed;
-  tNFA_EE_CBACK_DATA evt_data = {0};
-  int offset = 0, entry = 0;
-  uint16_t new_size;
-  static char str[] = "nfa_ee_api_add_apdu";
-
-  nfa_ee_trace_apdu(str, p_add);
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("Enter : nfa_ee_api_add_apdu");
-  p_chk_cb =
-      nfa_ee_find_apdu_offset(p_add->apdu_len, p_add->p_apdu, &offset, &entry);
-  if(NFA_GetNCIVersion() == NCI_VERSION_1_0) {
-    if((p_add->power_state & 0x08) || (p_add->power_state & 0x20)) {
-      p_add->power_state &= ~0x08;
-      p_add->power_state &= ~0x20;
-      p_add->power_state |= NCI_ROUTE_PWR_STATE_SCREEN_OFF_LOCK();
-    } else if(p_add->power_state & 0x10){
-      p_add->power_state &= ~0x10;
-      p_add->power_state |= NCI_ROUTE_PWR_STATE_SCREEN_ON_LOCK();
-    }
-  }
-  if (p_chk_cb) {
-    DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-        "nfa_ee_api_add_apdu The APDU entry is already in the database");
-    if (p_chk_cb == p_cb) {
-      p_cb->apdu_rt_info[entry] |= NFA_EE_AE_ROUTE;
-      new_size = nfa_ee_total_lmrt_size();
-      if (new_size > NFC_GetLmrtSize()) {
-
-        LOG(ERROR) << StringPrintf("Exceed LMRT size:%d (add ROUTE)", new_size);
-        evt_data.status = NFA_STATUS_BUFFER_FULL;
-        p_cb->apdu_rt_info[entry] &= ~NFA_EE_AE_ROUTE;
-      } else {
-        p_cb->apdu_pwr_cfg[entry] = p_add->power_state;
-      }
-    } else {
-        LOG(ERROR) << StringPrintf(
-          "The APDU entry is already in the database for different NFCEE "
-          "ID:0x%02x",
-          p_chk_cb->nfcee_id);
-      evt_data.status = NFA_STATUS_SEMANTIC_ERROR;
-    }
-  } else {
-/* Find the total length so far */
-#if (NXP_EXTNS == TRUE)
-    aid_len = nfa_all_ee_find_total_aid_len();
-    dh_ecb = &nfa_ee_cb.ecb[NFA_EE_CB_4_DH];
-#else
-    aid_len = nfa_ee_find_total_aid_len(p_cb, 0);
-#endif
-    apdu_len = nfa_all_ee_find_total_apdu_pattern_len();
-    /* make sure the control block has enough room to hold this entry */
-    len_needed = p_add->apdu_len + p_add->mask_len + 2 + 2; /*tag/len/apdu_mask/apdu/power_state/nfceeid*/
-
-    if ((len_needed + aid_len + apdu_len) >
-        NFC_GetLmrtSize()
-#if (NXP_EXTNS == TRUE)
-        ||((dh_ecb->size_apdu + p_add->apdu_len + p_add->mask_len + 2) >= NFA_EE_TOTAL_APDU_PATTERN_SIZE)
-#endif
-		) {
-            evt_data.status = NFA_STATUS_BUFFER_FULL;
-          }
-#if (NXP_EXTNS == TRUE)
-    else if (dh_ecb->apdu_pattern_entries < NFA_EE_MAX_APDU_PATTERN_ENTRIES)
-#else
-    else if (p_cb->apdu_pattern_entries < NFA_EE_MAX_APDU_PATTERN_ENTRIES)
-#endif
-    {
-/* add APDU */
-#if (NXP_EXTNS == TRUE)
-        apdu_len = nfa_ee_find_total_apdu_len(dh_ecb, 0);
-        // Always use single apdu_cfg buffer to keep the apdu order intact.
-        dh_ecb->apdu_pwr_cfg[dh_ecb->apdu_pattern_entries] = p_add->power_state;
-        dh_ecb->apdu_rt_info[dh_ecb->apdu_pattern_entries] = NFA_EE_AE_ROUTE | (p_cb->nfcee_id << 8);
-        p = dh_ecb->apdu_cfg + apdu_len;
-#else
-        p_cb->apdu_pwr_cfg[p_cb->apdu_pattern_entries] = p_add->power_state;
-        p_cb->apdu_rt_info[p_cb->apdu_pattern_entries] = NFA_EE_AE_ROUTE | (p_cb->nfcee_id << 8);
-        p = p_cb->apdu_cfg + apdu_len;
-#endif
-
-        p_start = p;
-        *p++ = NFA_EE_AID_CFG_TAG_NAME;
-        *p++ = p_add->apdu_len + p_add->mask_len;
-        memcpy(p, p_add->p_apdu, p_add->apdu_len);
-        p += p_add->apdu_len;
-        memcpy(p, p_add->p_mask, p_add->mask_len);
-        p += p_add->mask_len;
-
-#if (NXP_EXTNS == TRUE)
-        dh_ecb->apdu_len[dh_ecb->apdu_pattern_entries++] = (uint8_t)(p - p_start);
-#else
-        p_cb->apdu_len[p_cb->apdu_pattern_entries++] = (uint8_t)(p - p_start);
-#endif
-    }
-    else
-    {
-       LOG(ERROR) << StringPrintf("Exceed NFA_EE_MAX_APDU_PATTERN_ENTRIES:%d", NFA_EE_MAX_APDU_PATTERN_ENTRIES);
-       evt_data.status = NFA_STATUS_BUFFER_FULL;
-    }
-  }
-
-  if (evt_data.status == NFA_STATUS_OK) {
-    /* mark APDU changed */
-    p_cb->ecb_flags |= NFA_EE_ECB_FLAGS_APDU;
-    nfa_ee_cb.ee_cfged |= nfa_ee_ecb_to_mask(p_cb);
-    nfa_ee_update_route_apdu_size(p_cb);
-    nfa_ee_start_timer();
-  }
-  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf
-    ("status:%d ee_cfged:0x%02x ", evt_data.status,
-                   nfa_ee_cb.ee_cfged);
-  /* report the status of this operation */
-  nfa_ee_report_event(p_cb->p_ee_cback, NFA_EE_ADD_APDU_EVT, &evt_data);
-}
-
-/*******************************************************************************
-**
-** Function         nfa_ee_api_remove_apdu
-**
-** Description      process remove an APDU routing configuration from user
-**                  start a 1 second timer. When the timer expires,
-**                  the configuration collected in control block is sent to NFCC
-**
-** Returns          void
-**
-*******************************************************************************/
-void nfa_ee_api_remove_apdu(tNFA_EE_MSG* p_data) {
-  tNFA_EE_ECB* p_cb;
-  tNFA_EE_CBACK_DATA evt_data = {0};
-  int offset = 0, entry = 0, len;
-  int rest_len;
-  tNFA_EE_CBACK* p_cback = nullptr;
-
-  p_cb = nfa_ee_find_apdu_offset(p_data->rm_apdu.apdu_len, p_data->rm_apdu.p_apdu,
-                                    &offset, &entry);
-  if (p_cb && p_cb->apdu_pattern_entries) {
-   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("apdu_rt_info[%d]: 0x%02x", entry,
-                         p_cb->apdu_rt_info[entry]);
-   /* mark routing and VS changed */
-    if (p_cb->apdu_rt_info[entry] & NFA_EE_AE_ROUTE)
-      p_cb->ecb_flags |= NFA_EE_ECB_FLAGS_APDU;
-
-    if (p_cb->apdu_rt_info[entry] & NFA_EE_AE_VS)
-      p_cb->ecb_flags |= NFA_EE_ECB_FLAGS_VS;
-
-    /* remove the apdu */
-    if ((entry + 1) < p_cb->apdu_pattern_entries) {
-      /* not the last entry, move the apdu entries in control block */
-      /* Find the total len from the next entry to the last one */
-      rest_len = nfa_ee_find_total_apdu_len(p_cb, entry + 1);
-
-      len = p_cb->apdu_len[entry];
-      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_ee_api_remove_apdu len:%d, rest_len:%d", len,
-                       rest_len);
-      GKI_shiftup(&p_cb->apdu_cfg[offset], &p_cb->apdu_cfg[offset + len],
-                 rest_len);
-      rest_len = p_cb->apdu_pattern_entries - entry;
-      GKI_shiftup(&p_cb->apdu_len[entry], &p_cb->apdu_len[entry + 1], rest_len);
-      GKI_shiftup(&p_cb->apdu_pwr_cfg[entry], &p_cb->apdu_pwr_cfg[entry + 1],
-                 rest_len);
-      GKI_shiftup((uint8_t*)&p_cb->apdu_rt_info[entry], (uint8_t*)&p_cb->apdu_rt_info[entry + 1],
-                      rest_len * 2);
-    }
-    /* else the last entry, just reduce the apdu_entries by 1 */
-    p_cb->apdu_pattern_entries--;
-    nfa_ee_cb.ee_cfged |= nfa_ee_ecb_to_mask(p_cb);
-    nfa_ee_update_route_apdu_size(p_cb);
-    nfa_ee_start_timer();
-   /* report NFA_EE_REMOVE_APDU_EVT to the callback associated the NFCEE */
-    p_cback = p_cb->p_ee_cback;
-  }
-      /*Clear All APDUs*/
-    else if (0 == memcmp(NFA_REMOVE_ALL_APDU, p_data->rm_apdu.p_apdu,
-                           p_data->rm_apdu.apdu_len)) {
-      uint32_t xx;
-      for (xx = 0; xx < NFA_EE_NUM_ECBS; xx++) {
-        memset(&nfa_ee_cb.ecb[xx].apdu_cfg[0], 0x00, sizeof(nfa_ee_cb.ecb[xx].apdu_cfg));
-        memset(&nfa_ee_cb.ecb[xx].apdu_len[0], 0x00, NFA_EE_MAX_APDU_PATTERN_ENTRIES);
-        memset(&nfa_ee_cb.ecb[xx].apdu_pwr_cfg[0], 0x00, NFA_EE_MAX_APDU_PATTERN_ENTRIES);
-        memset(&nfa_ee_cb.ecb[xx].apdu_rt_info[0], 0x00, NFA_EE_MAX_APDU_PATTERN_ENTRIES);
-        nfa_ee_cb.ecb[xx].apdu_pattern_entries = 0;
-        nfa_ee_cb.ecb[xx].ecb_flags |= NFA_EE_ECB_FLAGS_APDU;
-        nfa_ee_cb.ee_cfged |= nfa_ee_ecb_to_mask(&nfa_ee_cb.ecb[xx]);
-      }
-    }
-    else {
-      DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
-          "nfa_ee_api_remove_apdu The APDU entry is not in the database");
-      evt_data.status = NFA_STATUS_INVALID_PARAM;
-    }
-    nfa_ee_report_event(p_cback, NFA_EE_REMOVE_APDU_EVT, &evt_data);
-}
-#endif
 /*******************************************************************************
  **
  ** Function         nfa_ee_api_add_sys_code
@@ -2072,7 +1630,12 @@ void nfa_ee_api_add_sys_code(tNFA_EE_MSG* p_data) {
       if (new_size > NFC_GetLmrtSize()) {
         LOG(ERROR) << StringPrintf("Exceeded LMRT size:%d", new_size);
         evt_data.status = NFA_STATUS_BUFFER_FULL;
-      } else if (p_add->power_state) {
+      }
+#if (NXP_EXTNS == TRUE)
+      else if (p_add->power_state) {
+#else
+      else {
+#endif
         /* add SC entry*/
         uint32_t p_cb_sc_len = nfa_ee_find_total_sys_code_len(p_cb, 0);
         p_cb->sys_code_pwr_cfg[p_cb->sys_code_cfg_entries] = p_add->power_state;
@@ -2445,7 +2008,8 @@ static void nfa_ee_remove_pending(void) {
                       nfa_ee_cb.cur_ee, num_removed, first_removed);
   if (num_removed && (first_removed != (nfa_ee_cb.cur_ee - num_removed))) {
     /* if the removes ECB entried are not at the end, move the entries up */
-    p_cb_end = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+    p_cb_end = nullptr;
+    if (nfa_ee_cb.cur_ee > 0) p_cb_end = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
     p_cb = &nfa_ee_cb.ecb[first_removed];
     for (p_cb_n = p_cb + 1; p_cb_n <= p_cb_end;) {
       while ((p_cb_n->nfcee_id == NFA_EE_INVALID) && (p_cb_n <= p_cb_end)) {
@@ -2654,6 +2218,7 @@ void nfa_ee_nci_disc_ntf(tNFA_EE_MSG* p_data) {
   }
   DLOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("nfa_ee_nci_disc_ntf cur_ee:%d", nfa_ee_cb.cur_ee);
+
   if (p_cb) {
     p_cb->nfcee_id = p_ee->nfcee_id;
     p_cb->ee_status = p_ee->ee_status;
@@ -2783,7 +2348,17 @@ void nfa_ee_nci_nfcee_status_ntf(tNFA_EE_MSG* p_data) {
           (*nfa_ee_cb.p_enable_cback)(NFA_EE_UNRECOVERABLE_ERROR);
       } else if(p_ee->nfcee_status == NFC_NFCEE_STS_INIT_COMPLETED) {
           if (nfa_ee_cb.p_enable_cback)
-                      (*nfa_ee_cb.p_enable_cback) (NFA_EE_STATUS_INIT_COMPLETED);
+            (*nfa_ee_cb.p_enable_cback)(NFA_EE_STATUS_INIT_COMPLETED);
+          /* Restart  Mode set ntf timer when NFCEE Status is INIT
+           * completed */
+          if (nfc_cb.flags & NFC_FL_WAIT_MODE_SET_NTF) {
+            DLOG_IF(INFO, nfc_debug_enabled)
+                << StringPrintf("Re-starting mode set ntf timer..");
+            nfc_stop_timer(&nfc_cb.nci_mode_set_ntf_timer);
+            nfc_start_timer(&nfc_cb.nci_mode_set_ntf_timer,
+                            (uint16_t)(NFC_TTYPE_WAIT_MODE_SET_NTF),
+                            NFC_MODE_SET_NTF_TIMEOUT);
+          }
       }
   }
 }
@@ -3253,11 +2828,13 @@ void nfa_ee_nci_disc_req_ntf(tNFA_EE_MSG* p_data) {
                  NFC_DISCOVERY_TYPE_LISTEN_B_PRIME) {
         p_cb->lbp_protocol = p_cbk->info[xx].protocol;
       }
+#if (NXP_EXTNS == TRUE)
       if (p_cb->nfcee_id == T4TNFCEE_TARGET_HANDLE) {
         tNFA_EE_CBACK_DATA nfa_ee_cback_data = {0};
         nfa_ee_report_event(p_cb->p_ee_cback, NFA_EE_DISCOVER_REQ_EVT,
                             &nfa_ee_cback_data);
       }
+#endif
       DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
           "nfcee_id=0x%x ee_status=0x%x ecb_flags=0x%x la_protocol=0x%x "
           "la_protocol=0x%x la_protocol=0x%x",
@@ -3279,7 +2856,6 @@ void nfa_ee_nci_disc_req_ntf(tNFA_EE_MSG* p_data) {
 
   /* Report NFA_EE_DISCOVER_REQ_EVT for all active NFCEE */
   if (report_ntf) nfa_ee_report_discover_req_evt();
-
 }
 
 /*******************************************************************************
@@ -3335,7 +2911,7 @@ void nfa_ee_get_tech_route(uint8_t power_state, uint8_t* p_handles) {
 
   for (xx = 0; xx < NFA_EE_MAX_TECH_ROUTE; xx++) {
     p_handles[xx] = NFC_DH_ID;
-    p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+    if (nfa_ee_cb.cur_ee > 0) p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
     for (yy = 0; yy < nfa_ee_cb.cur_ee; yy++, p_cb--) {
       if (p_cb->ee_status == NFC_NFCEE_STATUS_ACTIVE) {
         switch (power_state) {
@@ -3433,11 +3009,6 @@ void nfa_ee_route_add_one_ecb_by_route_order(tNFA_EE_ECB* p_cb, int rout_type,
     case NCI_ROUTE_ORDER_AID: {
       nfa_ee_add_aid_route_to_ecb(p_cb, pp, p, ps, p_cur_offset, p_max_len);
     } break;
-#if(NXP_EXTNS == TRUE)
-    case NCI_ROUTE_ORDER_PATTERN: {
-      nfa_ee_add_apdu_route_to_ecb(p_cb, pp, p, ps, p_cur_offset, p_max_len);
-    } break;
-#endif
     case NCI_ROUTE_ORDER_SYS_CODE: {
       nfa_ee_add_sys_code_route_to_ecb(p_cb, pp, p, ps, p_cur_offset,
                                        p_max_len);
@@ -3633,7 +3204,8 @@ void nfa_ee_lmrt_to_nfcc(__attribute__((unused)) tNFA_EE_MSG* p_data) {
   }
 
   /* find the last active NFCEE. */
-  p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+  if (nfa_ee_cb.cur_ee > 0) p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+
   for (xx = 0; xx < nfa_ee_cb.cur_ee; xx++, p_cb--) {
     if (p_cb->ee_status == NFC_NFCEE_STATUS_ACTIVE) {
       if (last_active == NFA_EE_INVALID) {
@@ -3646,14 +3218,20 @@ void nfa_ee_lmrt_to_nfcc(__attribute__((unused)) tNFA_EE_MSG* p_data) {
   if (last_active == NFA_EE_INVALID) {
     check = false;
   }
-
+#if (NXP_EXTNS == TRUE)
   max_len = NFC_GetLmrtSize();
+#endif
   max_tlv =
       (uint8_t)((max_len > NFA_EE_ROUT_MAX_TLV_SIZE) ? NFA_EE_ROUT_MAX_TLV_SIZE
                                                      : max_len);
   cur_offset = 0;
   /* use the first byte of the buffer (p) to keep the num_tlv */
   *p = 0;
+#if(NXP_EXTNS == TRUE)
+  /*DH NFC-DEP entry's size_proto_mask need to be updated before
+   * adding the entry in RT*/
+  nfa_ee_update_route_size(&nfa_ee_cb.ecb[NFA_EE_CB_4_DH]);
+#endif
   for (int rt = NCI_ROUTE_ORDER_AID; rt <= NCI_ROUTE_ORDER_TECHNOLOGY; rt++) {
     /* add the routing entries for NFCEEs */
     p_cb = &nfa_ee_cb.ecb[0];

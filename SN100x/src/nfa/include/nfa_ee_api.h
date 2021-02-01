@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2019 NXP
+ *  Copyright 2018-2020 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -78,6 +78,7 @@ enum {
                                 tech.  */
   NFA_EE_CLEAR_TECH_CFG_EVT, /* The status for clearing the routing based on RF
                               tech.  */
+
   NFA_EE_SET_PROTO_CFG_EVT,   /* The status for setting the routing based on
                                  protocols */
   NFA_EE_CLEAR_PROTO_CFG_EVT, /* The status for clearing the routing based on
@@ -549,53 +550,18 @@ extern tNFA_STATUS NFA_EeAddSystemCodeRouting(uint16_t systemcode,
 **
 *******************************************************************************/
 extern tNFA_STATUS NFA_EeRemoveSystemCodeRouting(uint16_t systemcode);
-#if (NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         NFA_EeAddApduPatternRouting
-**
-** Description      This function is called to add an APDU pattern entry in the
-**                  listen mode routing table in NFCC. The status of this
-**                  operation is reported as the NFA_EE_ADD_APDU_EVT.
-**
-** Note:            If RF discovery is started,
-**                  NFA_StopRfDiscovery()/NFA_RF_DISCOVERY_STOPPED_EVT should
-**                  happen before calling this function
-**
-** Note:            NFA_EeUpdateNow() should be called after last NFA-EE
-**                  function to change the listen mode routing is called.
-**
-** Returns          NFA_STATUS_OK if successfully initiated
-**                  NFA_STATUS_FAILED otherwise
-**                  NFA_STATUS_INVALID_PARAM If bad parameter
-**
-*******************************************************************************/
-extern tNFA_STATUS NFA_EeAddApduPatternRouting(uint8_t apdu_data_len,uint8_t* apdu_data, uint8_t apdu_mask_len,
-  uint8_t* apdu_mask, tNFA_HANDLE ee_handle, uint8_t power_state);
 
 /*******************************************************************************
 **
-** Function         NFA_EeRemoveApduPatternRouting
+** Function         NFA_GetAidTableSize
 **
-** Description      This function is called to remove the given APDU pattern entry from
-**                  the listen mode routing table. If the entry configures VS,
-**                  it is also removed. The status of this operation is reported
-**                  as the NFA_EE_REMOVE_APDU_EVT.
+** Description      This function is called to get the AID routing table size.
 **
-** Note:            If RF discovery is started,
-**                  NFA_StopRfDiscovery()/NFA_RF_DISCOVERY_STOPPED_EVT should
-**                  happen before calling this function
-**
-** Note:            NFA_EeUpdateNow() should be called after last NFA-EE
-**                  function to change the listen mode routing is called.
-**
-** Returns          NFA_STATUS_OK if successfully initiated
-**                  NFA_STATUS_FAILED otherwise
-**                  NFA_STATUS_INVALID_PARAM If bad parameter
+** Returns          Maximum AID routing table size.
 **
 *******************************************************************************/
-extern tNFA_STATUS NFA_EeRemoveApduPatternRouting(uint8_t apdu_len, uint8_t* p_apdu);
-#endif
+extern uint16_t NFA_GetAidTableSize();
+
 /*******************************************************************************
 **
 ** Function         NFA_EeGetLmrtRemainingSize
@@ -705,16 +671,6 @@ extern tNFA_STATUS NFA_AllEeGetInfo(uint8_t* p_num_nfcee, tNFA_EE_INFO* p_info);
 **
 *******************************************************************************/
 extern tNFA_STATUS NFA_SendPowerLinkCommand(uint8_t nfcee_id, uint8_t cfg_value);
-/*******************************************************************************
-**
-** Function         NFA_GetAidTableSize
-**
-** Description      This function is called to get the AID routing table size.
-**
-** Returns          Maximum AID routing table size.
-**
-*******************************************************************************/
-extern uint16_t NFA_GetAidTableSize();
 
 /*******************************************************************************
 **
