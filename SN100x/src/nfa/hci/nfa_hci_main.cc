@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2020 NXP
+ *  Copyright 2018-2021 NXP
  *
  ******************************************************************************/
 
@@ -393,9 +393,8 @@ void nfa_hci_ee_info_cback(tNFA_EE_DISC_STS status) {
                 nfa_hciu_add_host_resetting(nfa_ee_cb.ecb[ee_entry_index].nfcee_id, NFCEE_INIT_COMPLETED);
               }
             }
-          }
-          else if (nfa_ee_cb.ecb[ee_entry_index].nfcee_status == NFC_NFCEE_STS_UNRECOVERABLE_ERROR
-                  || (nfa_ee_cb.ecb[ee_entry_index].nfcee_status &  0xF0 ) == NFC_NFCEE_STS_PROP_UNRECOVERABLE_ERROR) {
+          } else if (nfa_ee_check_recovery_required(
+                         nfa_ee_cb.ecb[ee_entry_index].nfcee_status)) {
             nfa_ee_cb.ecb[ee_entry_index].nfcee_status = NFC_NFCEE_STS_INIT_STARTED;
             if (!((nfa_hci_cb.hci_state == NFA_HCI_STATE_WAIT_NETWK_ENABLE) ||
               (nfa_hci_cb.hci_state == NFA_HCI_STATE_RESTORE_NETWK_ENABLE))) {
@@ -410,6 +409,7 @@ void nfa_hci_ee_info_cback(tNFA_EE_DISC_STS status) {
                 nfa_hci_cb.hci_state = NFA_HCI_STATE_IDLE;
                 nfa_hci_cb.curr_nfcee = nfa_ee_cb.ecb[ee_entry_index].nfcee_id;
                 nfa_hci_cb.next_nfcee_idx = 0x00;
+                NFC_NfceeClearWaitModeSetNtf();
                 if(NFC_NfceeDiscover(true) == NFC_STATUS_FAILED) {
                   DLOG_IF(INFO, nfc_debug_enabled)
                     << StringPrintf("NFA_EE_RECOVERY unable to perform");
@@ -1076,6 +1076,8 @@ static void nfa_hci_sys_enable(void) {
 #if(NXP_EXTNS == TRUE)
   nfa_hci_cb.se_apdu_gate_support =
       NfcConfig::getUnsigned(NAME_NXP_SE_APDU_GATE_SUPPORT, 0x00);
+  nfa_hci_cb.uicc_etsi_support =
+      NfcConfig::getUnsigned(NAME_NXP_UICC_ETSI_SUPPORT, 0x00);
 #endif
 }
 

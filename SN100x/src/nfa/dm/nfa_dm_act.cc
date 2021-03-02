@@ -364,15 +364,13 @@ static void nfa_dm_nfc_response_cback(tNFC_RESPONSE_EVT event,
       break;
 
 #if (NFC_NFCEE_INCLUDED == TRUE)
-    case NFC_NFCEE_DISCOVER_REVT: /* NFCEE Discover response */
-    case NFC_NFCEE_INFO_REVT:     /* NFCEE Discover Notification */
-    case NFC_EE_ACTION_REVT:      /* EE Action notification */
-    case NFC_NFCEE_MODE_SET_REVT: /* NFCEE Mode Set response */
-    case NFC_NFCEE_STATUS_REVT:   /* NFCEE Status notification*/
-#if (NXP_EXTNS == TRUE)
-    case NFC_NFCEE_PL_CONTROL_REVT:
-#endif
-    case NFC_SET_ROUTING_REVT:    /* Configure Routing response */
+    case NFC_NFCEE_DISCOVER_REVT:   /* NFCEE Discover response */
+    case NFC_NFCEE_INFO_REVT:       /* NFCEE Discover Notification */
+    case NFC_EE_ACTION_REVT:        /* EE Action notification */
+    case NFC_NFCEE_MODE_SET_REVT:   /* NFCEE Mode Set response */
+    case NFC_NFCEE_STATUS_REVT:     /* NFCEE Status notification*/
+    case NFC_SET_ROUTING_REVT:      /* Configure Routing response */
+    case NFC_NFCEE_PL_CONTROL_REVT: /* NFCEE pwr and link ctrl response */
       nfa_ee_proc_evt(event, p_data);
       break;
 
@@ -1570,6 +1568,13 @@ static void nfa_dm_act_data_cback(__attribute__((unused)) uint8_t conn_id,
   } else if (event == NFC_DEACTIVATE_CEVT) {
     NFC_SetStaticRfCback(nullptr);
   }
+#if (NXP_EXTNS == TRUE)
+    else if (event == NFC_ERROR_CEVT) {
+    LOG(ERROR) << StringPrintf(
+          "received NFC_ERROR_CEVT with status = 0x%X", p_data->status);
+      nfa_dm_rf_deactivate(NFA_DEACTIVATE_TYPE_DISCOVERY);
+  }
+#endif
 }
 
 /*******************************************************************************
@@ -1792,7 +1797,11 @@ static void nfa_dm_poll_disc_cback(tNFA_DM_RF_DISC_EVT event,
             (p_data->deactivate.type == NFC_DEACTIVATE_TYPE_SLEEP_AF)) {
           evt_data.deactivated.type = NFA_DEACTIVATE_TYPE_SLEEP;
         } else {
+#if (NXP_EXTNS == TRUE)
+          evt_data.deactivated.type = p_data->deactivate.type;
+#else
           evt_data.deactivated.type = NFA_DEACTIVATE_TYPE_IDLE;
+#endif
         }
         /* notify deactivation to application */
         nfa_dm_conn_cback_event_notify(NFA_DEACTIVATED_EVT, &evt_data);
@@ -1996,6 +2005,8 @@ std::string nfa_dm_nfc_revt_2_str(tNFC_RESPONSE_EVT event) {
       return "NFC_NFCEE_INFO_REVT";
     case NFC_NFCEE_MODE_SET_REVT:
       return "NFC_NFCEE_MODE_SET_REVT";
+    case NFC_NFCEE_PL_CONTROL_REVT:
+      return "NFC_NFCEE_PL_CONTROL_REVT";
     case NFC_RF_FIELD_REVT:
       return "NFC_RF_FIELD_REVT";
     case NFC_EE_ACTION_REVT:
@@ -2017,8 +2028,6 @@ std::string nfa_dm_nfc_revt_2_str(tNFC_RESPONSE_EVT event) {
     case NFC_NFCC_POWER_OFF_REVT:
       return "NFC_NFCC_POWER_OFF_REVT";
 #if (NXP_EXTNS == TRUE)
-    case NFC_NFCEE_PL_CONTROL_REVT:
-      return "NFA_EE_PWR_LINK_CTRL_EVT";
     case NFC_WLC_FEATURE_SUPPORTED_REVT:
       return "NFC_WLC_FEATURE_SUPPORTED_REVT";
     case NFC_RF_INTF_EXT_START_REVT:

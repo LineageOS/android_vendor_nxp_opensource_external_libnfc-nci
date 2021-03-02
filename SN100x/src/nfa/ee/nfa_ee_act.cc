@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2020 NXP
+ *  Copyright 2018-2021 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -91,7 +91,6 @@ const uint8_t nfa_ee_tech_list[NFA_EE_NUM_TECH] = {
 #if (NXP_EXTNS == TRUE)
 uint8_t NFA_REMOVE_ALL_AID[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 uint8_t NFA_REMOVE_ALL_APDU[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF};
-
 #endif
 
 static void add_route_tech_proto_tlv(uint8_t** pp, uint8_t tlv_type,
@@ -444,11 +443,15 @@ static void nfa_ee_add_proto_route_to_ecb(tNFA_EE_ECB* p_cb, uint8_t* pp,
       }
       if (p_cb->nfcee_id == NFC_DH_ID &&
           nfa_ee_proto_mask_list[xx] == NFA_PROTOCOL_MASK_NFC_DEP) {
-        /* add NFC-DEP routing to HOST */
-        add_route_tech_proto_tlv(&pp, NFC_ROUTE_TAG_PROTO, NFC_DH_ID,
-                                 NCI_ROUTE_PWR_STATE_ON, NFC_PROTOCOL_NFC_DEP);
-        DLOG_IF(INFO, nfc_debug_enabled)
-            << StringPrintf("%s - NFC DEP added for DH!!!", __func__);
+        /* add NFC-DEP routing to HOST if NFC_DEP interface is supported */
+        if (nfc_cb.nci_interfaces & (1 << NCI_INTERFACE_NFC_DEP)) {
+          add_route_tech_proto_tlv(&pp, NFC_ROUTE_TAG_PROTO, NFC_DH_ID,
+                                  NCI_ROUTE_PWR_STATE_ON, NFC_PROTOCOL_NFC_DEP);
+          DLOG_IF(INFO, nfc_debug_enabled)
+              << StringPrintf("%s - NFC DEP added for DH!!!", __func__);
+        }else {
+          continue;
+        }
       } else {
         add_route_tech_proto_tlv(&pp, proto_tag, p_cb->nfcee_id, power_cfg,
                                  nfa_ee_proto_list[xx]);
@@ -1011,21 +1014,7 @@ void nfa_ee_api_deregister(tNFA_EE_MSG* p_data) {
   nfa_ee_cb.p_ee_cback[index] = nullptr;
   if (p_cback) (*p_cback)(NFA_EE_DEREGISTER_EVT, &evt_data);
 }
-#if (NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         nfa_ee_api_power_link_set
-**
-** Description      process power link command request
-**
-** Returns          void
-**
-*******************************************************************************/
-void nfa_ee_api_power_link_set(tNFA_EE_MSG* p_data) {
-    NFC_NfceePLConfig(p_data->pwr_lnk_ctrl_set.nfcee_id, p_data->pwr_lnk_ctrl_set.cfg_value);
-    return;
-}
-#endif
+
 /*******************************************************************************
 **
 ** Function         nfa_ee_api_mode_set
@@ -1896,6 +1885,20 @@ void nfa_ee_api_disconnect(tNFA_EE_MSG* p_data) {
 
 /*******************************************************************************
 **
+** Function         nfa_ee_api_pwr_and_link_ctrl
+**
+** Description      Initiates closing of the connection to the given NFCEE
+**
+** Returns          void
+**
+*******************************************************************************/
+void nfa_ee_api_pwr_and_link_ctrl(tNFA_EE_MSG* p_data) {
+  NFC_NfceePLConfig(p_data->pwr_and_link_ctrl.nfcee_id,
+                    p_data->pwr_and_link_ctrl.config);
+}
+
+/*******************************************************************************
+**
 ** Function         nfa_ee_report_disc_done
 **
 ** Description      Process the callback for NFCEE discovery response
@@ -2130,6 +2133,23 @@ uint8_t nfa_ee_get_supported_tech_list(uint8_t nfcee_id) {
                    tech_list, nfcee_id);
   return tech_list;
 }
+
+/*******************************************************************************
+**
+** Function         nfa_ee_check_recovery_required
+**
+** Description      Whether NFCEE recovery required for NFCEE status
+*notification
+**
+** Returns          bool(true(required)/false(Not required))
+**
+*******************************************************************************/
+bool nfa_ee_check_recovery_required(tNCI_EE_NTF_STATUS nfcee_status) {
+  return (nfcee_status == NFC_NFCEE_STS_UNRECOVERABLE_ERROR ||
+          ((nfcee_status & 0xF0) == NFC_NFCEE_STS_PROP_UNRECOVERABLE_ERROR) ||
+          (nfcee_status) == NFC_NFCEE_STS_PMUVCC_OFF);
+}
+
 #endif
 /*******************************************************************************
 **
@@ -2338,27 +2358,27 @@ void nfa_ee_nci_nfcee_status_ntf(tNFA_EE_MSG* p_data) {
   tNFA_EE_ECB* p_cb = nfa_ee_find_ecb(p_ee->nfcee_id);
   if(p_cb != nullptr) {
       p_cb->nfcee_status = p_ee->nfcee_status;
-      if(p_ee->nfcee_status == NFC_NFCEE_STS_UNRECOVERABLE_ERROR ||
-        ((p_ee->nfcee_status & 0xF0 ) == NFC_NFCEE_STS_PROP_UNRECOVERABLE_ERROR)) {
-        if (nfa_dm_cb.disc_cb.disc_state != NFA_DM_RFST_IDLE) {
+      if (nfa_ee_check_recovery_required(p_cb->nfcee_status)) {
+        if (nfa_ee_cb.require_rf_restart &&
+            nfa_dm_cb.disc_cb.disc_state != NFA_DM_RFST_IDLE) {
           nfa_ee_cb.ee_flags |= NFA_EE_FLAG_RECOVERY;
           nfa_dm_act_stop_rf_discovery(NULL);
         }
         if (nfa_ee_cb.p_enable_cback)
           (*nfa_ee_cb.p_enable_cback)(NFA_EE_UNRECOVERABLE_ERROR);
-      } else if(p_ee->nfcee_status == NFC_NFCEE_STS_INIT_COMPLETED) {
-          if (nfa_ee_cb.p_enable_cback)
-            (*nfa_ee_cb.p_enable_cback)(NFA_EE_STATUS_INIT_COMPLETED);
-          /* Restart  Mode set ntf timer when NFCEE Status is INIT
-           * completed */
-          if (nfc_cb.flags & NFC_FL_WAIT_MODE_SET_NTF) {
-            DLOG_IF(INFO, nfc_debug_enabled)
-                << StringPrintf("Re-starting mode set ntf timer..");
-            nfc_stop_timer(&nfc_cb.nci_mode_set_ntf_timer);
-            nfc_start_timer(&nfc_cb.nci_mode_set_ntf_timer,
-                            (uint16_t)(NFC_TTYPE_WAIT_MODE_SET_NTF),
-                            NFC_MODE_SET_NTF_TIMEOUT);
-          }
+      } else if (p_ee->nfcee_status == NFC_NFCEE_STS_INIT_COMPLETED) {
+        if (nfa_ee_cb.p_enable_cback)
+          (*nfa_ee_cb.p_enable_cback)(NFA_EE_STATUS_INIT_COMPLETED);
+        /* Restart  Mode set ntf timer when NFCEE Status is INIT
+         * completed */
+        if (nfc_cb.flags & NFC_FL_WAIT_MODE_SET_NTF) {
+          DLOG_IF(INFO, nfc_debug_enabled)
+              << StringPrintf("Re-starting mode set ntf timer..");
+          nfc_stop_timer(&nfc_cb.nci_mode_set_ntf_timer);
+          nfc_start_timer(&nfc_cb.nci_mode_set_ntf_timer,
+                          (uint16_t)(NFC_TTYPE_WAIT_MODE_SET_NTF),
+                          NFC_MODE_SET_NTF_TIMEOUT);
+        }
       }
   }
 }
@@ -2478,28 +2498,7 @@ static void nfa_ee_report_discover_req_evt(void) {
   nfa_ee_build_discover_req_evt(&nfa_ee_cback_data.discover_req);
   nfa_ee_report_event(nullptr, NFA_EE_DISCOVER_REQ_EVT, &nfa_ee_cback_data);
 }
-#if (NXP_EXTNS == TRUE)
-/*******************************************************************************
-**
-** Function         nfa_ee_nci_pwr_link_ctrl_rsp
-**
-** Description      Process the result for NFCEE PWR and link ctrl response
-**
-** Returns          void
-**
-*******************************************************************************/
-void nfa_ee_nci_pwr_link_ctrl_rsp(tNFA_EE_MSG* p_data) {
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf(" nfa_ee_nci_pwr_link_ctrl_rsp()");
-    tNFA_EE_CBACK_DATA nfa_ee_cback_data;
-    tNFC_NFCEE_EE_PWR_LNK_REVT* p_rsp = p_data->pwr_lnk_ctrl_rsp.p_data;
-    nfa_ee_cback_data.pwr_lnk_ctrl.status = p_rsp->status;
-    DLOG_IF(INFO, nfc_debug_enabled)
-        << StringPrintf(" nfa_ee_nci_pwr_link_ctrl_rsp: status = %d ",
-                        nfa_ee_cback_data.pwr_lnk_ctrl.status);
-    nfa_ee_report_event(NULL, NFA_EE_PWR_LINK_CTRL_EVT, &nfa_ee_cback_data);
-}
-#endif
+
 /*******************************************************************************
 **
 ** Function         nfa_ee_nci_mode_set_rsp
@@ -2655,6 +2654,29 @@ void nfa_ee_nci_wait_rsp(tNFA_EE_MSG* p_data) {
     if (p_rsp->opcode == NCI_MSG_RF_SET_ROUTING) nfa_ee_cb.wait_rsp--;
   }
   nfa_ee_report_update_evt();
+}
+
+/*******************************************************************************
+**
+** Function         nfa_ee_pwr_and_link_ctrl_rsp
+**
+** Description      Process the result for NCI response
+**
+** Returns          void
+**
+*******************************************************************************/
+void nfa_ee_pwr_and_link_ctrl_rsp(tNFA_EE_MSG* p_data) {
+  tNFA_EE_CBACK_DATA evt_data;
+  if (p_data != nullptr) {
+#if(NXP_EXTNS == TRUE)
+    evt_data.status = p_data->ncfee_pwr_and_link_ctrl_rsp.p_data->status;
+    DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf(" %s: status = %d ", __func__, evt_data.status);
+#else
+    evt_data.status = NFA_STATUS_OK;
+#endif
+    nfa_ee_report_event(nullptr, NFA_EE_PWR_AND_LINK_CTRL_EVT, &evt_data);
+  }
 }
 
 /*******************************************************************************

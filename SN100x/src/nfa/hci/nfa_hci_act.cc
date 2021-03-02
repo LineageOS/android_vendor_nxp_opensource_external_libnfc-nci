@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2020 NXP
+ *  Copyright 2018-2021 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -2752,6 +2752,8 @@ bool nfa_hci_check_set_apdu_pipe_ready_for_next_host ()
             if (p_host->host_id == NFA_HCI_FIRST_PROP_HOST) {
               nfa_hci_api_add_prop_host_info();
               done = nfa_hci_set_apdu_pipe_ready_for_host(p_host->host_id);
+            } else if (nfa_hci_cb.uicc_etsi_support) {
+              done = nfa_hci_set_apdu_pipe_ready_for_host(p_host->host_id);
             } else {
               done = false;
             }
@@ -2989,8 +2991,11 @@ static void nfa_hci_handle_apdu_app_gate_hcp_msg_data (uint8_t *p_data, uint16_t
                     p_apdu_pipe_reg_info->reg_info_valid = true;
                     if (!nfa_hci_enable_one_nfcee ())
                     {
+                        evt_data.init_completed.status = NFA_STATUS_OK;
                         nfa_hci_startup_complete (NFA_STATUS_OK);
                         NFA_SCR_PROCESS_EVT(NFA_SCR_ESE_RECOVERY_COMPLETE_EVT, NFA_STATUS_OK);
+                        //Notify upper layer post Nfc init, if any recovery
+                        nfa_hciu_send_to_all_apps(NFA_HCI_INIT_COMPLETED, &evt_data);
                     }
                 }
             }

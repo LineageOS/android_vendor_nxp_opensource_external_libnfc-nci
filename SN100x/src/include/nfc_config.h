@@ -30,7 +30,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2020 NXP
+ *  Copyright 2018-2021 NXP
  *
  ******************************************************************************/
 #pragma once
@@ -58,6 +58,7 @@
 #define NAME_AID_MATCHING_MODE "AID_MATCHING_MODE"
 #define NAME_OFFHOST_AID_ROUTE_PWR_STATE "OFFHOST_AID_ROUTE_PWR_STATE"
 #define NAME_LEGACY_MIFARE_READER "LEGACY_MIFARE_READER"
+#define NAME_RECOVERY_OPTION "RECOVERY_OPTION"
 
 /* Configs from vendor interface */
 #define NAME_NFA_POLL_BAIL_OUT_MODE "NFA_POLL_BAIL_OUT_MODE"
@@ -133,6 +134,10 @@
 #define NAME_NXP_T4T_NDEF_NFCEE_AID "NXP_T4T_NDEF_NFCEE_AID"
 #define NAME_NXP_NON_STD_CARD_TIMEDIFF "NXP_NON_STD_CARD_TIMEDIFF"
 #define NAME_NXP_SRD_TIMEOUT "NXP_SRD_TIMEOUT"
+#define NAME_NXP_UICC_ETSI_SUPPORT "NXP_UICC_ETSI_SUPPORT"
+#define NAME_NXP_P2P_DISC_NTF_TIMEOUT "NXP_P2P_DISC_NTF_TIMEOUT"
+#define NAME_NXP_RESTART_RF_FOR_NFCEE_RECOVERY \
+  "NXP_RESTART_RF_FOR_NFCEE_RECOVERY"
 #endif
 
 class NfcConfig {
