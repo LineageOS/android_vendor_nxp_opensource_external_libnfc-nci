@@ -30,7 +30,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2020 NXP
+ *  Copyright 2018-2021 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -863,7 +863,7 @@ static void nfa_dm_disc_discovery_cback(tNFC_DISCOVER_EVT event,
 #if(NXP_EXTNS == TRUE)
   if(p_data) NFA_SCR_PROCESS_EVT(dm_disc_event, p_data->status);
 #if(NXP_SRD ==  TRUE)
-  NFA_SRD_PROCESS_EVT(dm_disc_event, p_data);
+  nfa_srd_dm_process_evt(dm_disc_event, p_data);
 #endif
 #endif
 }
@@ -1014,6 +1014,17 @@ static tNFC_STATUS nfa_dm_send_deactivate_cmd(tNFC_DEACT_TYPE deactivate_type) {
           DLOG_IF(INFO, nfc_debug_enabled)
         << StringPrintf("Overriding NFA_DM_DISC_NTF_TIMEOUT to use %lu", num);
         }
+      }
+      if ((nfa_dm_cb.disc_cb.activated_protocol == NFA_PROTOCOL_NFC_DEP) &&
+          (nfa_p2p_cb.is_initiator)) {
+        if (NfcConfig::hasKey(NAME_NXP_P2P_DISC_NTF_TIMEOUT)) {
+          num = NfcConfig::getUnsigned(NAME_NXP_P2P_DISC_NTF_TIMEOUT);
+          num *= 1000;
+        } else {
+          num = NFA_P2P_DISC_NTF_TIMEOUT;
+        }
+        DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+            "Overriding NFA_DM_DISC_NTF_TIMEOUT to use %lu", num);
       }
       DLOG_IF(INFO, nfc_debug_enabled)
         << StringPrintf("Starting timer value %lu", num);
@@ -3422,6 +3433,7 @@ bool nfa_dm_p2p_prio_logic(uint8_t event, uint8_t* p, uint8_t event_type) {
       //clear P2P_W4_NF_RES flag
       p2p_prio_logic_data.flags &= ~P2P_W4_NF_RES;
       nfa_dm_cb.disc_cb.disc_flags &= ~NFA_DM_DISC_FLAGS_W4_NTF;
+      nfa_sys_stop_timer(&nfa_dm_cb.disc_cb.tle);
       nfa_dm_disc_new_state(NFA_DM_RFST_DISCOVERY);
 #endif
       nfc_start_quick_timer(&p2p_prio_logic_data.timer_list,

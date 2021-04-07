@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2020 NXP
+ *  Copyright 2018-2021 NXP
  *
  ******************************************************************************/
 
@@ -346,8 +346,6 @@ typedef struct {
   uint8_t minor_version;   /* Minor Version of Mw */
   uint8_t cust_id;         /*Customer id*/
   uint8_t rc_version;      /*RC version*/
-  uint8_t cbc_major_version;   /* Major Version of Common Code Base*/
-  uint8_t cbc_minor_version;   /* Minor Version of Common Code Base */
 } tNFA_MW_VERSION;
 #endif
 
@@ -421,10 +419,8 @@ typedef struct {
 #define NFA_P2P_PAUSED_EVT 38
 /* P2P services resumed event */
 #define NFA_P2P_RESUMED_EVT 39
-#if (NXP_EXTNS == TRUE)
-/* Last credit Ntf received for tunneling data */
-#define NFA_TMW_CREDIT_EVT 40
-#endif
+/* T2T command completed */
+#define NFA_T2T_CMD_CPLT_EVT 40
 /* NFC deactivation type */
 #define NFA_DEACTIVATE_TYPE_IDLE NFC_DEACTIVATE_TYPE_IDLE
 #define NFA_DEACTIVATE_TYPE_SLEEP NFC_DEACTIVATE_TYPE_SLEEP

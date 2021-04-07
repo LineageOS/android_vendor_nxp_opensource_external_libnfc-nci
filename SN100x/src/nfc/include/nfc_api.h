@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2020 NXP
+ *  Copyright 2018-2021 NXP
  *
  ******************************************************************************/
 /******************************************************************************
@@ -53,21 +53,14 @@
 
 
 #if (NXP_EXTNS == TRUE)
-#define NXP_EN_SN110U    0
-#define NXP_EN_SN100U    0
+#define NXP_EN_SN110U    1
+#define NXP_EN_SN100U    1
 #define NXP_EN_SN220U    1
-#define NXP_ANDROID_VER (11U)        /* NXP android version */
+#define NXP_ANDROID_VER (12U)        /* NXP android version */
+#define NFC_NXP_MW_VERSION_MAJ (0x02) /* MW Major Version */
+#define NFC_NXP_MW_VERSION_MIN (0x01) /* MW Minor Version */
 #define NFC_NXP_MW_CUSTOMER_ID (0x00) /* MW Customer Id */
 #define NFC_NXP_MW_RC_VERSION  (0x00) /* MW RC Version */
-
-#define NFC_NXP_CBC_VERSION_MAJ (0x01) /* CBC Major Version */
-#define NFC_NXP_CBC_VERSION_MIN (0x00) /* CBC Minor Version */
-
-#define NFC_NXP_MW_SN1XX_VERSION_MAJ (0x06) /* MW Major Version for SN1XX*/
-#define NFC_NXP_MW_SN1XX_VERSION_MIN (0x00) /* MW Minor Version for SN1xx*/
-
-#define NFC_NXP_MW_SN220_VERSION_MAJ (0x02) /* MW Major Version for SN220*/
-#define NFC_NXP_MW_SN220_VERSION_MIN (0x01) /* MW Minor Version for SN220*/
 #define NFC_EE_DISC_OP_REMOVE 1
 #endif
 /* NFC application return status codes */
@@ -402,6 +395,7 @@ typedef struct {
 #define NFC_NFCEE_STS_UNRECOVERABLE_ERROR        NCI_NFCEE_STS_UNRECOVERABLE_ERROR
 #define NFC_NFCEE_STS_INIT_STARTED               NCI_NFCEE_STS_INIT_STARTED
 #define NFC_NFCEE_STS_INIT_COMPLETED             NCI_NFCEE_STS_INIT_COMPLETED
+#define NFC_NFCEE_STS_PMUVCC_OFF                 NCI_NFCEE_STS_PMUVCC_OFF
 #define NFC_NFCEE_STS_PROP_UNRECOVERABLE_ERROR   NCI_NFCEE_STS_PROP_NONE
 #endif
 
@@ -447,6 +441,7 @@ typedef struct {
   uint8_t nfcee_id;   /* NFCEE ID                         */
   uint8_t num_tlvs;   /* number of TLVs                   */
   uint8_t tlv_size;   /* the total len of all TLVs        */
+  uint8_t qualifier_type;                  /* qualifier type */
   uint8_t param_tlvs[NFC_MAX_EE_TLV_SIZE]; /* the TLVs         */
 } tNFC_GET_ROUTING_REVT;
 
@@ -1083,6 +1078,17 @@ extern tNFC_STATUS NFC_GetConfig(uint8_t num_ids, uint8_t* p_param_ids);
 **
 *******************************************************************************/
 extern tNFC_STATUS NFC_NfceeDiscover(bool discover);
+
+/*******************************************************************************
+**
+** Function         NFC_NfceeClearWaitModeSetNtf
+**
+** Description      Clear Nfcee Mode set notification wait flag
+**
+** Returns          void
+**
+*******************************************************************************/
+void NFC_NfceeClearWaitModeSetNtf(void);
 
 /*******************************************************************************
 **

@@ -81,6 +81,7 @@ cc_library_shared {
         cfi: true,
         misc_undefined: ["bounds"],
         integer_overflow: true,
+        scs: true,
         diag: {
             integer_overflow: true,
             misc_undefined: ["bounds"],

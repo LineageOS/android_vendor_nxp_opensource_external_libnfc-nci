@@ -31,7 +31,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2018-2020 NXP
+ *  Copyright 2018-2021 NXP
  *
  ******************************************************************************/
 
@@ -104,6 +104,12 @@ extern std::string nfc_storage_path;
 tNfc_featureList nfcFL;
 static tNFC_chipType chipType;
 tNFC_chipType ProcessChipType(tNFC_FW_VERSION nfc_fw_version);
+/*product[] will be used to print product version and
+should be kept in accordance with tNFC_chipType*/
+const char* product[13] = {"UNKNOWN", "PN547C2", "PN65T", "PN548C2",
+                           "PN66T",   "PN551",   "PN67T", "PN553",
+                           "PN80T",   "PN557",   "PN81T",  "SN100U",
+                           "SN220U"};
 #endif
 #if (NFC_RW_ONLY == FALSE)
 #if (NXP_EXTNS == TRUE)
@@ -376,8 +382,9 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
       memcpy(evt_data.enable.vs_interface, nfc_cb.vs_interface,
              NFC_NFCC_MAX_NUM_VS_INTERFACE);
     } else {
-      /* one byte is consumed in the top expression */
-      lremain -= sizeof(uint16_t) + NFC_NFCC_INFO_LEN;
+      /* For VERSION_UNKNOWN one byte is consumed in the top expression */
+      lremain -= sizeof(uint16_t) + NFC_NFCC_INFO_LEN +
+                 (nfc_cb.nci_version == NCI_VERSION_1_0 ? 1 : 0);
       if (lremain < 0) {
         nfc_status = NCI_STATUS_FAILED;
         goto plen_err;
@@ -1709,6 +1716,13 @@ void NFC_SetFeatureList(tNFC_FW_VERSION nfc_fw_version) {
   CONFIGURE_FEATURELIST(chipType);
   LOG_IF(INFO, nfc_debug_enabled)
       << StringPrintf("%s: chipType = %d", __func__, chipType);
+#if(NXP_EXTNS == TRUE)
+  if (!(((nfcFL.chipType == sn220u) && NXP_EN_SN220U) || ((nfcFL.chipType == sn100u) && (NXP_EN_SN110U || NXP_EN_SN100U)))) {
+    LOG(ERROR) << StringPrintf("************************************************************************");
+    LOG(ERROR) << StringPrintf("*****USING UNTESTED SECURE NFC MW FOR CHIP %s : NOT RECOMMENDED*****", product[nfcFL.chipType]);
+    LOG(ERROR) << StringPrintf("************************************************************************");
+  }
+#endif
 }
 /*******************************************************************************
  **
