@@ -31,7 +31,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 *
-*  Copyright 2020 NXP
+*  Copyright 2020-2021 NXP
 *
 ******************************************************************************/
 #include <android-base/stringprintf.h>
@@ -46,6 +46,8 @@
 static void gki_add_to_pool_list(uint8_t pool_id);
 static void gki_remove_from_pool_list(uint8_t pool_id);
 #endif /*  BTU_STACK_LITE_ENABLED == FALSE */
+
+extern bool nfc_debug_enabled;
 
 using android::base::StringPrintf;
 
@@ -137,7 +139,7 @@ static bool gki_alloc_free_queue(uint8_t id) {
 **
 *******************************************************************************/
 void gki_buffer_init(void) {
-  uint8_t i, tt, mb;
+  uint8_t tt, mb;
   tGKI_COM_CB* p_cb = &gki_cb.com;
 
   /* Initialize mailboxes */
@@ -228,10 +230,12 @@ void gki_buffer_init(void) {
   gki_init_free_queue(15, GKI_BUF15_SIZE, GKI_BUF15_MAX, p_cb->bufpool15);
 #endif
 
+#if (GKI_NUM_FIXED_BUF_POOLS > 0)
   /* add pools to the pool_list which is arranged in the order of size */
-  for (i = 0; i < GKI_NUM_FIXED_BUF_POOLS; i++) {
+  for (uint8_t i = 0; i < GKI_NUM_FIXED_BUF_POOLS; i++) {
     p_cb->pool_list[i] = i;
   }
+#endif
 
   p_cb->curr_total_no_of_pools = GKI_NUM_FIXED_BUF_POOLS;
 
@@ -269,11 +273,63 @@ void GKI_init_q(BUFFER_Q* p_q) {
 **
 ** Returns          A pointer to the buffer, or NULL if none available
 **
-*******************************************************************************/
+******************************************************************************/
 void* GKI_getbuf(uint16_t size) {
-  uint8_t i;
-  FREE_QUEUE_T* Q;
   BUFFER_HDR_T* p_hdr;
+  FREE_QUEUE_T* Q;
+
+#if defined(DYN_ALLOC) || defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  if (size == 0) {
+    LOG(ERROR) << StringPrintf("getbuf: Size is zero");
+#ifndef DYN_ALLOC
+    abort();
+#else
+    return (nullptr);
+#endif
+  }
+
+  size = ALIGN_POOL(size);
+  size_t total_sz = size + sizeof(BUFFER_HDR_T)
+#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
+                    + sizeof(uint32_t);
+#else
+      ;
+#endif
+  p_hdr = (BUFFER_HDR_T*)GKI_os_malloc(total_sz);
+  if (!p_hdr) {
+    LOG(ERROR) << StringPrintf("unable to allocate buffer!!!!!");
+#ifndef DYN_ALLOC
+    abort();
+#else
+    return (nullptr);
+#endif
+  }
+
+  memset(p_hdr, 0, total_sz);
+
+#if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
+  *(uint32_t*)((uint8_t*)p_hdr + BUFFER_HDR_SIZE + size) = MAGIC_NO;
+#endif
+  p_hdr->task_id = GKI_get_taskid();
+  p_hdr->status = BUF_STATUS_UNLINKED;
+  p_hdr->p_next = nullptr;
+  p_hdr->Type = 0;
+
+  p_hdr->q_id = 0;
+  p_hdr->size = size;
+
+  GKI_disable();
+  Q = &gki_cb.com.freeq[p_hdr->q_id];
+  if (++Q->cur_cnt > Q->max_cnt) Q->max_cnt = Q->cur_cnt;
+  GKI_enable();
+
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+      "%s %p %d:%d", __func__, ((uint8_t*)p_hdr + BUFFER_HDR_SIZE), Q->cur_cnt,
+      Q->max_cnt);
+  UNUSED(gki_alloc_free_queue);
+  return (void*)((uint8_t*)p_hdr + BUFFER_HDR_SIZE);
+#else
+  uint8_t i;
   tGKI_COM_CB* p_cb = &gki_cb.com;
 
   if (size == 0) {
@@ -338,6 +394,7 @@ void* GKI_getbuf(uint16_t size) {
   GKI_enable();
 
   return (nullptr);
+#endif
 }
 
 /*******************************************************************************
@@ -357,6 +414,38 @@ void* GKI_getbuf(uint16_t size) {
 **
 *******************************************************************************/
 void* GKI_getpoolbuf(uint8_t pool_id) {
+#if defined(DYN_ALLOC) || defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  uint16_t size = 0;
+  switch (pool_id) {
+    // NFC_NCI_POOL_ID, NFC_RW_POOL_ID and NFC_CE_POOL_ID are all redefined to
+    // GKI_POOL_ID_2.
+    case GKI_POOL_ID_2:
+      size = GKI_BUF2_SIZE;
+      break;
+
+    // LLCP_POOL_ID, GKI_MAX_BUF_SIZE_POOL_ID are redefined to GKI_POOL_ID_3.
+    case GKI_POOL_ID_3:
+      size = GKI_BUF3_SIZE;
+      break;
+
+#if (NXP_EXTNS == TRUE)
+    case GKI_POOL_ID_4:
+      size = GKI_BUF4_SIZE;
+      break;
+#endif
+
+    default:
+      LOG(ERROR) << StringPrintf("Unknown pool ID: %d", pool_id);
+#ifndef DYN_ALLOC
+      abort();
+#else
+      return (nullptr);
+#endif
+      break;
+  }
+
+  return GKI_getbuf(size);
+#else
   FREE_QUEUE_T* Q;
   BUFFER_HDR_T* p_hdr;
   tGKI_COM_CB* p_cb = &gki_cb.com;
@@ -399,6 +488,7 @@ void* GKI_getpoolbuf(uint8_t pool_id) {
 
   /* try for free buffers in public pools */
   return (GKI_getbuf(p_cb->freeq[pool_id].size));
+#endif
 }
 
 /*******************************************************************************
@@ -414,8 +504,8 @@ void* GKI_getpoolbuf(uint8_t pool_id) {
 **
 *******************************************************************************/
 void GKI_freebuf(void* p_buf) {
-  FREE_QUEUE_T* Q;
   BUFFER_HDR_T* p_hdr;
+  FREE_QUEUE_T* Q;
 
 #if (GKI_ENABLE_BUF_CORRUPTION_CHECK == TRUE)
   if (!p_buf || gki_chk_buf_damage(p_buf)) {
@@ -436,6 +526,14 @@ void GKI_freebuf(void* p_buf) {
     return;
   }
 
+#if defined(DYN_ALLOC) || defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  GKI_disable();
+  Q = &gki_cb.com.freeq[p_hdr->q_id];
+  if (Q->cur_cnt > 0) Q->cur_cnt--;
+  GKI_enable();
+
+  GKI_os_free(p_hdr);
+#else
   GKI_disable();
 
   /*
@@ -455,7 +553,7 @@ void GKI_freebuf(void* p_buf) {
 
   GKI_enable();
 
-  return;
+#endif
 }
 
 /*******************************************************************************
@@ -474,6 +572,9 @@ uint16_t GKI_get_buf_size(void* p_buf) {
 
   p_hdr = (BUFFER_HDR_T*)((uint8_t*)p_buf - BUFFER_HDR_SIZE);
 
+#if defined(DYN_ALLOC) || defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  return p_hdr->size;
+#else
   if ((uintptr_t)p_hdr & 1) return (0);
 
   if (p_hdr->q_id < GKI_NUM_TOTAL_BUF_POOLS) {
@@ -481,6 +582,7 @@ uint16_t GKI_get_buf_size(void* p_buf) {
   }
 
   return (0);
+#endif
 }
 
 /*******************************************************************************
@@ -502,10 +604,12 @@ bool gki_chk_buf_damage(void* p_buf) {
 
   if (*magic == MAGIC_NO) return false;
 
+  LOG(ERROR) << StringPrintf("%s 0x%x %p", __func__, *magic, p_buf);
   return true;
 
 #else
 
+  UNUSED(p_buf);
   return false;
 
 #endif
@@ -1006,9 +1110,37 @@ static void gki_remove_from_pool_list(uint8_t pool_id) {
 **
 *******************************************************************************/
 uint16_t GKI_poolcount(uint8_t pool_id) {
+#ifdef DYN_ALLOC
+#if (NXP_EXTNS == TRUE)
+    uint16_t count = 0;
+    switch (pool_id) {
+    // NFC_NCI_POOL_ID, NFC_RW_POOL_ID and NFC_CE_POOL_ID are all redefined to
+    // GKI_POOL_ID_2.
+    case GKI_POOL_ID_2:
+      count = GKI_BUF2_SIZE;
+      break;
+
+    // LLCP_POOL_ID, GKI_MAX_BUF_SIZE_POOL_ID are redefined to GKI_POOL_ID_3.
+    case GKI_POOL_ID_3:
+      count = GKI_BUF3_SIZE;
+      break;
+
+    case GKI_POOL_ID_4:
+      count = GKI_BUF4_SIZE;
+      break;
+
+    default:
+      LOG(ERROR) << StringPrintf("Unknown pool ID: %d", pool_id);
+      count = GKI_MAX_BUF_SIZE;
+      break;
+  }
+  return count;
+#endif
+#endif
   if (pool_id >= GKI_NUM_TOTAL_BUF_POOLS) return (0);
 
   return (gki_cb.com.freeq[pool_id].total);
+
 }
 
 /*******************************************************************************

@@ -133,8 +133,10 @@ static void check_and_store_last_cmd(NFC_HDR* p_buf) {
         ps[1] == NCI_MSG_RF_DEACTIVATE) ||
        (p_buf->len > 4 &&
         ps[0] == ((NCI_MT_CMD << NCI_MT_SHIFT) | NCI_GID_EE_MANAGE) &&
-        ps[1] == NCI_MSG_NFCEE_MODE_SET  &&
-        ps[4] == NFC_MODE_DEACTIVATE )||
+        ps[1] == NCI_MSG_NFCEE_MODE_SET && ps[4] == NFC_MODE_DEACTIVATE) ||
+       (p_buf->len > 1 &&
+        ps[0] == ((NCI_MT_CMD << NCI_MT_SHIFT) | NCI_GID_CORE) &&
+        ps[1] == NCI_MSG_CORE_SET_POWER_SUB_STATE) ||
        (p_buf->len > 4 &&
         ps[0] == ((NCI_MT_CMD << NCI_MT_SHIFT) | NCI_GID_CORE) &&
         ps[1] == NCI_MSG_CORE_SET_CONFIG &&
@@ -350,8 +352,8 @@ uint8_t nfc_ncif_send_data(tNFC_CONN_CB* p_cb, NFC_HDR* p_data) {
     if (p_cb->num_buff != NFC_CONN_NO_FC) p_cb->num_buff--;
 
     /* send to HAL */
+    nfcsnoop_capture(p, false);
     HAL_WRITE(p);
-  nfcsnoop_capture(p, false);
 #if (NXP_EXTNS == TRUE)
     /* start NFC data ntf timeout timer */
     if (p_cb->conn_id != NFC_RF_CONN_ID) {
@@ -1751,6 +1753,7 @@ void nfc_ncif_proc_get_routing(uint8_t* p, uint8_t len) {
   tNFC_GET_ROUTING_REVT evt_data = {};
   uint8_t more, num_entries, xx, *pn;
   tNFC_STATUS status = NFC_STATUS_CONTINUE;
+  memset(&evt_data, 0, sizeof(tNFC_GET_ROUTING_REVT));
 
   if (len >= 2 && nfc_cb.p_resp_cback) {
     more = *p++;
