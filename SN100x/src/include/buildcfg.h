@@ -31,7 +31,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 *
-*  Copyright 2020 NXP
+*  Copyright 2020-2021 NXP
 *
 ******************************************************************************/
 #ifndef __BUILDCFG_H
@@ -68,9 +68,17 @@
 #define GKI_BUF0_MAX 40
 
 #if (NXP_EXTNS == TRUE)
+#ifdef DYN_ALLOC
+#define GKI_NUM_FIXED_BUF_POOLS 0
+#else
 #define GKI_NUM_FIXED_BUF_POOLS 5
+#endif
+#else
+#ifdef DYN_ALLOC
+#define GKI_NUM_FIXED_BUF_POOLS 0
 #else
 #define GKI_NUM_FIXED_BUF_POOLS 4
+#endif
 #endif
 
 #if (NXP_EXTNS == TRUE)

@@ -30,6 +30,7 @@ cc_library_shared {
         "libsn100nfcutils",
     ],
     cflags: [
+        "-DDYN_ALLOC=1",
         "-DBUILDCFG=1",
         "-Wall",
         "-Werror",
