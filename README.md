@@ -80,21 +80,11 @@
 | aosp-master              |  12.02.01 (SN100/SN110/SN220) |  NFC_AR_00_E000_12.02.01_OpnSrc |
 | aosp-master              |  12.04.01 (SN100/SN110/SN220) |  NFC_AR_00_E000_12.04.01_OpnSrc |
 
+#### Supported Version on "br_android_ncihalx_row_12" branch
+| Android Version        | NXP Release          | NXP Tag  |
+| :-------------: |:---------------------:| :-----:|
+| aosp-master                |  12.01.00 (PN80T/PN81T/PN553/PN557) |  NFC_AR_00_18C0_12.01.00_OpnSrc  |
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> caf/caf/nxpnfc-project/br_android_ncihalx_comm_12

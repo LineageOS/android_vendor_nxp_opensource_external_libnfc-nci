@@ -33,9 +33,12 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <cutils/properties.h>
+#if (NXP_EXTNS == TRUE)
 #include <hidl/LegacySupport.h>
+#endif
 #include <hwbinder/ProcessState.h>
 #include <vector>
+#include <cstdlib>
 #include "debug_nfcsnoop.h"
 #include "nfa_api.h"
 #include "nfa_rw_api.h"
@@ -59,12 +62,14 @@ using NfcVendorConfigV1_1 = android::hardware::nfc::V1_1::NfcConfig;
 using NfcVendorConfigV1_2 = android::hardware::nfc::V1_2::NfcConfig;
 using android::hardware::nfc::V1_1::INfcClientCallback;
 using android::hardware::hidl_vec;
+#if (NXP_EXTNS == TRUE)
 using vendor::nxp::hardware::nfc::V2_0::INqNfc;
+using vendor::nxp::nxpnfclegacy::V1_0::NxpNfcHalConfig;
 using android::hardware::configureRpcThreadpool;
+#endif
 using ::android::hardware::hidl_death_recipient;
 using ::android::wp;
 using ::android::hidl::base::V1_0::IBase;
-using vendor::nxp::nxpnfclegacy::V1_0::NxpNfcHalConfig;
 
 extern bool nfc_debug_enabled;
 
@@ -75,10 +80,12 @@ extern void delete_stack_non_volatile_store(bool forceDelete);
 NfcAdaptation* NfcAdaptation::mpInstance = nullptr;
 ThreadMutex NfcAdaptation::sLock;
 android::Mutex sIoctlMutex;
+#if (NXP_EXTNS == TRUE)
 sp<INxpNfcLegacy> NfcAdaptation::mHalNxpNfcLegacy;
+sp<INqNfc> NfcAdaptation::mNqHal_2_0;
+#endif
 sp<INfc> NfcAdaptation::mHal;
 sp<INfcV1_1> NfcAdaptation::mHal_1_1;
-sp<INqNfc> NfcAdaptation::mNqHal_2_0;
 sp<INfcV1_2> NfcAdaptation::mHal_1_2;
 INfcClientCallback* NfcAdaptation::mCallback;
 tHAL_NFC_CBACK* NfcAdaptation::mHalCallback = nullptr;
@@ -191,6 +198,9 @@ class NfcDeathRecipient : public hidl_death_recipient {
 NfcAdaptation::NfcAdaptation() {
   mNfcHalDeathRecipient = new NfcDeathRecipient(mHal);
   memset(&mHalEntryFuncs, 0, sizeof(mHalEntryFuncs));
+  memset(&mNxpNfcHalConfig, 0, sizeof(NxpNfcHalConfig));
+  memset(&AdapCfgInfo, 0, sizeof(NxpNciCfgInfo));
+  memset(&mNciResp, 0, sizeof(NxpNciExtnResp));
 }
 
 /*******************************************************************************
@@ -352,6 +362,10 @@ void NfcAdaptation::GetNxpConfigs(
                     ConfigValue(mNxpAdaptationConfig.wTagSupport));
   configMap.emplace(NAME_DEFAULT_T4TNFCEE_AID_POWER_STATE,
                     ConfigValue(mNxpAdaptationConfig.t4tNfceePwrState));
+#if (NXP_EXTNS == TRUE)
+  configMap.emplace(NAME_FORCE_ONLY_UICC_LISTEN_TECH,
+                    getVendorNumConfig(NAME_FORCE_ONLY_UICC_LISTEN_TECH));
+#endif
   if (mNxpAdaptationConfig.scrResetEmvco.len) {
     std::vector scrResetEmvcoCmd(
         mNxpAdaptationConfig.scrResetEmvco.cmd,
@@ -522,17 +536,19 @@ void NfcAdaptation::Initialize() {
 
   GKI_init();
   GKI_enable();
-  GKI_create_task((TASKPTR)NFCA_TASK, BTU_TASK, (int8_t*)"NFCA_TASK", 0, 0,
+  GKI_create_task((TASKPTR)NFCA_TASK, BTU_TASK, (int8_t*)"NFCA_TASK", nullptr, 0,
                   (pthread_cond_t*)nullptr, nullptr);
   {
     AutoThreadMutex guard(mCondVar);
-    GKI_create_task((TASKPTR)Thread, MMI_TASK, (int8_t*)"NFCA_THREAD", 0, 0,
+    GKI_create_task((TASKPTR)Thread, MMI_TASK, (int8_t*)"NFCA_THREAD", nullptr, 0,
                     (pthread_cond_t*)nullptr, nullptr);
     mCondVar.wait();
   }
 
   debug_nfcsnoop_init();
+  #if (NXP_EXTNS == TRUE)
   configureRpcThreadpool(2, false);
+  #endif
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: exit", func);
 }
 #if (NXP_EXTNS == TRUE)
@@ -578,6 +594,9 @@ void NfcAdaptation::DeviceShutdown() {
     mHal_1_2->closeForPowerOffCase();
   } else if (mHal_1_1 != nullptr) {
     mHal_1_1->closeForPowerOffCase();
+  }
+  if (mHal) {
+    mHal->unlinkToDeath(mNfcHalDeathRecipient);
   }
 }
 
@@ -644,7 +663,7 @@ void NfcAdaptation::signal() { mCondVar.signal(); }
 uint32_t NfcAdaptation::NFCA_TASK(__attribute__((unused)) uint32_t arg) {
   const char* func = "NfcAdaptation::NFCA_TASK";
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: enter", func);
-  GKI_run(0);
+  GKI_run(nullptr);
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s: exit", func);
   return 0;
 }
@@ -665,8 +684,8 @@ uint32_t NfcAdaptation::Thread(__attribute__((unused)) uint32_t arg) {
   {
     ThreadCondVar CondVar;
     AutoThreadMutex guard(CondVar);
-    GKI_create_task((TASKPTR)nfc_task, NFC_TASK, (int8_t*)"NFC_TASK", 0, 0,
-                    (pthread_cond_t*)CondVar, (pthread_mutex_t*)CondVar);
+    GKI_create_task((TASKPTR)nfc_task, NFC_TASK, (int8_t*)"NFC_TASK", nullptr,
+                    0, (pthread_cond_t*)CondVar, (pthread_mutex_t*)CondVar);
     CondVar.wait();
   }
 
@@ -1023,7 +1042,7 @@ void NfcAdaptation::HalPowerCycle() {
 **
 *******************************************************************************/
 uint8_t NfcAdaptation::HalGetMaxNfcee() {
-  const char* func = "NfcAdaptation::HalPowerCycle";
+  const char* func = "NfcAdaptation::HalGetMaxNfcee";
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("%s", func);
   return nfa_ee_max_ee_cfg;
 }
@@ -1342,6 +1361,7 @@ AutoThreadMutex::AutoThreadMutex(ThreadMutex& m) : mm(m) { mm.lock(); }
 *******************************************************************************/
 AutoThreadMutex::~AutoThreadMutex() { mm.unlock(); }
 
+#if (NXP_EXTNS == TRUE)
 /***************************************************************************
 **
 ** Function         initializeGlobalAppDtaMode.
@@ -1355,7 +1375,7 @@ void initializeGlobalAppDtaMode() {
   appl_dta_mode_flag = 0x01;
   ALOGD("%s: DTA Enabled", __func__);
 }
-
+#endif
 /***************************************************************************
 **
 ** Function         NfcAdaptation::setEseState
@@ -1450,7 +1470,6 @@ uint32_t NfcAdaptation::HalgetEseState() {
     status = mHalNxpNfcLegacy->getEseState();
     if(status != NFA_STATUS_FAILED){
       ALOGE("NfcAdaptation::getEseState mHalNxpNfcLegacy completed");
-      status = NFA_STATUS_OK;
     } else {
       ALOGE("NfcAdaptation::getEseState mHalNxpNfcLegacy failed");
     }
@@ -1627,7 +1646,7 @@ void NfcAdaptation::HalGetNxpConfig(NxpAdaptationConfig& NfcConfigData) {
  **
  ** Return           void
  *********************************************************************/
-static void HalNciTransceive_cb(NxpNciExtnResp out) {
+static void HalNciTransceive_cb(const NxpNciExtnResp& out) {
     memcpy(&(NfcAdaptation::GetInstance().mNciResp),&out,sizeof(NxpNciExtnResp));
   return;
 }
@@ -1660,3 +1679,26 @@ uint32_t NfcAdaptation::HalNciTransceive(phNxpNci_Extn_Cmd_t* NciCmd,phNxpNci_Ex
   return status;
 
 }
+#if (NXP_EXTNS == TRUE)
+/***************************************************************************
+**
+** Function         getVendorNumConfig
+**
+** Description      Reads integer vendor confg value
+**
+** Returns          int value.
+**
+***************************************************************************/
+int NfcAdaptation::getVendorNumConfig(const char* configName) {
+  std::string key = configName, value;
+  if (mHalNxpNfc != NULL) /*using lambda expression for hidl callback function*/
+    mHalNxpNfc->getVendorParam(configName,
+                               [&value](std::string res) { value = res; });
+  DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
+      "%s : configName:%s -- value:%s", __func__, configName, value.c_str());
+  if (value.empty())
+    return 0;
+  else
+    return std::atoi(value.c_str());
+}
+#endif

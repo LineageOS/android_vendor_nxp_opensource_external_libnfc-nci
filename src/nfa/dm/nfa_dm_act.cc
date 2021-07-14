@@ -17,9 +17,9 @@
  ******************************************************************************/
 /******************************************************************************
  *
- *  The original Work has been changed by NXP Semiconductors.
+ *  The original Work has been changed by NXP.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright 2015-2020 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -180,7 +180,8 @@ static void nfa_dm_set_init_nci_params(void) {
 
     /* LF_T3T_PMM value is added to LF_T3T_IDENTIFIERS_X in NCI2.0. */
     for (xx = 0; xx < NFA_CE_LISTEN_INFO_MAX; xx++) {
-      for (uint8_t yy = 10; yy < NCI_PARAM_LEN_LF_T3T_ID(NFC_GetNCIVersion()); yy++)
+      for (uint8_t yy = 10; yy < NCI_PARAM_LEN_LF_T3T_ID(NFC_GetNCIVersion());
+           yy++)
         nfa_dm_cb.params.lf_t3t_id[xx][yy] = 0xFF;
     }
   } else {
@@ -1580,6 +1581,18 @@ static void nfa_dm_act_data_cback(__attribute__((unused)) uint8_t conn_id,
     }
   } else if (event == NFC_DEACTIVATE_CEVT) {
     NFC_SetStaticRfCback(nullptr);
+  }
+  /* needed if CLF reports timeout, transmission or protocol error to notify DTA
+   * that may need to resume discovery if DH stays in POLL_ACTIVE state */
+  else if (appl_dta_mode_flag && (event == NFC_ERROR_CEVT)) {
+    if (p_data) {
+      evt_data.data.status = p_data->data.status;
+      nfa_dm_conn_cback_event_notify(NFA_RW_INTF_ERROR_EVT, &evt_data);
+    } else {
+      LOG(ERROR) << StringPrintf(
+          "received NFC_ERROR_CEVT with NULL data "
+          "pointer");
+    }
   }
 }
 

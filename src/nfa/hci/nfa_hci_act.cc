@@ -3,8 +3,8 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
- *  The original Work has been changed by NXP Semiconductors.
+ *  Copyright (C) 2015-2020 NXP
+ *  The original Work has been changed by NXP.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
  *
@@ -1360,6 +1360,7 @@ void nfa_hci_handle_admin_gate_cmd(uint8_t* p_data) {
 #if (NXP_EXTNS == TRUE)
         nfc_cb.bBlockWiredMode = FALSE;
         nfc_cb.bBlkPwrlinkAndModeSetCmd = FALSE;
+        nfa_hci_cb.bClearAllPipeHandling = true;
 
         nfa_hciu_send_msg(NFA_HCI_ADMIN_PIPE, NFA_HCI_RESPONSE_TYPE, response,
                           rsp_len, &data);
@@ -2948,6 +2949,7 @@ static void nfa_hci_handle_Nfcee_admpipe_rsp(uint8_t* p_data,
              (nfa_hci_cb.inst == NFA_HCI_ANY_OK)) {
     if (nfa_hci_cb.param_in_use == NFA_HCI_HOST_TYPE_LIST_INDEX) {
       nfa_sys_stop_timer(&nfa_hci_cb.timer);
+      nfa_hci_cb.bClearAllPipeHandling = false;
        DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
           "nfa_hci_handle_admin_gate_rsp - Received the HOST_TYPE_LIST as per "
           "ETSI 12 !!!");

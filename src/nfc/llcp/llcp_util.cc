@@ -17,9 +17,9 @@
  ******************************************************************************/
 /******************************************************************************
  *
- *  The original Work has been changed by NXP Semiconductors.
+ *  The original Work has been changed by NXP.
  *
- *  Copyright 2018 NXP
+ *  Copyright 2018-2020 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ bool llcp_util_parse_link_params(uint16_t length, uint8_t* p_bytes) {
     BE_STREAM_TO_UINT8(param_len, p);
     if (length < param_len + 2) {
       android_errorWriteLog(0x534e4554, "114238578");
-      LOG(ERROR) << StringPrintf("Bad LTV's");
+      LOG(ERROR) << StringPrintf("Bad TLV's");
       return false;
     }
     length -= param_len + 2;
@@ -552,6 +552,7 @@ tLLCP_STATUS llcp_util_parse_connect(uint8_t* p_bytes, uint16_t length,
       case LLCP_SN_TYPE:
 
         if (param_len == 0) {
+          p_params->sn[0] = 0;  // make "sn" null terminated zero-length string
           /* indicate that SN type is included without SN */
           p_params->sn[1] = LLCP_SN_TYPE;
         } else if (param_len <= LLCP_MAX_SN_LEN) {

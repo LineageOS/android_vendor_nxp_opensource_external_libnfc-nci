@@ -18,6 +18,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+*
+*  The original Work has been changed by NXP.
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*  http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*
+*  Copyright 2020 NXP
+*
+******************************************************************************/
 
 /******************************************************************************
  *
@@ -353,8 +372,9 @@ tNFA_DM_API_REG_NDEF_HDLR* nfa_dm_ndef_find_next_handler(
             /* If absolute URI, then compare URI for match (skip over uri_id in
              * ndef payload) */
             if ((p_cb->p_ndef_handler[i]->uri_id != NFA_NDEF_URI_ID_ABSOLUTE) ||
-                (memcmp(&p_payload[1], p_cb->p_ndef_handler[i]->name,
-                        p_cb->p_ndef_handler[i]->name_len) == 0)) {
+                ((payload_len > p_cb->p_ndef_handler[i]->name_len) &&
+                 (memcmp(&p_payload[1], p_cb->p_ndef_handler[i]->name,
+                         p_cb->p_ndef_handler[i]->name_len) == 0))) {
               /* Handler found. */
               break;
             }
@@ -367,6 +387,9 @@ tNFA_DM_API_REG_NDEF_HDLR* nfa_dm_ndef_find_next_handler(
             /* Handler is absolute URI but NDEF is using prefix abrieviation.
              * Compare URI prefix */
             if ((p_payload[0] < NFA_DM_NDEF_WKT_URI_STR_TBL_SIZE) &&
+                strlen(
+                    (const char*)nfa_dm_ndef_wkt_uri_str_tbl[p_payload[0]]) >=
+                    p_cb->p_ndef_handler[i]->name_len &&
                 (memcmp(p_cb->p_ndef_handler[i]->name,
                         (char*)nfa_dm_ndef_wkt_uri_str_tbl[p_payload[0]],
                         p_cb->p_ndef_handler[i]->name_len) == 0)) {
@@ -383,6 +406,8 @@ tNFA_DM_API_REG_NDEF_HDLR* nfa_dm_ndef_find_next_handler(
              * URI. Compare URI prefix */
             if ((p_cb->p_ndef_handler[i]->uri_id <
                  NFA_DM_NDEF_WKT_URI_STR_TBL_SIZE) &&
+                payload_len > strlen((const char*)nfa_dm_ndef_wkt_uri_str_tbl
+                                         [p_cb->p_ndef_handler[i]->uri_id]) &&
                 (memcmp(&p_payload[1],
                         nfa_dm_ndef_wkt_uri_str_tbl[p_cb->p_ndef_handler[i]
                                                         ->uri_id],

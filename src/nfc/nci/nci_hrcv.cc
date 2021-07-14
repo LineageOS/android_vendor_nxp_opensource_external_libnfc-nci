@@ -45,6 +45,7 @@
 
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
+#include <log/log.h>
 
 #include "nfc_target.h"
 #include "bt_types.h"
@@ -141,14 +142,14 @@ void nci_proc_core_ntf(NFC_HDR* p_msg) {
   len = p_msg->len;
   pp = p + 1;
 
-  if (len == 0) {
+  if (len < NCI_MSG_HDR_SIZE) {
     LOG(ERROR) << __func__ << ": Invalid packet length";
     return;
   }
   NCI_MSG_PRS_HDR1(pp, op_code);
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nci_proc_core_ntf opcode:0x%x", op_code);
   pp++;
-  len--;
+  len -= NCI_MSG_HDR_SIZE;
 
   /* process the message based on the opcode and message type */
   switch (op_code) {
@@ -274,6 +275,11 @@ void nci_proc_rf_management_ntf(NFC_HDR* p_msg) {
       break;
 
     case NCI_MSG_RF_DEACTIVATE:
+      if (p_msg->len < 5) {
+        /* NCI_HEADER(3) + Deactivation Type(1) + Deactivation Reason(1) */
+        android_errorWriteLog(0x534e4554, "164440989");
+        return;
+      }
       if (false == nfa_dm_p2p_prio_logic(op_code, pp, NFA_DM_P2P_PRIO_NTF)) {
         return;
       }
@@ -348,13 +354,18 @@ void nci_proc_ee_management_rsp(NFC_HDR* p_msg) {
   pp = p + 1;
   NCI_MSG_PRS_HDR1(pp, op_code);
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nci_proc_ee_management_rsp opcode:0x%x", op_code);
-  len = *pp++;
+  len = p_msg->len - NCI_MSG_HDR_SIZE;
+  /* Use pmsg->len in boundary checks, skip *pp */
+  pp++;
 
   switch (op_code) {
     case NCI_MSG_NFCEE_DISCOVER:
-      nfc_response.nfcee_discover.status = *pp++;
-      nfc_response.nfcee_discover.num_nfcee = *pp++;
-
+      if (len > 1) {
+        nfc_response.nfcee_discover.status = *pp++;
+        nfc_response.nfcee_discover.num_nfcee = *pp++;
+      } else {
+        nfc_response.nfcee_discover.status = NFC_STATUS_FAILED;
+      }
       if (nfc_response.nfcee_discover.status != NFC_STATUS_OK)
         nfc_response.nfcee_discover.num_nfcee = 0;
 
@@ -362,7 +373,11 @@ void nci_proc_ee_management_rsp(NFC_HDR* p_msg) {
       break;
 
     case NCI_MSG_NFCEE_MODE_SET:
-      nfc_response.mode_set.status = *pp;
+      if (len > 0) {
+        nfc_response.mode_set.status = *pp;
+      } else {
+        nfc_response.mode_set.status = NFC_STATUS_FAILED;
+      }
       nfc_response.mode_set.nfcee_id = *p_old++;
       //mode_set.nfcee_id = 0;
       event = NFC_NFCEE_MODE_SET_REVT;
@@ -406,11 +421,15 @@ void nci_proc_ee_management_rsp(NFC_HDR* p_msg) {
         FALLTHROUGH;
 #endif
     case NCI_MSG_NFCEE_POWER_LINK_CTRL:
-        nfc_response.pl_control.status        = *pp;
-        nfc_response.pl_control.nfcee_id      = *p_old++;
-        nfc_response.pl_control.pl_control    = *p_old++;
-        event               = NFC_NFCEE_PL_CONTROL_REVT;
-        break;
+      if (len > 0) {
+        nfc_response.pl_control.status = *pp;
+      } else {
+        nfc_response.pl_control.status = NFC_STATUS_FAILED;
+      }
+      nfc_response.pl_control.nfcee_id      = *p_old++;
+      nfc_response.pl_control.pl_control    = *p_old++;
+      event               = NFC_NFCEE_PL_CONTROL_REVT;
+      break;
     default:
       p_cback = nullptr;
       LOG(ERROR) << StringPrintf("unknown opcode:0x%x", op_code);

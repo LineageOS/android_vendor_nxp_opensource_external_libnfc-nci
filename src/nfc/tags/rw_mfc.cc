@@ -15,6 +15,26 @@
  *******************************************************************************/
 
 /******************************************************************************
+*
+*  The original Work has been changed by NXP.
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*  http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*
+*  Copyright 2020 NXP
+*
+******************************************************************************/
+
+/******************************************************************************
  *
  *  This file contains the implementation for Mifare Classic tag in
  *  Reader/Writer mode.
@@ -22,6 +42,7 @@
  ******************************************************************************/
 #include <android-base/stringprintf.h>
 #include <base/logging.h>
+#include <log/log.h>
 #include <string.h>
 #include "bt_types.h"
 #include "nfc_target.h"
@@ -225,6 +246,11 @@ static void rw_mfc_handle_format_rsp(uint8_t* p_data) {
   NFC_HDR* mfc_data;
   uint8_t* p;
 
+  if (!p_data) {
+    DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf("%sEmpty buffer. Returning!!",__func__);
+        return;
+  }
   mfc_data = (NFC_HDR*)p_data;
   /* Assume the data is just the response byte sequence */
   p = (uint8_t*)(mfc_data + 1) + mfc_data->offset;
@@ -404,10 +430,7 @@ static tNFC_STATUS rw_mfc_writeBlock(int block) {
 
     if (p_mfc->work_offset == p_mfc->ndef_length) {
       UINT8_TO_BE_STREAM(p, 0xFE);
-      index = index + 1;
-    }
-
-    if (p_mfc->work_offset > p_mfc->ndef_length) {
+    } else if (p_mfc->work_offset > p_mfc->ndef_length) {
       UINT8_TO_BE_STREAM(p, 0x00);
     } else {
       UINT8_TO_BE_STREAM(p, p_mfc->p_ndef_buffer[p_mfc->work_offset]);
@@ -431,6 +454,11 @@ static void rw_mfc_handle_write_rsp(uint8_t* p_data) {
   NFC_HDR* mfc_data;
   uint8_t* p;
 
+  if (!p_data) {
+    DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf("%sEmpty buffer. Returning!!",__func__);
+        return;
+  }
   mfc_data = (NFC_HDR*)p_data;
   /* Assume the data is just the response byte sequence */
   p = (uint8_t*)(mfc_data + 1) + mfc_data->offset;
@@ -683,10 +711,7 @@ static void rw_mfc_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
           evt_data.status = (tNFC_STATUS)(*(uint8_t*)p_data);
         } else if (p_data) {
           evt_data.status = p_data->status;
-        } else {
-          evt_data.status = NFC_STATUS_FAILED;
         }
-
         evt_data.p_data = NULL;
         (*rw_cb.p_cback)(RW_MFC_INTF_ERROR_EVT, (tRW_DATA*)&evt_data);
         break;
@@ -696,6 +721,10 @@ static void rw_mfc_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
 
     default:
       break;
+  }
+  if ((p_mfc->state != RW_MFC_STATE_IDLE) && (mfc_data == NULL)) {
+    LOG(ERROR) << StringPrintf("%s NULL pointer", __func__);
+    return;
   }
 
   /* Assume the data is just the response byte sequence */
@@ -931,6 +960,11 @@ static void rw_mfc_handle_tlv_detect_rsp(uint8_t* p_data) {
   NFC_HDR* mfc_data;
   uint8_t* p;
 
+  if (!p_data) {
+  DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf("%sEmpty buffer. Returning!!",__func__);
+        return;
+  }
   mfc_data = (NFC_HDR*)p_data;
   /* Assume the data is just the response byte sequence */
   p = (uint8_t*)(mfc_data + 1) + mfc_data->offset;
@@ -1011,6 +1045,7 @@ static void rw_mfc_handle_read_op(uint8_t* data) {
   NFC_HDR* mfc_data;
   uint16_t len;
   uint16_t offset;
+  uint16_t saved_length;
   bool failed = false;
   bool done = false;
   tRW_READ_DATA evt_data;
@@ -1024,7 +1059,7 @@ static void rw_mfc_handle_read_op(uint8_t* data) {
       if (tlv_found) {
         p_mfc->ndef_status = MFC_NDEF_DETECTED;
         p_mfc->ndef_first_block = p_mfc->last_block_accessed.block;
-        rw_mfc_ntf_tlv_detect_complete(tlv_found);
+        rw_mfc_ntf_tlv_detect_complete(NFC_STATUS_OK);
       }
       break;
 
@@ -1032,6 +1067,7 @@ static void rw_mfc_handle_read_op(uint8_t* data) {
       /* On the first read, adjust for any partial block offset */
       offset = 0;
       len = RW_MFC_1K_BLOCK_SIZE;
+      saved_length = p_mfc->ndef_length;
 
       if (p_mfc->work_offset == 0) {
         /* The Ndef Message offset may be present in the read 16 bytes */
@@ -1043,14 +1079,18 @@ static void rw_mfc_handle_read_op(uint8_t* data) {
         }
       }
 
-      /* Skip all reserved and lock bytes */
-      while ((offset < len) && (p_mfc->work_offset < p_mfc->ndef_length))
+      if (!failed && saved_length >= p_mfc->ndef_length) {
+        /* Skip all reserved and lock bytes */
+        while ((offset < len) && (p_mfc->work_offset < p_mfc->ndef_length))
 
-      {
-        /* Collect the NDEF Message */
-        p_mfc->p_ndef_buffer[p_mfc->work_offset] = p[offset];
-        p_mfc->work_offset++;
-        offset++;
+        {
+          /* Collect the NDEF Message */
+          p_mfc->p_ndef_buffer[p_mfc->work_offset] = p[offset];
+          p_mfc->work_offset++;
+          offset++;
+        }
+      } else {
+        android_errorWriteLog(0x534e4554, "178725766");
       }
 
       if (p_mfc->work_offset >= p_mfc->ndef_length) {
@@ -1110,23 +1150,26 @@ static bool rw_nfc_decodeTlv(uint8_t* data) {
 
   DLOG_IF(INFO, nfc_debug_enabled) << __func__ << ": i=" << i;
 
-  if (i < 0 || p[i] != 0x3) {
+  if ((i + 1) >= mfc_data->len || i < 0 || p[i] != 0x3) {
     LOG(ERROR) << __func__ << ": Can't decode message length";
-    return false;
   } else {
-    if (p[i + 1] == 0xFF) {
-      p_mfc->ndef_length = (((uint16_t)p[i + 2]) << 8) | ((uint16_t)(p[i + 3]));
-      p_mfc->ndef_start_pos = i + RW_MFC_LONG_TLV_SIZE;
-      DLOG_IF(INFO, nfc_debug_enabled)
-          << __func__ << " long NDEF SIZE=" << p_mfc->ndef_length;
-    } else {
+    if (p[i + 1] != 0xFF) {
       p_mfc->ndef_length = p[i + 1];
       p_mfc->ndef_start_pos = i + RW_MFC_SHORT_TLV_SIZE;
       DLOG_IF(INFO, nfc_debug_enabled)
           << __func__ << " short NDEF SIZE=" << p_mfc->ndef_length;
+      return true;
+    } else if ((i + 3) < mfc_data->len) {
+      p_mfc->ndef_length = (((uint16_t)p[i + 2]) << 8) | ((uint16_t)(p[i + 3]));
+      p_mfc->ndef_start_pos = i + RW_MFC_LONG_TLV_SIZE;
+      DLOG_IF(INFO, nfc_debug_enabled)
+          << __func__ << " long NDEF SIZE=" << p_mfc->ndef_length;
+      return true;
+    } else {
+      LOG(ERROR) << __func__ << ": Can't decode ndef length";
     }
   }
-  return true;
+  return false;
 }
 
 /*******************************************************************************
@@ -1266,6 +1309,11 @@ static void rw_mfc_handle_ndef_read_rsp(uint8_t* p_data) {
   NFC_HDR* mfc_data;
   uint8_t* p;
 
+  if (!p_data) {
+    DLOG_IF(INFO, nfc_debug_enabled)
+        << StringPrintf("%sEmpty buffer. Returning!!",__func__);
+        return;
+  }
   mfc_data = (NFC_HDR*)p_data;
   /* Assume the data is just the response byte sequence */
   p = (uint8_t*)(mfc_data + 1) + mfc_data->offset;

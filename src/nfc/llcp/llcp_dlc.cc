@@ -3,8 +3,8 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
- *  The original Work has been changed by NXP Semiconductors.
+ *  Copyright (C) 2015-2020 NXP
+ *  The original Work has been changed by NXP.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
  *
@@ -1101,6 +1101,10 @@ static void llcp_dlc_proc_rr_rnr_pdu(uint8_t dsap, uint8_t ptype, uint8_t ssap,
   if (p_dlcb != nullptr) {
     error_flags = 0;
 
+    if (length == 0) {
+      android_errorWriteLog(0x534e4554, "116788646");
+      return;
+    }
     rcv_seq = LLCP_GET_NR(*p_data);
 
     if (length != LLCP_PDU_RR_SIZE - LLCP_PDU_HEADER_SIZE) {

@@ -18,6 +18,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+*
+*  The original Work has been changed by NXP.
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*  http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*
+*  Copyright 2020 NXP
+*
+******************************************************************************/
 
 /******************************************************************************
  *
@@ -749,7 +768,11 @@ bool nfa_p2p_dereg(tNFA_P2P_MSG* p_msg) {
     }
     /* if need to update WKS in LLCP Gen bytes */
     else if (local_sap <= LLCP_UPPER_BOUND_WK_SAP) {
-      nfa_p2p_enable_listening(NFA_ID_P2P, true);
+#if (NXP_EXTNS == TRUE)
+      nfa_p2p_enable_listening(NFA_ID_P2P, false);
+#else
+       nfa_p2p_enable_listening(NFA_ID_P2P, true);
+#endif
     }
   }
 

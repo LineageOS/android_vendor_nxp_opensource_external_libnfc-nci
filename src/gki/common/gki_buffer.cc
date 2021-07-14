@@ -97,7 +97,7 @@ static bool gki_alloc_free_queue(uint8_t id) {
 
   Q = &p_cb->freeq[p_cb->pool_list[id]];
 
-  if (Q->p_first == 0) {
+  if (Q->p_first == nullptr) {
     void* p_mem = GKI_os_malloc((Q->size + BUFFER_PADDING_SIZE) * Q->total);
     if (p_mem) {
 // re-initialize the queue with allocated memory
@@ -137,8 +137,8 @@ void gki_buffer_init(void) {
     p_cb->pool_end[tt] = nullptr;
     p_cb->pool_size[tt] = 0;
 
-    p_cb->freeq[tt].p_first = 0;
-    p_cb->freeq[tt].p_last = 0;
+    p_cb->freeq[tt].p_first = nullptr;
+    p_cb->freeq[tt].p_last = nullptr;
     p_cb->freeq[tt].size = 0;
     p_cb->freeq[tt].total = 0;
     p_cb->freeq[tt].cur_cnt = 0;
@@ -286,13 +286,13 @@ void* GKI_getbuf(uint16_t size) {
 
     Q = &p_cb->freeq[p_cb->pool_list[i]];
     if (Q->cur_cnt < Q->total) {
-      if (Q->p_first == 0 && gki_alloc_free_queue(i) != true) {
+      if (Q->p_first == nullptr && gki_alloc_free_queue(i) != true) {
         LOG(ERROR) << StringPrintf("out of buffer");
         GKI_enable();
         return nullptr;
       }
 
-      if (Q->p_first == 0) {
+      if (Q->p_first == nullptr) {
         /* gki_alloc_free_queue() failed to alloc memory */
         LOG(ERROR) << StringPrintf("fail alloc free queue");
         GKI_enable();
@@ -1219,10 +1219,35 @@ void GKI_delete_pool(uint8_t pool_id) {
 **
 *******************************************************************************/
 uint16_t GKI_get_pool_bufsize(uint8_t pool_id) {
+#if defined(DYN_ALLOC) || defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+  uint16_t size = 0;
+  switch (pool_id) {
+    case GKI_POOL_ID_0:
+      size = GKI_BUF0_SIZE;
+      break;
+    case GKI_POOL_ID_1:
+      size = GKI_BUF1_SIZE;
+      break;
+    case GKI_POOL_ID_2:
+      size = GKI_BUF2_SIZE;
+      break;
+    case GKI_POOL_ID_3:
+      size = GKI_BUF3_SIZE;
+      break;
+      /* Here could be more pool ids, but they are not used in the current
+       * implementation */
+    default:
+      LOG(ERROR) << StringPrintf("Unknown pool ID: %d", pool_id);
+      return (0);
+      break;
+  }
+  return (size);
+#else
   if (pool_id < GKI_NUM_TOTAL_BUF_POOLS)
     return (gki_cb.com.freeq[pool_id].size);
 
   return (0);
+#endif
 }
 
 /*******************************************************************************

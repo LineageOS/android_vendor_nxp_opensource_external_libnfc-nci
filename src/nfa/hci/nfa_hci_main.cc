@@ -3,8 +3,8 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
- *  The original Work has been changed by NXP Semiconductors.
+ *  Copyright (C) 2015-2020 NXP
+ *  The original Work has been changed by NXP.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
  *
@@ -197,7 +197,8 @@ void nfa_hci_ee_info_cback(tNFA_EE_DISC_STS status) {
       break;
 #if (NXP_EXTNS == TRUE)
     case NFA_EE_MODE_SET_NTF:
-      if (nfa_hci_cb.hci_state == NFA_HCI_STATE_NFCEE_ENABLE) {
+      if (nfa_hci_cb.hci_state == NFA_HCI_STATE_NFCEE_ENABLE &&
+                !nfa_hci_cb.bClearAllPipeHandling) {
         DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("ETSI12 pipe creation configured");
         nfa_hci_api_config_nfcee(nfa_hci_cb.current_nfcee);
       }
@@ -675,8 +676,8 @@ void nfa_hci_startup_complete(tNFA_STATUS status) {
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf("nfa_hci_startup_complete (): Status: %u", status);
   nfa_sys_stop_timer(&nfa_hci_cb.timer);
-    if (nfcFL.chipType == pn557) {
-      NFC_updateHciInitStatus(NFC_HCI_INIT_COMPLETE);
+  if (nfcFL.chipType == pn557) {
+    NFC_updateHciInitStatus(NFC_HCI_INIT_COMPLETE);
     }
   if ((nfa_hci_cb.hci_state == NFA_HCI_STATE_RESTORE) ||
       (nfa_hci_cb.hci_state == NFA_HCI_STATE_RESTORE_NETWK_ENABLE)) {
@@ -1051,6 +1052,14 @@ void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   p = (uint8_t*)(p_pkt + 1) + p_pkt->offset;
   pkt_len = p_pkt->len;
 
+  if (pkt_len < 1) {
+    LOG(ERROR) << StringPrintf("Insufficient packet length! Dropping :%u bytes",
+                               pkt_len);
+    /* release GKI buffer */
+    GKI_freebuf(p_pkt);
+    return;
+  }
+
   chaining_bit = ((*p) >> 0x07) & 0x01;
   pipe = (*p++) & 0x7F;
   if (pkt_len != 0) pkt_len--;
@@ -1075,6 +1084,13 @@ void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
   if (nfa_hci_cb.assembling == false)
 #endif
   {
+    if (pkt_len < 1) {
+      LOG(ERROR) << StringPrintf(
+          "Insufficient packet length! Dropping :%u bytes", pkt_len);
+      /* release GKI buffer */
+      GKI_freebuf(p_pkt);
+      return;
+    }
     /* First Segment of a packet */
     nfa_hci_cb.type = ((*p) >> 0x06) & 0x03;
     nfa_hci_cb.inst = (*p++ & 0x3F);
@@ -1085,16 +1101,17 @@ void nfa_hci_conn_cback(uint8_t conn_id, tNFC_CONN_EVT event,
                 (pipe == NFA_HCI_CONN_UICC2_PIPE))) {
         nfa_hci_cb.type_evt = nfa_hci_cb.type;
         nfa_hci_cb.inst_evt = nfa_hci_cb.inst;
+        nfa_hci_cb.evt_len = 0;
     } else if (pipe == NFA_HCI_APDU_PIPE) {
         nfa_hci_cb.type_msg = nfa_hci_cb.type;
         nfa_hci_cb.inst_msg = nfa_hci_cb.inst;
+        nfa_hci_cb.msg_len = 0;
     }
 #endif
     if (pkt_len != 0) pkt_len--;
     nfa_hci_cb.assembly_failed = false;
+#if (NXP_EXTNS != TRUE)
     nfa_hci_cb.msg_len = 0;
-#if (NXP_EXTNS == TRUE)
-    nfa_hci_cb.evt_len = 0;
 #endif
     if (chaining_bit == NFA_HCI_MESSAGE_FRAGMENTATION) {
       nfa_hci_cb.assembling = true;

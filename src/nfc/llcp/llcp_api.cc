@@ -3,8 +3,8 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
- *  The original Work has been changed by NXP Semiconductors.
+ *  Copyright (C) 2015-2020 NXP
+ *  The original Work has been changed by NXP.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
  *
@@ -372,7 +372,7 @@ uint8_t LLCP_RegisterServer(uint8_t reg_sap, uint8_t link_type,
   uint8_t sap;
   uint16_t length;
   tLLCP_APP_CB* p_app_cb = {
-      0,
+      nullptr,
   };
 
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(

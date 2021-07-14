@@ -17,9 +17,9 @@
  ******************************************************************************/
 /******************************************************************************
  *
- *  The original Work has been changed by NXP Semiconductors.
+ *  The original Work has been changed by NXP.
  *
- *  Copyright (C) 2015-2019 NXP Semiconductors
+ *  Copyright 2015-2020 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -119,7 +119,7 @@
 #define NXP_EN_PN553_MR2 0
 #define NXP_EN_PN557     1
 #define NXP_EN_PN81T     1
-#define NXP_ANDROID_VER (11U)        /* NXP android version */
+#define NXP_ANDROID_VER (12U)        /* NXP android version */
 #define NFC_NXP_MW_VERSION_MAJ (0x01) /* MW Major Version */
 #define NFC_NXP_MW_VERSION_MIN (0x00) /* MW Minor Version */
 #define NFC_NXP_MW_CUSTOMER_ID (0x00) /* MW Customer Id */
@@ -222,8 +222,14 @@ typedef uint8_t tNFC_STATUS;
  * NFC Config Parameter IDs defined by NCI
  **********************************************/
 #define NFC_PMID_TOTAL_DURATION NCI_PARAM_ID_TOTAL_DURATION
+#define NFC_PMID_PA_BAILOUT NCI_PARAM_ID_PA_BAILOUT
 #define NFC_PMID_PF_RC NCI_PARAM_ID_PF_RC
+#define NFC_PMID_PB_BAILOUT NCI_PARAM_ID_PB_BAILOUT
+#define NFC_PMID_PF_BIT_RATE NCI_PARAM_ID_PF_BIT_RATE
+#define NFC_PMID_PF_BAILOUT NCI_PARAM_ID_PF_BAILOUT
+#define NFC_PMID_PF_DEVICES_LIMIT NCI_PARAM_ID_PF_DEVICES_LIMIT
 #define NFC_PMID_ATR_REQ_GEN_BYTES NCI_PARAM_ID_ATR_REQ_GEN_BYTES
+#define NFC_PMID_ATR_REQ_CONFIG NCI_PARAM_ID_ATR_REQ_CONFIG
 #define NFC_PMID_LA_HIST_BY NCI_PARAM_ID_LA_HIST_BY
 #define NFC_PMID_LA_NFCID1 NCI_PARAM_ID_LA_NFCID1
 #define NFC_PMID_LA_BIT_FRAME_SDD NCI_PARAM_ID_LA_BIT_FRAME_SDD
@@ -244,6 +250,7 @@ typedef uint8_t tNFC_STATUS;
 #define NFC_PMID_WT NCI_PARAM_ID_WT
 #define NFC_PMID_ATR_RES_GEN_BYTES NCI_PARAM_ID_ATR_RES_GEN_BYTES
 #define NFC_PMID_ATR_RSP_CONFIG NCI_PARAM_ID_ATR_RSP_CONFIG
+#define NFC_PMID_PACM_BIT_RATE NCI_PARAM_ID_PACM_BIT_RATE
 #define NFC_PMID_RF_FIELD_INFO NCI_PARAM_ID_RF_FIELD_INFO
 
 /* Technology based routing  */
@@ -1529,7 +1536,7 @@ extern tNFC_FW_VERSION nfc_ncif_getFWVersion();
 *******************************************************************************/
 extern void nfc_ncif_storeScreenState(uint8_t state);
 extern uint8_t nfc_hal_nfcc_reset(void);
-extern uint8_t nfc_hal_nfcc_init(uint8_t** pinit_rsp);
+extern uint8_t nfc_hal_nfcc_init();
 /*******************************************************************************
 **
 ** Function         nfc_ncif_getMaxRoutingTableSize

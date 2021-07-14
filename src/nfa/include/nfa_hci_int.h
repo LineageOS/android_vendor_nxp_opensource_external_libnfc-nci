@@ -2,8 +2,8 @@
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
  *
- *  The original Work has been changed by NXP Semiconductors.
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  The original Work has been changed by NXP.
+ *  Copyright (C) 2015-2020 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -524,6 +524,7 @@ typedef struct {
   bool IsLastEvtAbortFailed;
   bool w4_nfcee_enable;
   bool IsApduPipeStatusNotCorrect;
+  bool bClearAllPipeHandling;
   tNFA_HCI_EVENT_SENT evt_sent;
   struct {
     tNFA_CONFIG_STATE
@@ -691,5 +692,5 @@ extern char* nfa_hciu_get_type_inst_names(uint8_t pipe, uint8_t type,
                                           uint8_t inst, char* p_buff,
                                           const uint8_t max_buff_size);
 extern std::string nfa_hciu_evt_2_str(uint8_t pipe_id, uint8_t evt);
-#define VERBOSE_BUFF_SIZE 100
+
 #endif /* NFA_HCI_INT_H */

@@ -105,8 +105,8 @@ void* gki_task_entry(void* params) {
   /* Call the actual thread entry point */
   (p_pthread_info->task_entry)(p_pthread_info->params);
 
-  LOG(ERROR) << StringPrintf("gki_task task_id=%i terminating",
-                             p_pthread_info->task_id);
+  LOG(WARNING) << StringPrintf("gki_task task_id=%i terminating",
+                               p_pthread_info->task_id);
   gki_cb.os.thread_id[p_pthread_info->task_id] = 0;
 
   return nullptr;
@@ -130,12 +130,10 @@ void GKI_init(void) {
 #if (NXP_EXTNS == TRUE)
   /* Added to avoid re-initialization of memory pool (memory leak) */
   if (!gki_buf_init_done) {
-    memset(&gki_cb, 0, sizeof(gki_cb));
     gki_buffer_init();
     gki_buf_init_done = true;
   }
 #else
-  memset(&gki_cb, 0, sizeof(gki_cb));
   gki_buffer_init();
 #endif
 
@@ -149,9 +147,9 @@ void GKI_init(void) {
 #endif
   p_os = &gki_cb.os;
   pthread_mutex_init(&p_os->GKI_mutex, &attr);
-  /* pthread_mutex_init(&GKI_sched_mutex, nullptr); */
-  /* pthread_mutex_init(&thread_delay_mutex, nullptr); */ /* used in GKI_delay */
-  /* pthread_cond_init (&thread_delay_cond, nullptr); */
+  /* pthread_mutex_init(&GKI_sched_mutex, NULL); */
+  /* pthread_mutex_init(&thread_delay_mutex, NULL); */ /* used in GKI_delay */
+  /* pthread_cond_init (&thread_delay_cond, NULL); */
 
   /* Initialiase GKI_timer_update suspend variables & mutexes to be in running
    * state.
@@ -368,9 +366,9 @@ void GKI_shutdown(void) {
 
 /*******************************************************************************
  **
- ** Function        GKI_run
+ ** Function        gki_system_tick_start_stop_cback
  **
- ** Description     This function runs a task
+ ** Description     This function starts or stops timer
  **
  ** Parameters:     start: true start system tick (again), false stop
  **
@@ -476,11 +474,11 @@ void GKI_run(__attribute__((unused)) void* p_task_id) {
   pthread_attr_setdetachstate(&timer_attr, PTHREAD_CREATE_DETACHED);
 #if (NXP_EXTNS == TRUE)
   int ret = 0;
-  ret = pthread_create(&timer_thread_id, &timer_attr, timer_thread, nullptr);sdadsa
+  ret = pthread_create(&timer_thread_id, &timer_attr, timer_thread, NULL);
   pthread_attr_destroy(&timer_attr);
   if (ret != 0)
 #else
-  if (pthread_create(&timer_thread_id, &timer_attr, timer_thread, nullptr) != 0)
+  if (pthread_create(&timer_thread_id, &timer_attr, timer_thread, NULL) != 0)
 #endif
   {
     DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
@@ -692,8 +690,8 @@ uint16_t GKI_wait(uint16_t flag, uint32_t timeout) {
       /* unlock thread_evt_mutex as pthread_cond_wait() does auto lock when cond
        * is met */
       pthread_mutex_unlock(&gki_cb.os.thread_evt_mutex[rtask]);
-      LOG(ERROR) << StringPrintf("GKI TASK_DEAD received. exit thread %d...",
-                                 rtask);
+      LOG(WARNING) << StringPrintf("GKI TASK_DEAD received. exit thread %d...",
+                                   rtask);
 
       gki_cb.os.thread_id[rtask] = 0;
       return (EVENT_MASK(GKI_SHUTDOWN_EVT));

@@ -3,8 +3,8 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2019 NXP Semiconductors
- *  The original Work has been changed by NXP Semiconductors.
+ *  Copyright (C) 2015-2020 NXP
+ *  The original Work has been changed by NXP.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
  *
@@ -1135,8 +1135,9 @@ static void llcp_link_proc_agf_pdu(NFC_HDR* p_agf) {
     }
   }
 
-  if (agf_length != 0) {
-    LOG(ERROR) << StringPrintf("llcp_link_proc_agf_pdu (): Received invalid AGF PDU");
+  if (agf_length != 0 || pdu_num < 2) {
+    android_errorWriteLog(0x534e4554, "116791157");
+    LOG(ERROR) << StringPrintf("Received invalid AGF PDU");
     GKI_freebuf(p_agf);
     return;
   }
@@ -1147,7 +1148,7 @@ static void llcp_link_proc_agf_pdu(NFC_HDR* p_agf) {
   agf_length = p_agf->len;
   p = (uint8_t*)(p_agf + 1) + p_agf->offset;
 
-  while (agf_length >= LLCP_PDU_HEADER_SIZE) {
+  while (agf_length >= (LLCP_PDU_HEADER_SIZE + LLCP_PDU_AGF_LEN_SIZE)) {
     /* get length of PDU */
     p_pdu_length = p;
     BE_STREAM_TO_UINT16(pdu_length, p);
