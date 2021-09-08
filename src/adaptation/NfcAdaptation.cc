@@ -1691,8 +1691,8 @@ uint32_t NfcAdaptation::HalNciTransceive(phNxpNci_Extn_Cmd_t* NciCmd,phNxpNci_Ex
 ***************************************************************************/
 int NfcAdaptation::getVendorNumConfig(const char* configName) {
   std::string key = configName, value;
-  if (mHalNxpNfc != NULL) /*using lambda expression for hidl callback function*/
-    mHalNxpNfc->getVendorParam(configName,
+  if (mNqHal_2_0 != NULL) /*using lambda expression for hidl callback function*/
+    mNqHal_2_0->getVendorParam(configName,
                                [&value](std::string res) { value = res; });
   DLOG_IF(INFO, nfc_debug_enabled) << StringPrintf(
       "%s : configName:%s -- value:%s", __func__, configName, value.c_str());
