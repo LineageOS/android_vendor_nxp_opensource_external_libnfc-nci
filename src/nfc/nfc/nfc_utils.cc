@@ -15,6 +15,25 @@
  *  limitations under the License.
  *
  ******************************************************************************/
+/******************************************************************************
+*
+*  The original Work has been changed by NXP.
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*  http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*
+*  Copyright 2020 NXP
+*
+******************************************************************************/
 
 /******************************************************************************
  *
@@ -163,7 +182,11 @@ void nfc_free_conn_cb(tNFC_CONN_CB* p_cb) {
 
   while ((p_buf = GKI_dequeue(&p_cb->tx_q)) != nullptr) GKI_freebuf(p_buf);
 
-  nfc_cb.conn_id[p_cb->conn_id] = 0;
+  if (p_cb->conn_id <= NFC_MAX_CONN_ID) {
+    nfc_cb.conn_id[p_cb->conn_id] = 0;
+  } else {
+    LOG(ERROR) << StringPrintf("invalid conn_id.");
+  }
   p_cb->p_cback = nullptr;
   p_cb->conn_id = NFC_ILLEGAL_CONN_ID;
 }

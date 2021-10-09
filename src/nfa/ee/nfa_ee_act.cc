@@ -3,14 +3,14 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
- *  The original Work has been changed by NXP Semiconductors.
+ *  Copyright (C) 2015-2020 NXP
+ *  The original Work has been changed by NXP.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at:
+ *  You may obtain a copy of the License at
  *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -36,9 +36,9 @@
 #include "nfa_dm_int.h"
 #include "nfa_ee_int.h"
 #include "nci_hmsgs.h"
+#if (NXP_EXTNS == TRUE)
 #include "nfa_hci_int.h"
 #include <nfc_config.h>
-#if (NXP_EXTNS == TRUE)
 #include "nfa_scr_int.h"
 #endif
 #include <statslog.h>
@@ -412,7 +412,7 @@ static uint16_t nfa_ee_total_lmrt_size(void) {
   lmrt_size += p_cb->size_aid;
   lmrt_size += p_cb->size_apdu;
   lmrt_size += p_cb->size_sys_code;
-  p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+  if (nfa_ee_cb.cur_ee > 0) p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
   for (xx = 0; xx < nfa_ee_cb.cur_ee; xx++, p_cb--) {
     if (p_cb->ee_status == NFC_NFCEE_STATUS_ACTIVE) {
       lmrt_size += p_cb->size_mask_proto;
@@ -477,7 +477,9 @@ static void nfa_ee_add_proto_route_to_ecb(tNFA_EE_ECB* p_cb, uint8_t* pp,
       power_cfg |= NCI_ROUTE_PWR_STATE_SWITCH_OFF;
     if (p_cb->proto_battery_off & nfa_ee_proto_mask_list[xx])
       power_cfg |= NCI_ROUTE_PWR_STATE_BATT_OFF;
-    if (power_cfg) {
+    if (power_cfg  ||
+        (p_cb->nfcee_id == NFC_DH_ID &&
+         nfa_ee_proto_mask_list[xx] == NFA_PROTOCOL_MASK_NFC_DEP)) {
       /* Applying Route Block for ISO DEP Protocol, so that AIDs
        * which are not in the routing table can also be blocked */
       if (nfa_ee_proto_mask_list[xx] == NFA_PROTOCOL_MASK_ISO_DEP
@@ -1237,8 +1239,10 @@ void nfa_ee_api_register(tNFA_EE_MSG* p_data) {
           nfa_ee_cb.ecb[xx].aid_cfg = (uint8_t*) GKI_getbuf(max_aid_config_length);
           if ((nullptr != nfa_ee_cb.ecb[xx].aid_len) &&
                   (nullptr != nfa_ee_cb.ecb[xx].aid_pwr_cfg) &&
+#if (NXP_EXTNS == TRUE)
                   (nullptr != nfa_ee_cb.ecb[xx].aid_rt_info) &&
                   (nullptr != nfa_ee_cb.ecb[xx].aid_rt_loc) &&
+#endif
                   (nullptr != nfa_ee_cb.ecb[xx].aid_info) &&
                   (nullptr != nfa_ee_cb.ecb[xx].aid_cfg)) {
               memset(nfa_ee_cb.ecb[xx].aid_len, 0, max_aid_entries);
@@ -1882,7 +1886,7 @@ void nfa_ee_api_remove_aid(tNFA_EE_MSG* p_data) {
   }
 #endif
   else {
-    LOG(ERROR) << StringPrintf(
+    LOG(WARNING) << StringPrintf(
         "nfa_ee_api_remove_aid The AID entry is not in the database");
     evt_data.status = NFA_STATUS_INVALID_PARAM;
   }
@@ -2193,7 +2197,12 @@ void nfa_ee_api_add_sys_code(tNFA_EE_MSG* p_data) {
       if (new_size > NFC_GetLmrtSize()) {
         LOG(ERROR) << StringPrintf("Exceeded LMRT size:%d", new_size);
         evt_data.status = NFA_STATUS_BUFFER_FULL;
-      } else if (p_add->power_state) {
+      }
+#if (NXP_EXTNS == TRUE)
+      else if (p_add->power_state) {
+#else
+      else {
+#endif
         /* add SC entry*/
         uint32_t p_cb_sc_len = nfa_ee_find_total_sys_code_len(p_cb, 0);
         p_cb->sys_code_pwr_cfg[p_cb->sys_code_cfg_entries] = p_add->power_state;
@@ -2572,7 +2581,8 @@ static void nfa_ee_remove_pending(void) {
       nfa_ee_cb.cur_ee, num_removed, first_removed);
   if (num_removed && (first_removed != (nfa_ee_cb.cur_ee - num_removed))) {
     /* if the removes ECB entried are not at the end, move the entries up */
-    p_cb_end = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+    p_cb_end = nullptr;
+    if (nfa_ee_cb.cur_ee > 0) p_cb_end = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
     p_cb = &nfa_ee_cb.ecb[first_removed];
     for (p_cb_n = p_cb + 1; p_cb_n <= p_cb_end;) {
       while ((p_cb_n->nfcee_id == NFA_EE_INVALID) && (p_cb_n <= p_cb_end)) {
@@ -3063,6 +3073,8 @@ void nfa_ee_nci_mode_set_rsp(tNFA_EE_MSG* p_data) {
     /* Start routing table update debounce timer */
     nfa_ee_start_timer();
   }
+  LOG(WARNING) << StringPrintf("%s p_rsp->status:0x%02x", __func__,
+                               p_rsp->status);
 #endif
   if (p_rsp->status == NFA_STATUS_OK) {
     if (p_rsp->mode == NFA_EE_MD_ACTIVATE) {
@@ -3472,7 +3484,7 @@ void nfa_ee_get_tech_route(uint8_t power_state, uint8_t* p_handles) {
 
   for (xx = 0; xx < NFA_EE_MAX_TECH_ROUTE; xx++) {
     p_handles[xx] = NFC_DH_ID;
-    p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+    if (nfa_ee_cb.cur_ee > 0) p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
     for (yy = 0; yy < nfa_ee_cb.cur_ee; yy++, p_cb--) {
       if (p_cb->ee_status == NFC_NFCEE_STATUS_ACTIVE) {
         switch (power_state) {
@@ -3822,7 +3834,8 @@ void nfa_ee_lmrt_to_nfcc(__attribute__((unused)) tNFA_EE_MSG* p_data) {
 #endif /* - Routing entries optimization */
 
   /* find the last active NFCEE. */
-  p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+  if (nfa_ee_cb.cur_ee > 0) p_cb = &nfa_ee_cb.ecb[nfa_ee_cb.cur_ee - 1];
+
   for (xx = 0; xx < nfa_ee_cb.cur_ee; xx++, p_cb--) {
     if (p_cb->ee_status == NFC_NFCEE_STATUS_ACTIVE) {
       if (last_active == NFA_EE_INVALID) {
@@ -3838,9 +3851,8 @@ void nfa_ee_lmrt_to_nfcc(__attribute__((unused)) tNFA_EE_MSG* p_data) {
   if(nfcFL.chipType != pn547C2) {
       find_and_resolve_tech_conflict();
   }
-#endif
-
   max_len = NFC_GetLmrtSize();
+#endif
   max_tlv =
       (uint8_t)((max_len > NFA_EE_ROUT_MAX_TLV_SIZE) ? NFA_EE_ROUT_MAX_TLV_SIZE
                                                      : max_len);

@@ -17,9 +17,9 @@
  ******************************************************************************/
 /******************************************************************************
  *
- *  The original Work has been changed by NXP Semiconductors.
+ *  The original Work has been changed by NXP.
  *
- *  Copyright (C) 2015-2019 NXP Semiconductors
+ *  Copyright 2015-2020 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -1230,7 +1230,7 @@ void nfa_dm_start_rf_discover(void) {
                           NFA_DM_DISC_MASK_LA_ISO_DEP);
           /* host can listen NFC-DEP based on protocol routing */
           listen_mask |= (nfa_dm_cb.disc_cb.entry[xx].requested_disc_mask &
-                            NFA_DM_DISC_MASK_LA_NFC_DEP);
+                          NFA_DM_DISC_MASK_LA_NFC_DEP);
           if (NFC_GetNCIVersion() == NCI_VERSION_2_0) {
             listen_mask |= (nfa_dm_cb.disc_cb.entry[xx].requested_disc_mask &
                             NFA_DM_DISC_MASK_LACM_NFC_DEP);
@@ -1339,18 +1339,32 @@ void nfa_dm_start_rf_discover(void) {
                        p2pListenMask);
     }
     tech_list = nfa_ee_get_supported_tech_list(nfa_dm_cb.selected_uicc_id);
+
+    bool isForceOnlyUiccListenTech = false;
+    if (NfcConfig::hasKey(NAME_FORCE_ONLY_UICC_LISTEN_TECH))
+      isForceOnlyUiccListenTech =
+          (NfcConfig::getUnsigned(NAME_FORCE_ONLY_UICC_LISTEN_TECH) == 0x00)
+              ? false
+              : true;
     bool isFwdFuncValid =
         (fwdEnable == 0x01) && ((hostListenMask & NFA_TECHNOLOGY_MASK_A) &&
                                 (hostListenMask & NFA_TECHNOLOGY_MASK_B));
 
     bool isTypeAReq =
-        ((hostListenMask | eseListenMask) & NFA_TECHNOLOGY_MASK_A) ||
-        isFwdFuncValid || (tech_list & NFA_TECHNOLOGY_MASK_A);
+        (isForceOnlyUiccListenTech && !isFwdFuncValid)
+            ? tech_list & NFA_TECHNOLOGY_MASK_A
+            : ((hostListenMask | eseListenMask) & NFA_TECHNOLOGY_MASK_A) ||
+                  isFwdFuncValid || (tech_list & NFA_TECHNOLOGY_MASK_A);
+    if (isForceOnlyUiccListenTech && !isTypeAReq)
+      dm_disc_mask &= ~(NFA_DM_DISC_MASK_LA_T1T | NFA_DM_DISC_MASK_LA_T2T |
+                        NFA_DM_DISC_MASK_LA_NFC_DEP);
     if (!isTypeAReq) dm_disc_mask &= ~(NFA_DM_DISC_MASK_LA_ISO_DEP);
 
     bool isTypeBReq =
-        ((hostListenMask | eseListenMask) & NFA_TECHNOLOGY_MASK_B) ||
-        isFwdFuncValid || (tech_list & NFA_TECHNOLOGY_MASK_B);
+        (isForceOnlyUiccListenTech && !isFwdFuncValid)
+            ? tech_list & NFA_TECHNOLOGY_MASK_B
+            : ((hostListenMask | eseListenMask) & NFA_TECHNOLOGY_MASK_B) ||
+                  isFwdFuncValid || (tech_list & NFA_TECHNOLOGY_MASK_B);
     if (!isTypeBReq) dm_disc_mask &= ~(NFA_DM_DISC_MASK_LB_ISO_DEP);
 #endif
 

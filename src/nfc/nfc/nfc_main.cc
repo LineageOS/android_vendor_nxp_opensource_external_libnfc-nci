@@ -3,8 +3,8 @@
  *  Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *  Not a Contribution.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
- *  The original Work has been changed by NXP Semiconductors.
+ *  Copyright (C) 2015-2020 NXP
+ *  The original Work has been changed by NXP.
  *
  *  Copyright (C) 2010-2014 Broadcom Corporation
  *
@@ -33,7 +33,7 @@
 #include "NfcAdaptation.h"
 #include <android-base/stringprintf.h>
 #include <android/hardware/nfc/1.1/types.h>
-#include <vendor/nxp/hardware/nfc/1.0/types.h>
+#include <vendor/nxp/hardware/nfc/2.0/types.h>
 #include <base/logging.h>
 #include <cutils/properties.h>
 
@@ -253,6 +253,7 @@ static void nfc_main_notify_enable_status(tNFC_STATUS nfc_status) {
 void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
   tNFC_RESPONSE evt_data;
   tNFC_CONN_CB* p_cb = &nfc_cb.conn_cb[NFC_RF_CONN_ID];
+  int16_t lremain = 0;
   uint8_t* p;
   uint8_t num_interfaces = 0, xx;
   uint8_t num_interface_extensions = 0, zz;
@@ -265,13 +266,25 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
 
     p = (uint8_t*)(p_init_rsp_msg + 1) + p_init_rsp_msg->offset +
         NCI_MSG_HDR_SIZE + 1;
+
+    lremain = p_init_rsp_msg->len - NCI_MSG_HDR_SIZE - 1 - sizeof(uint32_t) - 5;
+    if (lremain < 0) {
+      nfc_status = NCI_STATUS_FAILED;
+      goto plen_err;
+    }
     /* we currently only support NCI of the same version.
     * We may need to change this, when we support multiple version of NFCC */
 
     evt_data.enable.nci_version = nfc_cb.nci_version;
     STREAM_TO_UINT32(evt_data.enable.nci_features, p);
     if (nfc_cb.nci_version == NCI_VERSION_1_0) {
+      /* this byte is consumed in the top expression */
       STREAM_TO_UINT8(num_interfaces, p);
+      lremain -= num_interfaces;
+      if (lremain < 0) {
+        nfc_status = NCI_STATUS_FAILED;
+        goto plen_err;
+      }
       evt_data.enable.nci_interfaces = 0;
       for (xx = 0; xx < num_interfaces; xx++) {
         if ((*p) <= NCI_INTERFACE_MAX)
@@ -287,6 +300,7 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
       memcpy(evt_data.enable.vs_interface, nfc_cb.vs_interface,
              NFC_NFCC_MAX_NUM_VS_INTERFACE);
     }
+    /* four bytes below are consumed in the top expression */
     evt_data.enable.max_conn = *p++;
     STREAM_TO_UINT16(evt_data.enable.max_ce_table, p);
 #if (NFC_RW_ONLY == FALSE)
@@ -298,6 +312,13 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
     p_cb->init_credits = p_cb->num_buff = 0;
     nfc_set_conn_id(p_cb, NFC_RF_CONN_ID);
     if(nfc_cb.nci_version == NCI_VERSION_2_0) {
+      /* one byte is consumed in the top expression and
+       * 3 bytes from uit16+uint8 below */
+      lremain -= 4;
+      if (lremain < 0) {
+        nfc_status = NCI_STATUS_FAILED;
+        goto plen_err;
+      }
       if (evt_data.enable.nci_features & NCI_FEAT_HCI_NETWORK)
       {
         //p_cb++;
@@ -324,6 +345,11 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
 #endif
         evt_data.enable.nci_interfaces = 0;
         for (xx = 0; xx < num_interfaces; xx++) {
+          lremain -= 2;
+          if (lremain < 0) {
+            nfc_status = NCI_STATUS_FAILED;
+            goto plen_err;
+          }
           if ((*p) <= NCI_INTERFACE_MAX)
             evt_data.enable.nci_interfaces |= (1 << (*p));
           else if (((*p) >= NCI_INTERFACE_FIRST_VS) &&
@@ -333,6 +359,11 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
           }
           interface_type = *p++;
           num_interface_extensions = *p++;
+          lremain -= num_interface_extensions;
+          if (lremain < 0) {
+            nfc_status = NCI_STATUS_FAILED;
+            goto plen_err;
+          }
           for (zz = 0; zz < num_interface_extensions; zz++) {
             if(((*p) < NCI_INTERFACE_EXTENSION_MAX ) && (interface_type <= NCI_INTERFACE_MAX)) {
               nfc_cb.nci_intf_extensions |= (1 << (*p));
@@ -346,6 +377,12 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
         memcpy(evt_data.enable.vs_interface, nfc_cb.vs_interface,
                NFC_NFCC_MAX_NUM_VS_INTERFACE);
     } else {
+      /* one byte is consumed in the top expression */
+      lremain -= sizeof(uint16_t) + NFC_NFCC_INFO_LEN;
+      if (lremain < 0) {
+        nfc_status = NCI_STATUS_FAILED;
+        goto plen_err;
+      }
       STREAM_TO_UINT16(evt_data.enable.max_param_size, p);
       evt_data.enable.manufacture_id = *p++;
       STREAM_TO_ARRAY(evt_data.enable.nfcc_info, p, NFC_NFCC_INFO_LEN);
@@ -356,6 +393,7 @@ void nfc_enabled(tNFC_STATUS nfc_status, NFC_HDR* p_init_rsp_msg) {
   }
   /* else not successful. the buffers will be freed in nfc_free_conn_cb () */
   else {
+  plen_err:
     if (nfc_cb.flags & NFC_FL_RESTARTING) {
       nfc_set_state(NFC_STATE_NFCC_POWER_OFF_SLEEP);
     } else {
@@ -586,7 +624,6 @@ void nfc_main_handle_hal_evt(tNFC_HAL_EVT_MSG* p_msg) {
       break;
     case (uint32_t)NfcEvent::HCI_NETWORK_RESET:
       delete_stack_non_volatile_store(true);
-      property_set("persist.vendor.nfc.hci_network_reset_req", "false");
       break;
 #if (NXP_EXTNS == TRUE)
     case HAL_NFC_POST_MIN_INIT_CPLT_EVT:

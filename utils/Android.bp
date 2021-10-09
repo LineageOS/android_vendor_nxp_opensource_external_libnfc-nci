@@ -15,6 +15,17 @@ cc_defaults {
             enabled: false,
         },
     },
+    sanitize: {
+        integer_overflow: true,
+        misc_undefined: ["bounds"],
+        scs: true,
+        diag: {
+            integer_overflow: true,
+            misc_undefined: ["bounds"],
+            no_recover: ["bounds", "integer"],
+        },
+    },
+
 }
 
 cc_library_static {
@@ -48,6 +59,7 @@ cc_test {
     static_libs: [
         "libnqnfcutils",
         "libgmock",
+        "libc++fs"
     ],
     shared_libs: [
         "libbase",

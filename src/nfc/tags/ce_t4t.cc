@@ -17,6 +17,26 @@
  ******************************************************************************/
 
 /******************************************************************************
+*
+*  The original Work has been changed by NXP.
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*  http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*
+*  Copyright 2020 NXP
+*
+******************************************************************************/
+
+/******************************************************************************
  *
  *  This file contains the implementation for Type 4 tag in Card Emulation
  *  mode.
@@ -648,6 +668,13 @@ static void ce_t4t_data_cback(uint8_t conn_id, tNFC_CONN_EVT event,
     if (instruct == T4T_CMD_INS_SELECT) {
       /* P1 Byte is already parsed */
       if (select_type == T4T_CMD_P1_SELECT_BY_FILE_ID && p_cmd) {
+        /* CLA+INS+P1+P2+Lc+FILE_ID = T4T_CMD_MAX_HDR_SIZE + T4T_FILE_ID_SIZE */
+        if (p_c_apdu->len < (T4T_CMD_MAX_HDR_SIZE + T4T_FILE_ID_SIZE)) {
+          LOG(ERROR) << "Wrong length";
+          GKI_freebuf(p_c_apdu);
+          ce_t4t_send_status(T4T_RSP_WRONG_LENGTH);
+          return;
+        }
         ce_t4t_process_select_file_cmd(p_cmd);
       } else {
         LOG(ERROR) << StringPrintf("CET4T: Bad P1 byte (0x%02X)", select_type);

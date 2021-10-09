@@ -17,9 +17,9 @@
  ******************************************************************************/
 /******************************************************************************
  *
- *  The original Work has been changed by NXP Semiconductors.
+ *  The original Work has been changed by NXP.
  *
- *  Copyright (C) 2015-2018 NXP Semiconductors
+ *  Copyright 2015-2020 NXP
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -1704,6 +1704,6 @@ tNFA_STATUS NFA_Send_Core_Reset() {
 ** Returns          void
 **
 *******************************************************************************/
-void NFA_Send_Core_Init(uint8_t** p) {
-    nfc_hal_nfcc_init(p);
+void NFA_Send_Core_Init() {
+    nfc_hal_nfcc_init();
 }

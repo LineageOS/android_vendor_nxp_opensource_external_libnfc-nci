@@ -436,6 +436,24 @@ extern tNFA_STATUS NFA_RwT2tSectorSelect(uint8_t sector_number);
 
 /*******************************************************************************
 **
+** Function         NFA_RwT2tReadDynLockBytes
+**
+** Description:
+**      Configure NFA skip_dyn_locks flag to send or not READ commands to the
+**      activated Type 2 tag to read the DynLock_Area contents.
+**
+**      When the operation has completed (or if an error occurs), the app will
+**      be notified with NFA_T2T_CMD_CPLT_EVT.
+**
+** Returns:
+**      NFA_STATUS_OK if successfully initiated
+**      NFA_STATUS_FAILED otherwise
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_RwT2tReadDynLockBytes(bool read_dyn_locks);
+
+/*******************************************************************************
+**
 ** Function         NFA_RwT3tRead
 **
 ** Description:
@@ -510,7 +528,7 @@ extern tNFA_STATUS NFA_RwI93Inventory(bool afi_present, uint8_t afi,
 **      NFA_STATUS_FAILED otherwise
 **
 *******************************************************************************/
-extern tNFA_STATUS NFA_RwI93StayQuiet(void);
+extern tNFA_STATUS NFA_RwI93StayQuiet(uint8_t* p_uid);
 
 /*******************************************************************************
 **
@@ -787,5 +805,22 @@ extern void NFA_SetEmvCoState(bool flag);
 
 #endif
 
+
+/*******************************************************************************
+**
+** Function         NFA_RwI93SetAddressingMode
+**
+** Description:
+**      Set addressing mode to use to communicate with T5T tag.
+**      mode = true: addressed (default if API not called)
+**      mode = false: non-addressed
+**
+** Returns:
+**      NFA_STATUS_OK if successfully initiated
+**      NFA_STATUS_WRONG_PROTOCOL: T5T tag not activated
+**      NFA_STATUS_FAILED otherwise
+**
+*******************************************************************************/
+extern tNFA_STATUS NFA_RwI93SetAddressingMode(bool mode);
 
 #endif /* NFA_RW_API_H */
