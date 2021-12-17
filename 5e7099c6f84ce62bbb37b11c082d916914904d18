@@ -52,6 +52,23 @@
       "parentUuid": "e5c629f6_270c038d",
       "revId": "5e7099c6f84ce62bbb37b11c082d916914904d18",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b762e435_8cd2c3c5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 28998
+      },
+      "writtenOn": "2021-12-17T23:11:35Z",
+      "side": 1,
+      "message": "Thank you Kevin for back porting these patches.  Compiles, builds and runs fine on flounder.  According to stats.lineageos.org, there\u0027s still 947 users running 15.1 on flounder.",
+      "revId": "5e7099c6f84ce62bbb37b11c082d916914904d18",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
