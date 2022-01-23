@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "618b98e9_5a9343fc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 30375
+      },
+      "writtenOn": "2022-01-23T23:50:18Z",
+      "side": 1,
+      "message": "Hello.  My t2t Power Miner gives error 35.  Please help me which defective part is causing the device error 35. Help me find the defective part that caused the error code 35.  If you send me the name of the defective part along with the photo of the part, you would be very kind.  Thank you in advance for your cooperation and support.  Your company friend Mohsen",
+      "revId": "da5128e7aa8ac132acfefe8e6af0a936c98abca8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
