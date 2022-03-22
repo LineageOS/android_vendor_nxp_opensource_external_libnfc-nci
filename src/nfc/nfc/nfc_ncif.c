@@ -1905,6 +1905,11 @@ void nfc_ncif_proc_ee_discover_req(uint8_t* p, uint16_t plen) {
 
   NFC_TRACE_DEBUG2("nfc_ncif_proc_ee_discover_req %d len:%d", *p, plen);
 
+  if (!plen) {
+    android_errorWriteLog(0x534e4554, "221856662");
+    return;
+  }
+
   if (*p > NFC_MAX_EE_DISC_ENTRIES) {
     android_errorWriteLog(0x534e4554, "122361874");
     LOG(ERROR) << __func__ << "Exceed NFC_MAX_EE_DISC_ENTRIES";
