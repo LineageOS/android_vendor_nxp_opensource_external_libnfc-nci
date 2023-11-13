@@ -1,4 +1,22 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f7f6183_8e405620",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2023-11-13T18:32:05Z",
+      "side": 1,
+      "message": "We will not be taking these - please stop.\n\nIf you\u0027d like you can submit them to AOSP but I doubt in their current state they\u0027ll take them either.",
+      "revId": "7cb53cd740307e3f02411c786c8331d85633f146",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ],
   "submitRequirementResults": []
 }
