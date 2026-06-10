@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "57250f3e_57abe6f9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 17656
+      },
+      "writtenOn": "2026-06-10T10:55:16Z",
+      "side": 1,
+      "message": "Info: \nIt may look weird, that the corresponding change for system/nfc is not part of the topic, but indeed, it is already present there",
+      "revId": "485b230357a264e1429c3cb116365c724ca45c2d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
